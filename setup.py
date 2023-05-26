@@ -1,9 +1,9 @@
 from setuptools import setup
 
 setup(
-    name='loft',
+    name='bmp',
     version='0.1',
-    packages=['loft'],
+    packages=['bmp'],
     install_requires=[
         'torch', 'triton', 'typed_ast'
     ],

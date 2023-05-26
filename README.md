@@ -1,28 +1,45 @@
 BMP (Blocked Multi-Processing) is a programming model and a compiler for simplified GPU programming. It employs the *single program multiple blocked data* paradigm where the outer loops are sequential for loops annotated with OpenMP-like pragmas, and inner statements operate on blocks of data.
 
+The programming model is like SPMD, where we launch multiple instances of the same program, but with each program working on a contiguous block of data.
+
+A key feature is that our kernel is just a ordinary sequential Python function which facilitates development and debugging. Annotating with `@bmp.jit` makes it parallelized and executable on the GPU.
+
 # Install
 
 ```bash
 python setup.py develop
 ```
 
-# Element-Wise Function
+# Element-Wise Operation
+```python
+@bmp.jit(tune=['BLOCK'])
+def add(a, b, c, BLOCK):
+    for i in range(0, a.shape[0], BLOCK):  #pragma parallel
+        c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
+```
 
+# Grid Reduction
+
+```python
+@bmp.jit(tune=['BLOCK'])
+def kernel(a, b, BLOCK):
+    for i in range(0, a.shape[0], BLOCK):  #pragma parallel reduction(+:b)
+        s = torch.sum(a[i:i+BLOCK])
+        b[0] += s 
+```
 
 # Matrix Multiplications
 
 An blocked matrix multiplication implementation can be expressed as:
 ```python
-import bmp
-
 @bmp.jit(tune=['Bi', 'Bj', 'Bk'])
 def matmul(a, b, c, Bi, Bj, Bk):
     for i in range(0, a.shape[0], Bi):  #pragma parallel
-    	for j in range(0, b.shape[-1], Bj):  #pragma parallel
-	    c_block = torch.zeros([Bi, Bj], device=a.device, dtype=a.dtype)
-	    for k in range(0, a.shape[-1], Bk):
-	    	c_block[:, :] += a[i:i+Bi, k:k+Bk] @ b[k:k+Bk, j:j+Bj]
-	    c[i:i+Bi, j:j+Bj] = c_block
+        for j in range(0, b.shape[-1], Bj):  #pragma parallel
+            c_block = torch.zeros([Bi, Bj], device=a.device, dtype=a.dtype)
+            for k in range(0, a.shape[-1], Bk):
+                c_block[:, :] += a[i:i+Bi, k:k+Bk] @ b[k:k+Bk, j:j+Bj]
+            c[i:i+Bi, j:j+Bj] = c_block
 ```
 
 When `k` dimension is relatively large, the following kernel reduces `k` in parallel:
@@ -50,11 +67,11 @@ Batched matmul is as easy as adding one extra outer loop and some minor changes:
 @bmp.jit(tune=['Bi', 'Bj', 'Bk'])
 def batched_matmul(a, b, c, Bi, Bj, Bk):
     for z in range(a.shape[0]):  #pragma parallel
-        for i in range(0, a.shape[1], Bi):  # pragma parallel
-    	    for j in range(0, b.shape[-1], Bj):  # pragma parallel
-	        c_block = torch.zeros([Bi, Bj], device=a.device, dtype=a.dtype)
-	    	for k in range(0, a.shape[-1], Bk):
-	    	    c_block[:, :] += a[z, i:i+Bi, k:k+Bk] @ b[z, k:k+Bk, j:j+Bj]
-	    c[z, i:i+Bi, j:j+Bj] = c_block
+        for i in range(0, a.shape[1], Bi):  #pragma parallel
+            for j in range(0, b.shape[-1], Bj):  #pragma parallel
+                c_block = torch.zeros([Bi, Bj], device=a.device, dtype=a.dtype)
+                for k in range(0, a.shape[-1], Bk):
+                    c_block[:, :] += a[z, i:i+Bi, k:k+Bk] @ b[z, k:k+Bk, j:j+Bj]
+                c[z, i:i+Bi, j:j+Bj] = c_block
 ```
 
