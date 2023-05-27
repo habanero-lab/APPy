@@ -3,10 +3,6 @@ import bmp
 import triton
 import triton.language as tl
 
-print(torch.__version__)
-print(triton.__version__)
-print(triton.__file__)
-
 @triton.jit
 def _triton_kernel(a_rowptrs, a_cols, a_vals, b, c, M: tl.constexpr, BLOCK: tl.constexpr):
     i = tl.program_id(0)
