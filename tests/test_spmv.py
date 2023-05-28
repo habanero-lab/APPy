@@ -18,6 +18,21 @@ def _triton_kernel(a_rowptrs, a_cols, a_vals, b, c, M: tl.constexpr, BLOCK: tl.c
         acc += tl.sum(a_ij * b_j, axis=0)
     tl.store(c+i, acc)
 
+@triton.jit
+def _triton_kernel1(a_rowptrs, a_cols, a_vals, b, c, M: tl.constexpr, BLOCK: tl.constexpr):
+    i = tl.program_id(0)
+    row_start = tl.load(a_rowptrs+i)
+    row_end = tl.load(a_rowptrs+i+1)
+    acc = tl.zeros([BLOCK], dtype=tl.float32)
+    for ji in range(row_start, row_end, BLOCK):
+        idx = ji + tl.arange(0, BLOCK) 
+        mask = idx < row_end
+        a_ij = tl.load(a_vals+idx, mask=mask, other=0)
+        j = tl.load(a_cols+idx, mask=mask, other=0)
+        b_j = tl.load(b+j, mask=mask, other=0)  # gather
+        acc += a_ij * b_j
+    tl.store(c+i, tl.sum(acc, axis=0))
+
 def triton_kernel(a_rowptrs, a_cols, a_vals, b, c, M, BLOCK):
     grid = (M,)
     _triton_kernel[grid](a_rowptrs, a_cols, a_vals, b, c, M, BLOCK)
@@ -42,7 +57,8 @@ for M in [1024*20]:
     N = M
     print(f'M: {M}, N: {N}')
     a_dense = torch.randn(M, N, device='cuda', dtype=torch.float32)
-    a_dense = torch.tril(a_dense)
+    a_dense = torch.nn.functional.dropout(a_dense, p=0.9)
+    #a_dense = torch.tril(a_dense)
     a = a_dense.to_sparse_csr()
     b = torch.randn(N, device='cuda', dtype=torch.float32)
 
