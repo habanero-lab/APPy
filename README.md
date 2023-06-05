@@ -1,8 +1,5 @@
-BMP (Blocked Multi-Processing) is a programming model and a compiler for simplified GPU programming. It employs the *single program multiple blocked data* paradigm where the outer loops are sequential for loops annotated with OpenMP-like pragmas, and inner statements operate on blocks of data.
+BMP (Blocked Multi-Processing) is a programming model and a compiler for simplified parallel programming. It employs the *Single Program Multiple Blocked Data* paradigm where the outer loops are sequential for loops annotated with OpenMP-like pragmas, and inner statements operate on blocks of data. The programming model is like SPMD, where we launch multiple instances of the same program, but with each program working on a contiguous block of data. As a result, user can write sequential Python loops, debug in Python interpreter, and compile and execute them on GPUs and CPUs.
 
-The programming model is like SPMD, where we launch multiple instances of the same program, but with each program working on a contiguous block of data.
-
-A key feature is that our kernel is just a ordinary sequential Python function which facilitates development and debugging. Annotating with `@bmp.jit` makes it parallelized and executable on the GPU.
 
 # Install
 

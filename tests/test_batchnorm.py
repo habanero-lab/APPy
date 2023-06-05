@@ -1,15 +1,22 @@
 import torch
 import bmp
+from bmp import Dx
 
 def kernel(a, b):
     mean = torch.empty(a.shape[1], device=a.device, dtype=a.dtype)
-    for j in range(0, a.shape[1], Bj):  #pragma parallel 
-        for i in range(0, a.shape[0], Bi):  #pragma parallel reduction(+:mean)
-            data = a[i:i+Bi, j:j+Bj]
-            c = data.sum(axis=0)
-            mean[j:j+Bj] += c
+    for i in range(0, a.shape[0], Bi):  #pragma parallel reduction(+:mean)
+        for j in range(0, a.shape[1], Dx):  #pragma parallel 
+            c = sum(a[i:i+Bi, j:j+Dx], axis=0)
+            mean[j:j+Dx] += c
 
-    var = 
+    var = torch.empty(a.shape[1], device=a.device, dtype=a.dtype)
+    for i in range(0, a.shape[0], Bi):  #pragma parallel reduction(+:mean)
+        for j in range(0, a.shape[1], Dx):  #pragma parallel 
+            d = a[i:i+Bi, j:j+Dx] - mean[j:j+Dx]
+            c = sum(d, axis=0)
+            var[j:j+Dx] += c
+
+
 
 for M in [1024]:
     N = 1024

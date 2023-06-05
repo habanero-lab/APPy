@@ -1,23 +1,25 @@
 import torch
 import bmp
+from bmp import parallel
 import triton
 import triton.language as tl
 
-@triton.jit
-def _triton_kernel(a, b, c, BLOCK: tl.constexpr):
-    i = tl.program_id(0) * BLOCK
-    idx = i + tl.arange(0, BLOCK)
-    tl.store(c+idx, tl.load(a+idx) + tl.load(b+idx))
+# @triton.jit
+# def _triton_kernel(a, b, c, BLOCK: tl.constexpr):
+#     i = tl.program_id(0) * BLOCK
+#     idx = i + tl.arange(0, BLOCK)
+#     tl.store(c+idx, tl.load(a+idx) + tl.load(b+idx))
 
-def triton_kernel(a, b, c, BLOCK):
-    grid = (a.shape[0]//BLOCK,)
-    fn = _triton_kernel[grid](a, b, c, BLOCK)
-    #print(fn.asm['ptx'])
+# def triton_kernel(a, b, c, BLOCK):
+#     grid = (a.shape[0]//BLOCK,)
+#     fn = _triton_kernel[grid](a, b, c, BLOCK)
+#     #print(fn.asm['ptx'])
 
-#@bmp.jit(tune=['BLOCK'])
-def kernel(a, b, c, BLOCK):
+#@bmp.jit
+def kernel(a, b, c, BLOCK: parallel):
     for i in range(0, a.shape[0], BLOCK):  #pragma parallel
-        c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
+        idx = range(i, i+BLOCK)
+        c[idx] = a[idx] + b[idx]
         
 
 for shape in [1024*128, 1024*1024]:
@@ -29,7 +31,7 @@ for shape in [1024*128, 1024*1024]:
     print(f'torch: {ms} ms')
 
 
-    for f in [triton_kernel, kernel]:
+    for f in [kernel]:
         c = torch.zeros_like(a)
         BLOCK = 128
         f(a, b, c, BLOCK)

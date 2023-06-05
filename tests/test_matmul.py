@@ -1,5 +1,34 @@
 import torch
 import bmp
+from bmp import Dx, Dy
+
+def kernel(a, b, c, Bi, Bj, Bk):
+    for i in range(0, a.shape[0], Dy):  #pragma parallel
+        for j in range(0, b.shape[-1], Dx):  #pragma parallel
+            c_block = torch.zeros([Dy, Dx], device=a.device, dtype=a.dtype)
+            for k in range(0, a.shape[-1]):
+                c_block[:, :] += a[i:i+Dy, k] * b[k, j:j+Dx]
+            c[i:i+Dy, j:j+Dx] = c_block
+
+
+def kernel(a, b, c, Bi, Bj, Bk):
+    for i in range(0, a.shape[0], Dy):  #pragma parallel
+        for j in range(0, b.shape[-1], Dx):  #pragma parallel
+            c_block = torch.zeros([Dy, Dx], device=a.device, dtype=a.dtype)
+            a_block:shared = torch.zeros([Dy, Bk], device=a.device, dtype=a.dtype)
+            b_block:shared = torch.zeros([Bk, Dx], device=a.device, dtype=a.dtype)
+            for k in range(0, a.shape[-1], Bk):
+                # Load data to shared memory
+                bmp.syncthreads()
+                a_block[:,:] = a[i:i+Dy, k:k+Dx]
+                b_block[:,:] = b[k:k+Dy, j:j+Dx]
+                bmp.syncthreads()
+
+                for kk in range(k, k+Bk):
+                    c_block[:, :] += a_block[:Dy, kk] * b_block[kk, :Dx]
+                
+            c[i:i+Dy, j:j+Dx] = c_block
+
 
 #@bmp.jit(tune=['Bi', 'Bj', 'Bk'])
 def kernel(a, b, c, Bi, Bj, Bk):

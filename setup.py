@@ -5,6 +5,6 @@ setup(
     version='0.1',
     packages=['bmp'],
     install_requires=[
-        'torch', 'triton', 'typed_ast'
+        'torch', 'triton', 'ast-comments'
     ],
 )
