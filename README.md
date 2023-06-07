@@ -11,7 +11,7 @@ python setup.py develop
 ```python
 @bmp.jit(tune=['BLOCK'])
 def add(a, b, c, BLOCK):
-    for i in range(0, a.shape[0], BLOCK):  #pragma parallel
+    for i in range(0, a.shape[0], BLOCK: parallel):  #pragma parallel
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
 ```
 
@@ -19,7 +19,7 @@ def add(a, b, c, BLOCK):
 
 ```python
 @bmp.jit(tune=['BLOCK'])
-def kernel(a, b, BLOCK):
+def kernel(a, b, BLOCK: parallel):
     for i in range(0, a.shape[0], BLOCK):  #pragma parallel reduction(+:b)
         s = torch.sum(a[i:i+BLOCK])
         b[0] += s 
