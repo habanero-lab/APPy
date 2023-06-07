@@ -2,18 +2,17 @@ import torch
 import bmp
 from bmp import parallel
 import triton
-import triton.language as tl
+from kernel_tuner import tune_kernel
 
-# @triton.jit
-# def _triton_kernel(a, b, c, BLOCK: tl.constexpr):
-#     i = tl.program_id(0) * BLOCK
-#     idx = i + tl.arange(0, BLOCK)
-#     tl.store(c+idx, tl.load(a+idx) + tl.load(b+idx))
+kernel_string = """
+__global__ void vector_add(float *c, float *a, float *b, int n) {
+    int i = blockIdx.x * block_size_x + threadIdx.x;
+    if (i<n) {
+        c[i] = a[i] + b[i];
+    }
+}
+"""
 
-# def triton_kernel(a, b, c, BLOCK):
-#     grid = (a.shape[0]//BLOCK,)
-#     fn = _triton_kernel[grid](a, b, c, BLOCK)
-#     #print(fn.asm['ptx'])
 
 #@bmp.jit
 def kernel(a, b, c, BLOCK: parallel):
@@ -33,6 +32,12 @@ for shape in [1024*128, 1024*1024]:
 
     for f in [kernel]:
         c = torch.zeros_like(a)
+        
+        tune_params = dict()
+        tune_params["block_size_x"] = [32, 64, 128, 256, 512]
+        kernel = tune_kernel("vector_add", kernel_string, N, (c, a, b, torch.tensor(N)), tune_params)
+        print(type(kernel))
+        
         BLOCK = 128
         f(a, b, c, BLOCK)
         assert(torch.allclose(c, a+b))
