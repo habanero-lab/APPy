@@ -1,7 +1,7 @@
 import torch
-import bmp
+import slap
 
-#@bmp.jit(tune=['Bi', 'Bj', 'Bk'])
+#@slap.jit(tune=['Bi', 'Bj', 'Bk'])
 def kernel(a, b, c, Bi, Bj):
     for i in range(a.shape[0]):  #pragma parallel
         s = 0

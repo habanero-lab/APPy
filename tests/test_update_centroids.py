@@ -1,5 +1,5 @@
 import torch
-import bmp
+import slap
 
 def kernel(x, labels, centers):
     '''

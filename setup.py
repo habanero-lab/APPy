@@ -1,10 +1,10 @@
 from setuptools import setup
 
 setup(
-    name='bmp',
+    name='slap',
     version='0.1',
-    packages=['bmp'],
+    packages=['slap'],
     install_requires=[
-        'torch', 'triton', 'ast-comments'
+        'torch', 'triton==2.0.0', 'ast-comments', 'kernel_tuner', 'pycuda'
     ],
 )

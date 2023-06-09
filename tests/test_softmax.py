@@ -1,5 +1,5 @@
 import torch
-import bmp
+import slap
 
 def kernel(a, b):
     for i in range(a.shape[0]):  #pragma parallel 

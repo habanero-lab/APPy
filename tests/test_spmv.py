@@ -1,5 +1,5 @@
 import torch
-import bmp
+import slap
 import triton
 import triton.language as tl
 
@@ -38,7 +38,7 @@ def triton_kernel(a_rowptrs, a_cols, a_vals, b, c, M, BLOCK):
     _triton_kernel[grid](a_rowptrs, a_cols, a_vals, b, c, M, BLOCK)
 
 
-#@bmp.jit(tune=['BLOCK'])
+#@slap.jit(tune=['BLOCK'])
 def kernel(a_rowptrs, a_cols, a_vals, b, c, M, BLOCK):
     for i in range(M):  #pragma parallel
         row_start = a_rowptrs[i]

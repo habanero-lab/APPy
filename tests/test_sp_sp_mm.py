@@ -1,11 +1,11 @@
 import torch
-import bmp
+import slap
 import triton
 import triton.language as tl
 
 const = tl.constexpr
 
-#@bmp.jit(tune=['BLOCK'])
+#@slap.jit(tune=['BLOCK'])
 def kernel(a_rowptrs, a_cols, a_vals, b_crows, b_cols, b_vals, c, BLOCK):
     for i in range(c.shape[0]):  #pragma parallel 
         acc = torch.zeros(c.shape[1], device=c.device, dtype=c.dtype)

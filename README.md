@@ -9,7 +9,7 @@ python setup.py develop
 
 # Element-Wise Operation
 ```python
-@bmp.jit(tune=['BLOCK'])
+@slap.jit(tune=['BLOCK'])
 def add(a, b, c, BLOCK):
     for i in range(0, a.shape[0], BLOCK):  #pragma parallel
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
@@ -18,7 +18,7 @@ def add(a, b, c, BLOCK):
 # Grid Reduction
 
 ```python
-@bmp.jit(tune=['BLOCK'])
+@slap.jit(tune=['BLOCK'])
 def kernel(a, b, BLOCK):
     for i in range(0, a.shape[0], BLOCK):  #pragma parallel reduction(+:b)
         s = torch.sum(a[i:i+BLOCK])
@@ -29,7 +29,7 @@ def kernel(a, b, BLOCK):
 
 An blocked matrix multiplication implementation can be expressed as:
 ```python
-@bmp.jit(tune=['Bi', 'Bj', 'Bk'])
+@slap.jit(tune=['Bi', 'Bj', 'Bk'])
 def matmul(a, b, c, Bi, Bj, Bk):
     for i in range(0, a.shape[0], Bi):  #pragma parallel
         for j in range(0, b.shape[-1], Bj):  #pragma parallel
@@ -41,9 +41,9 @@ def matmul(a, b, c, Bi, Bj, Bk):
 
 When `k` dimension is relatively large, the following kernel reduces `k` in parallel:
 ```python
-import bmp
+import slap
 
-@bmp.jit(tune=['Bi', 'Bj', 'Bk'])
+@slap.jit(tune=['Bi', 'Bj', 'Bk'])
 def matmul(a, b, c, Bi, Bj, Bk):
     # The first kernel launch
     for i in range(0, a.shape[0], Bi):  #pragma parallel
@@ -61,7 +61,7 @@ def matmul(a, b, c, Bi, Bj, Bk):
 Batched matmul is as easy as adding one extra outer loop and some minor changes:
 
 ```python
-@bmp.jit(tune=['Bi', 'Bj', 'Bk'])
+@slap.jit(tune=['Bi', 'Bj', 'Bk'])
 def batched_matmul(a, b, c, Bi, Bj, Bk):
     for z in range(a.shape[0]):  #pragma parallel
         for i in range(0, a.shape[1], Bi):  #pragma parallel

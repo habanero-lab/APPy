@@ -1,6 +1,6 @@
 import torch
-import bmp
-from bmp import Dx
+import slap
+from slap import Dx
 
 def kernel(a, b):
     mean = torch.empty(a.shape[1], device=a.device, dtype=a.dtype)

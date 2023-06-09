@@ -1,7 +1,7 @@
 import torch
-import bmp
+import slap
 
-#@bmp.jit(tune=['BLOCK'])
+#@slap.jit(tune=['BLOCK'])
 def kernel(a_rowptrs, a_cols, a_vals, b, c, BLOCK):
     for i in range(a.shape[0]):  #pragma parallel 
         for j in range(0, b.shape[1], BLOCK):  #pragma parallel 

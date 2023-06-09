@@ -1,5 +1,5 @@
 import torch
-import bmp
+import slap
 import triton
 import triton.language as tl
 
@@ -27,7 +27,7 @@ def triton_kernel(a, b, BLOCK):
 
 
 
-#@bmp.jit(tune=['BLOCK'])
+#@slap.jit(tune=['BLOCK'])
 def kernel(a, b, BLOCK):
     for i in range(0, a.shape[0], BLOCK):  #pragma parallel reduction(+:b)
         s = torch.sum(a[i:i+BLOCK])
