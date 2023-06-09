@@ -11,15 +11,20 @@ python setup.py develop
 ```python
 @slap.jit(tune=['BLOCK'])
 def add(a, b, c, BLOCK):
-    for i in range(0, a.shape[0], BLOCK):  #pragma parallel
+    for i in range(0, a.shape[0], BLOCK: parallel):  #pragma parallel
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
 ```
 
 # Grid Reduction
 
 ```python
+<<<<<<< HEAD
 @slap.jit(tune=['BLOCK'])
 def kernel(a, b, BLOCK):
+=======
+@bmp.jit(tune=['BLOCK'])
+def kernel(a, b, BLOCK: parallel):
+>>>>>>> 9a9b05462f966fec1d8eeb6ce5d37fde73a76a5d
     for i in range(0, a.shape[0], BLOCK):  #pragma parallel reduction(+:b)
         s = torch.sum(a[i:i+BLOCK])
         b[0] += s 

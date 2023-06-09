@@ -1,33 +1,33 @@
 import torch
 import slap
-from slap import Dx, Dy
+from slap import parallel, shared
 
 def kernel(a, b, c, Bi, Bj, Bk):
-    for i in range(0, a.shape[0], Dy):  #pragma parallel
-        for j in range(0, b.shape[-1], Dx):  #pragma parallel
-            c_block = torch.zeros([Dy, Dx], device=a.device, dtype=a.dtype)
+    for i in range(0, a.shape[0], Bi):  #pragma parallel
+        for j in range(0, b.shape[-1], Bj):  #pragma parallel
+            c_block = torch.zeros([Bi, Bj], device=a.device, dtype=a.dtype)
             for k in range(0, a.shape[-1]):
-                c_block[:, :] += a[i:i+Dy, k] * b[k, j:j+Dx]
-            c[i:i+Dy, j:j+Dx] = c_block
+                c_block[:, :] += a[i:i+Bi, k] * b[k, j:j+Bj]
+            c[i:i+Bi, j:j+Bj] = c_block
 
 
-def kernel(a, b, c, Bi, Bj, Bk):
-    for i in range(0, a.shape[0], Dy):  #pragma parallel
-        for j in range(0, b.shape[-1], Dx):  #pragma parallel
-            c_block = torch.zeros([Dy, Dx], device=a.device, dtype=a.dtype)
-            a_block:shared = torch.zeros([Dy, Bk], device=a.device, dtype=a.dtype)
-            b_block:shared = torch.zeros([Bk, Dx], device=a.device, dtype=a.dtype)
+def kernel(a, b, c, Bi:parallel, Bj:parallel, Bk):
+    for i in range(0, a.shape[0], Bi):  #pragma parallel
+        for j in range(0, b.shape[-1], Bj):  #pragma parallel
+            c_block = torch.zeros([Bi, Bj], device=a.device, dtype=a.dtype)
+            a_block:shared = torch.zeros([Bi, Bk], device=a.device, dtype=a.dtype)
+            b_block:shared = torch.zeros([Bk, Bj], device=a.device, dtype=a.dtype)
             for k in range(0, a.shape[-1], Bk):
                 # Load data to shared memory
                 slap.syncthreads()
-                a_block[:,:] = a[i:i+Dy, k:k+Dx]
-                b_block[:,:] = b[k:k+Dy, j:j+Dx]
+                a_block[:,:] = a[i:i+Bi, k:k+Bj]
+                b_block[:,:] = b[k:k+Bi, j:j+Bj]
                 slap.syncthreads()
 
                 for kk in range(k, k+Bk):
-                    c_block[:, :] += a_block[:Dy, kk] * b_block[kk, :Dx]
+                    c_block[:, :] += a_block[:Bi, kk] * b_block[kk, :Bj]
                 
-            c[i:i+Dy, j:j+Dx] = c_block
+            c[i:i+Bi, j:j+Bj] = c_block
 
 
 #@slap.jit(tune=['Bi', 'Bj', 'Bk'])
