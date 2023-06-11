@@ -1,38 +1,56 @@
+import numpy as np
 import torch
-import slap
 import triton
-import triton.language as tl
+from pathlib import Path
+from slap import parallel, prange
+import pycuda.autoprimaryctx
+from pycuda.compiler import SourceModule
 
-@triton.jit
-def _triton_kernel(a, b, BLOCK: tl.constexpr):
-    i = tl.program_id(0) * BLOCK
-#    idx = i + tl.arange(0, BLOCK)
-    idx = i + tl.arange(0, 128)
-
-    buf = tl.zeros([128], dtype=tl.float32)
-    for _ in range(BLOCK//128):
-        buf += tl.load(a+idx)
-        idx+=128
-    s = tl.sum(buf, axis=0)
-
-    # a_block = tl.load(a+idx)
-    # s = tl.sum(a_block, axis=0)
-    tl.atomic_add(b, s)
-    #tl.store(a+idx, a_block/s)
-
-def triton_kernel(a, b, BLOCK):
-    grid = (a.shape[0]//BLOCK,)
-    fn = _triton_kernel[grid](a, b, BLOCK)
-    print(fn.asm['ptx'])
-
-
+from torch import arange, zeros, empty
 
 #@slap.jit(tune=['BLOCK'])
-def kernel(a, b, BLOCK):
-    for i in range(0, a.shape[0], BLOCK):  #pragma parallel reduction(+:b)
-        s = torch.sum(a[i:i+BLOCK])
-        b[0] += s 
-        
+def kernel(a, b, N, BLOCK: parallel):
+    for i in range(0, N, BLOCK):  #pragma parallel reduction(+:b)
+        b[0] += torch.sum(a[i:i+BLOCK])
+
+
+def kernel_compiled(a, b, N, BLOCK: parallel):
+    if not hasattr(kernel_compiled, 'cached'):
+        kernel_compiled.cached = {}
+
+    threadblock = (128, 1, 1)
+    assert BLOCK % threadblock[0] == 0
+    sig = (threadblock, a, b, BLOCK)
+    
+    if sig not in kernel_compiled.cached:
+        src = Path('/home/tong/projects/SLAP/utils.cu').read_text()
+        src += '''
+        __global__ void _kernel(float *a, float *b, int N, int BLOCK) {
+            int i = blockIdx.x * BLOCK;
+            int ii = i + threadIdx.x;
+            float sum = 0;
+            while (ii < i+BLOCK) {
+                sum += a[ii];
+                ii += blockDim.x;
+            }
+            sum = blockReduceSum(sum);
+
+            // How to know here just one thread should act?
+            if (threadIdx.x == 0) {
+                atomicAdd(b, sum);
+            }
+        }
+        '''
+        mod = SourceModule(src, options=['-O3'])
+      
+        _kernel = mod.get_function("_kernel")
+        kernel_compiled.cached[sig] = _kernel
+
+    _kernel = kernel_compiled.cached[sig]
+    threadblock = sig[0]
+    grid = (N // BLOCK, 1, 1)
+    _kernel(a, b, np.int32(N), np.int32(BLOCK), block=threadblock, grid=grid)
+     
 
 for shape in [1024*128, 1024*1024]:
     N = shape
@@ -41,10 +59,10 @@ for shape in [1024*128, 1024*1024]:
     ms, _, _ = triton.testing.do_bench(lambda: torch.sum(a))
     print(f'torch: {ms} ms')
 
-    for f in [triton_kernel, kernel]:
+    for f in [kernel, kernel_compiled]:
         b = torch.zeros(1, device='cuda', dtype=torch.float32)
-        BLOCK = 128*8
-        f(a, b, BLOCK)
+        BLOCK = 128
+        f(a, b, N, BLOCK)
         assert(torch.allclose(b, torch.sum(a)))
-        ms, _, _ = triton.testing.do_bench(lambda: f(a, b, BLOCK))
+        ms, _, _ = triton.testing.do_bench(lambda: f(a, b, N, BLOCK))
         print(f'kernel: {ms} ms')
