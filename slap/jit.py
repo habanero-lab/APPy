@@ -20,6 +20,7 @@ def compile(fn, args):
     
     backend = TritonBackend(tree, args)
     module = backend.codegen()
+    print(module)
     fn = 'slap_kernel.py'
     Path(fn).write_text(module)
     spec = importlib.util.spec_from_file_location("module.name", fn)
