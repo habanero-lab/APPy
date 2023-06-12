@@ -1,4 +1,4 @@
-BMP (Blocked Multi-Processing) is a programming model and a compiler for simplified parallel programming. It employs the *Single Program Multiple Blocked Data* paradigm where the outer loops are sequential for loops annotated with OpenMP-like pragmas, and inner statements operate on blocks of data. The programming model is like SPMD, where we launch multiple instances of the same program, but with each program working on a contiguous block of data. As a result, user can write sequential Python loops, debug in Python interpreter, and compile and execute them on GPUs and CPUs.
+Sequential Loops with Annotated Parallelism (SLAP) is parallel programming model that allows you to parallelize your sequential loops with annotations in the comments.
 
 
 # Install
@@ -15,7 +15,7 @@ def add(a, b, c, BLOCK):
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
 ```
 
-With `auto-tile`:
+With `auto-tile`, the loop is just like a normal sequential loop:
 
 ```python
 @slap.jit(auto_tile=True)
