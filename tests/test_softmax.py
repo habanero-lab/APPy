@@ -23,13 +23,13 @@ def kernel_python(a, b, M, N):
         for j in range(N):
             b[i,j] = a[i,j] / s
 
-def kernel(a, b, N, BLOCK: parallel):
+def kernel(a, b, N, BLOCK):
     for i in range(N):  #pragma parallel 
-        row = a[i,:BLOCK]
+        row = a[i,0:BLOCK]
         m = row.max()
         e = (row - m).exp()
         s = e.sum()
-        b[i,:BLOCK] = e / s
+        b[i,0:BLOCK] = e / s
 
 for M in [1024]:
     N = 1024

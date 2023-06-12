@@ -11,7 +11,7 @@ python setup.py develop
 ```python
 @slap.jit()
 def add(a, b, c, BLOCK):
-    for i in range(0, a.shape[0], BLOCK: parallel):  #pragma parallel
+    for i in range(0, a.shape[0], BLOCK):  #pragma parallel
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
 ```
 
@@ -43,7 +43,7 @@ def kernel(a, b):
         b[0] += a[i]
 ```
 
-# Indirect reduction
+# Indirect Reduction
 
 ```python
 @slap.jit()

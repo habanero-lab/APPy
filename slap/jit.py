@@ -3,29 +3,42 @@ import re
 import sys
 import torch
 import inspect
-import textwrap
 import ast_comments as ast
 import importlib.util
-from slap.codegen.cuda import CUDABackend
+from pathlib import Path
+from slap.codegen.triton import TritonBackend
 
 compiled = {}
 
 def compile(fn, args):
     print(f'[jit] Compile function {fn.__name__} with type signature {args}')
     src = inspect.getsource(fn)
-    arg_names = get_arg_names(src)
-    src = constant_prop(src, arg_names, args)
+    #arg_names = get_arg_names(src)
+    #src = constant_prop(src, arg_names, args)
     print(src)
     tree = ast.parse(src)
     
     print(ast.dump(tree))
-    backend = CUDABackend(tree)
-    backend.codegen()
+    backend = TritonBackend(tree)
+    module = backend.codegen()
+    fn = 'slap_kernel.py'
+    Path(fn).write_text(module)
+    spec = importlib.util.spec_from_file_location("module.name", fn)
+    foo = importlib.util.module_from_spec(spec)
+    sys.modules["module.name"] = foo
+    spec.loader.exec_module(foo)
+    print("[jit] Done compiling")
+    return foo.kernel
 
 def get_arg_names(src):
-    lines = src.split('\n')
-    assert 'def ' in lines[1]
-    result = re.search(r'\((.*)\)', lines[1])
+    defline = ''
+    for line in src.split('\n'):
+        if line.startswith('@'):
+            continue
+        if line.startswith('def '):
+            defline = line
+            break
+    result = re.search(r'\((.*)\)', defline)
     args_str = result.groups()[0]
     items = list(map(lambda x: x.strip(), args_str.split(',')))
     return items
