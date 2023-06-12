@@ -18,8 +18,7 @@ def compile(fn, args):
     print(src)
     tree = ast.parse(src)
     
-    print(ast.dump(tree))
-    backend = TritonBackend(tree)
+    backend = TritonBackend(tree, args)
     module = backend.codegen()
     fn = 'slap_kernel.py'
     Path(fn).write_text(module)
