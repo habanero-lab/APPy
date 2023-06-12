@@ -1,7 +1,7 @@
 import os
 import textwrap
 import ast_comments as ast
-from slap.ast_utils import dump
+from slap.ast_utils import dump, get_arg_names
 
 class TritonBackend(object):
     def __init__(self, ast_tree):
@@ -14,27 +14,10 @@ class TritonBackend(object):
         ''')
 
     def codegen(self):
-        newbody = []
-        for child in self.func.body:
-            need_replace = False
-            if type(child) is ast.For and type(child.body[0]) == ast.Comment:
-                comment = child.body[0].value
-                if comment.startswith('#pragma'):
-                    need_replace = True
-                    if comment == '#pragma parallel':
-                        newstmts = self.gen_parallel_for(child)
-                    elif comment.startswith('#pragma parallel reduction'):
-                        newstmts = self.gen_parallel_reduction(child)
-
-            if need_replace:
-                for s in newstmts:
-                    newbody.append(s)
-            else:
-                newbody.append(child)
-        self.func.body = newbody
+        arg_names = get_arg_names(self.func)
         
-        self.launcher_code = textwrap.dedent('''
-            def kernel(a, b, c, N, BLOCK):
+        self.launcher_code = textwrap.dedent(f'''
+            def kernel({', '.join(arg_names)}):
                 nblocks = (N+BLOCK-1) // BLOCK
                 _kernel[(nblocks,)](a, b, c, N, BLOCK)
         ''')
