@@ -1,7 +1,7 @@
 import os
 import textwrap
 import ast_comments as ast
-from slap.ast_utils import dump, get_arg_names
+from slap.ast_utils import dump, get_arg_names, get_first_noncomment_child
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values):
@@ -15,6 +15,8 @@ class TritonBackend(object):
         ''')
         self.arg_names = get_arg_names(self.func)
         self.arg_types = [type(x) for x in arg_values]
+        self.allBlockDims = ['x', 'y', 'z']
+        self.usedBlockDims = []
         
 
     def get_constexpr_annotated_args(self):
@@ -30,14 +32,14 @@ class TritonBackend(object):
         n = ast.parse(stmts).body
         parent.body += n
 
+    def is_parallel_for(self, node):
+        return type(node) is ast.For and type(node.body[0]) == ast.Comment and '#pragma parallel' in node.body[0].value
+
     def codegen(self):
         lf = ast.parse(textwrap.dedent(f'''
             def kernel({', '.join(self.arg_names)}):
                 pass
         ''')).body[0]
-
-        self.append_stmts(lf, 'blockDimx = (N+BLOCK-1) // BLOCK')
-        self.append_stmts(lf, '_kernel[(blockDimx,)](a, b, c, N, BLOCK)')
 
         annotated_args = self.get_constexpr_annotated_args()
         kf = ast.parse(textwrap.dedent(f'''
@@ -45,6 +47,15 @@ class TritonBackend(object):
             def _kernel({', '.join(annotated_args)}):
                 pass
         ''')).body[0]
+
+        for node in self.func.body:
+            if self.is_parallel_for(node):
+                self.gen_parallel_for(node, lf, kf)
+
+        #self.append_stmts(lf, 'blockDimx = (N+BLOCK-1) // BLOCK')
+        grid = f'({",".join(self.usedBlockDims)},)'
+        self.append_stmts(lf, f'_kernel[{grid}]({",".join(self.arg_names)})')
+
 
         kf_body = textwrap.dedent(f'''
             i = tl.program_id(0) * BLOCK
@@ -64,16 +75,28 @@ class TritonBackend(object):
         m.body += [kf, lf]
         return ast.unparse(m)
 
-    def gen_parallel_for(self, node, depth):
+    def gen_parallel_for(self, node, lf, kf):
         range_args = [x for x in node.iter.args]
         print(range_args)
-        self.launcher_code += textwrap.indent(textwrap.dedent(f'''
-                blockDimx = (N+BLOCK-1) // BLOCK
-        '''), '    '*depth)
+        start, end, step = '0', '', '1'
+        if len(range_args) == 1:
+            end = range_args[0].id
+        elif len(range_args) == 2:
+            start = range_args[0].value
+            end = range_args[1].id
+        elif len(range_args) == 3:
+            start = range_args[0].value
+            end = range_args[1].id
+            step = range_args[2].id
 
-        if type(node.body[0]) is ast.For:
-            assert len(node.body) == 1
-            self.gen_parallel_for(self, node.body[0], depth)
+        blockDim = self.allBlockDims.pop(0)
+        self.append_stmts(lf, f'blockDim_{blockDim} = ({end}+{step}-1) // {step}')
+        self.usedBlockDims.append(f'blockDim_{blockDim}')
+
+
+        if self.is_parallel_for(get_first_noncomment_child(node)):
+        #    assert len(node.body) == 1
+            self.gen_parallel_for(get_first_noncomment_child(node), lf, kf)
         
         
     def gen_parallel_reduction(self, node, depth):

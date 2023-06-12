@@ -9,3 +9,9 @@ def get_func_name(tree):
 def get_arg_names(func):
     args = [x.arg for x in func.args.args]
     return args
+
+def get_first_noncomment_child(node):
+    for c in node.body:
+        if type(c) == ast.Comment:
+            continue
+        return c
