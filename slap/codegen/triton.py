@@ -42,12 +42,30 @@ class TritonBackend(object):
         if self.is_parallel_for(node):
             self.gen_parallel_for(node, lf, kf)
         elif isinstance(node, ast.Assign):
-            self.gen_assign(node, lf, kf)
+            self.gen_assign(node, kf)
         else:
+            print('pass gen_node')
+            dump(node)
             pass
 
-    def gen_assign(self, node, lf, kf):
-        pass
+    def gen_assign(self, node, kf):
+        left = node.targets[0]
+        right = node.value
+        if isinstance(right, ast.Call):
+            call = self.gen_call(right, kf)
+            self.append_stmts(kf, f'{left.id} = {call}')
+        else:
+            print('pass gen_node')
+            dump(node)
+        
+    def gen_call(self, node, kf):
+        if node.func.id == 'range':
+            start = node.args[0].id
+            if isinstance(node.args[1], ast.BinOp):
+                step = node.args[1].right.id
+                return f'{start} + tl.arange(0, {step})'
+            else:
+                assert False, 'range must be in the form `range(i,i+BLOCK)`'
 
     def codegen(self):
         lf = ast.parse(textwrap.dedent(f'''
@@ -71,11 +89,9 @@ class TritonBackend(object):
 
 
         kf_body = textwrap.dedent(f'''
-            i = tl.program_id(0) * BLOCK
-            _t0 = i + tl.arange(0, BLOCK)
-            _t1 = tl.load(a+_t0)
-            _t2 = tl.load(b+_t0)
-            tl.store(c+_t0, _t1+_t2)
+            _t1 = tl.load(a+ii)
+            _t2 = tl.load(b+ii)
+            tl.store(c+ii, _t1+_t2)
         ''')
 
         self.append_stmts(kf, kf_body)
@@ -108,10 +124,8 @@ class TritonBackend(object):
         else:
             self.append_stmts(lf, f'blockDim_{blockDim} = {end}')
         self.usedBlockDims.append(f'blockDim_{blockDim}')
-        
-        # if self.is_parallel_for(get_first_noncomment_child(node)):
-        # #    assert len(node.body) == 1
-        #     self.gen_parallel_for(get_first_noncomment_child(node), lf, kf)
+
+        self.append_stmts(kf, 'i = tl.program_id(0) * BLOCK')
 
         for child in node.body:
             self.gen_node(child, lf, kf)
