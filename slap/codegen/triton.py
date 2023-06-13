@@ -19,6 +19,7 @@ class TritonBackend(object):
         self.usedBlockDims = []
         self.var_count = 0
 
+
     def get_constexpr_annotated_args(self):
         newargs = []
         for i, a in enumerate(self.arg_names):
@@ -38,36 +39,61 @@ class TritonBackend(object):
     def is_sequential_for(self, node):
         return type(node) is ast.For and (type(node.body[0]) != ast.Comment or '#pragma parallel' not in node.body[0].value)
 
-    def gen_node(self, node, lf, kf):
-        stmts = ''
+    def gen_launcher_node(self, node):
         if self.is_parallel_for(node):
-            stmts = self.gen_parallel_for(node, lf, kf)
-        
+            annotated_args = self.get_constexpr_annotated_args()
+            kf = ast.parse(textwrap.dedent(f'''
+                @triton.jit
+                def _kernel({', '.join(annotated_args)}):
+                    pass
+            ''')).body[0]
+            # TODO: need to save `self.kf` if not None, to support multiple kernels 
+            self.kf = kf
+            self.gen_parallel_for(node)
+
+            grid = f'({",".join(self.usedBlockDims)},)'
+            self.append_stmts(self.lf, f'_kernel[{grid}]({",".join(self.arg_names)})')
         else:
-            print('pass gen_node')
-            dump(node)
-            pass
-        return stmts
+            stmts = ast.unparse(node)
+            self.append_stmts(self.lf, stmts)
+        
 
-    def gen_kernel_node(self, node, kf):
+    def gen_kernel_node(self, node):
+        stmts = ''
         if isinstance(node, ast.Assign):
-            stmts = self.gen_assign(node, kf)
+            stmts = self.gen_assign(node)
         elif isinstance(node, ast.Subscript):
-            stmts = self.gen_subscript(node, kf)
+            stmts = self.gen_subscript(node)
+        elif isinstance(node, ast.BinOp):
+            stmts = self.gen_binOp(node)
+        elif isinstance(node, ast.Constant):
+            stmts = node.value
+        else:
+            print('pass gen_kernel_node: ')
+            dump(node)
+            if not isinstance(node, ast.Comment):
+                assert False
         return stmts
 
-    def gen_assign(self, node, kf):
+    # def gen_kernel_node(self, node):
+    #     if isinstance(node, ast.Assign):
+    #         stmts = self.gen_assign(node)
+    #     elif isinstance(node, ast.Subscript):
+    #         stmts = self.gen_subscript(node)
+    #     return stmts
+
+    def gen_assign(self, node):
         left = node.targets[0]
         right = node.value
         rightstr = ''
         if isinstance(right, ast.Call):
-            rightstr = self.gen_call(right, kf)
+            rightstr = self.gen_call(right)
             
         elif isinstance(right, ast.BinOp):
-            rightstr = self.gen_binOp(right, kf)
+            rightstr = self.gen_binOp(right)
+    
         else:
-            print('pass gen_node')
-            dump(node)
+            assert False, ast.dump(node)
 
         stmt = ''
         if isinstance(left, ast.Name):
@@ -79,32 +105,24 @@ class TritonBackend(object):
         return stmt
 
 
-    def gen_binOp(self, node, kf):
-        dump(node)
-        left = self.gen_kernel_node(node.left, kf)
-        right = self.gen_kernel_node(node.right, kf)
+    def gen_binOp(self, node):
+        left = self.gen_kernel_node(node.left)
+        right = self.gen_kernel_node(node.right)
         op = self.gen_op(node.op)
         return f'{left} {op} {right}'
 
-    def gen_subscript(self, node: ast.Subscript, kf, value=None):
+    def gen_subscript(self, node: ast.Subscript, value=None):
         tensor = node.value.id
         slice = node.slice.id
-        if node.ctx == ast.Load:    
+        if isinstance(node.ctx, ast.Load):    
             varname = f'_t{self.var_count}'
-            self.append_stmts(kf, f'{varname} = tl.load({tensor}+{slice})')
+            self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
             self.var_count += 1
             return varname
-        elif node.ctx == ast.Store:
+        elif isinstance(node.ctx, ast.Store):
             return f'{tensor}+{slice}'
-
-    def gen_tensor_load(self, node: ast.Subscript, kf):
-        assert isinstance(node, ast.Subscript)
-        tensor = node.value.id
-        slice = node.slice.id
-        varname = f'_t{self.var_count}'
-        self.append_stmts(kf, f'{varname} = tl.load({tensor}+{slice})')
-        self.var_count += 1
-        return varname
+        else:
+            assert False
 
     def gen_op(self, op):
         if isinstance(op, ast.Add):
@@ -118,7 +136,7 @@ class TritonBackend(object):
         else:
             assert False, f'unknown operator: {ast.dump(op)}'
         
-    def gen_call(self, node, kf):
+    def gen_call(self, node):
         if node.func.id == 'range':
             start = node.args[0].id
             if isinstance(node.args[1], ast.BinOp):
@@ -133,38 +151,36 @@ class TritonBackend(object):
                 pass
         ''')).body[0]
 
-        annotated_args = self.get_constexpr_annotated_args()
-        kf = ast.parse(textwrap.dedent(f'''
-            @triton.jit
-            def _kernel({', '.join(annotated_args)}):
-                pass
-        ''')).body[0]
+        
+
+        self.lf = lf
+        
 
         for node in self.func.body:
-            self.gen_node(node, lf, kf)
+            self.gen_launcher_node(node)
+            
 
         #self.append_stmts(lf, 'blockDimx = (N+BLOCK-1) // BLOCK')
-        grid = f'({",".join(self.usedBlockDims)},)'
-        self.append_stmts(lf, f'_kernel[{grid}]({",".join(self.arg_names)})')
+        
 
 
-        kf_body = textwrap.dedent(f'''
-            _t1 = tl.load(a+ii)
-            _t2 = tl.load(b+ii)
-            tl.store(c+ii, _t1+_t2)
-        ''')
+        # kf_body = textwrap.dedent(f'''
+        #     _t1 = tl.load(a+ii)
+        #     _t2 = tl.load(b+ii)
+        #     tl.store(c+ii, _t1+_t2)
+        # ''')
 
-        self.append_stmts(kf, kf_body)
+        # self.append_stmts(kf, kf_body)
 
         m = ast.parse(textwrap.dedent('''
             import triton
             import triton.language as tl
         '''
         ))
-        m.body += [kf, lf]
+        m.body += [self.kf, self.lf]
         return ast.unparse(m)
 
-    def gen_parallel_for(self, node, lf, kf):
+    def gen_parallel_for(self, node):
         range_args = [x for x in node.iter.args]
         print(range_args)
         start, end, step = '0', '', '1'
@@ -180,16 +196,17 @@ class TritonBackend(object):
 
         blockDim = self.allBlockDims.pop(0)
         if step != '1':
-            self.append_stmts(lf, f'blockDim_{blockDim} = ({end}+{step}-1) // {step}')
+            self.append_stmts(self.lf, f'blockDim_{blockDim} = ({end}+{step}-1) // {step}')
         else:
-            self.append_stmts(lf, f'blockDim_{blockDim} = {end}')
+            self.append_stmts(self.lf, f'blockDim_{blockDim} = {end}')
         self.usedBlockDims.append(f'blockDim_{blockDim}')
 
-        self.append_stmts(kf, 'i = tl.program_id(0) * BLOCK')
+        self.append_stmts(self.kf, 'i = tl.program_id(0) * BLOCK')
 
         for child in node.body:
-            stmts = self.gen_node(child, lf, kf)
-            self.append_stmts(kf, stmts)
+            stmts = self.gen_kernel_node(child)
+            self.append_stmts(self.kf, stmts)
+        return ''
         
         
     def gen_parallel_reduction(self, node, depth):
