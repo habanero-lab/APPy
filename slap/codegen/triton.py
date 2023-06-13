@@ -68,6 +68,8 @@ class TritonBackend(object):
             stmts = self.gen_binOp(node)
         elif isinstance(node, ast.Constant):
             stmts = node.value
+        elif isinstance(node, ast.Name):
+            stmts = node.id
         else:
             print('pass gen_kernel_node: ')
             dump(node)
@@ -111,9 +113,22 @@ class TritonBackend(object):
         op = self.gen_op(node.op)
         return f'{left} {op} {right}'
 
+    def gen_slice(self, node: ast.Slice):
+        low = node.lower
+        up = node.upper
+        assert isinstance(up, ast.BinOp)
+        return f'{self.gen_kernel_node(low)} + tl.arange(0, {self.gen_kernel_node(up.right)})'
+
     def gen_subscript(self, node: ast.Subscript, value=None):
+        dump(node)
         tensor = node.value.id
-        slice = node.slice.id
+        if isinstance(node.slice, ast.Name):
+            slice = node.slice.id
+        elif isinstance(node.slice, ast.Slice):
+            slice = self.gen_slice(node.slice)
+        else:
+            assert False
+
         if isinstance(node.ctx, ast.Load):    
             varname = f'_t{self.var_count}'
             self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
