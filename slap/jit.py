@@ -10,7 +10,7 @@ from slap.codegen.triton import TritonBackend
 
 compiled = {}
 
-def compile(fn, args, dump_code=False, verbose=False):
+def compile(fn, args, dump_code=True, verbose=False):
     if verbose:
         print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
     src = inspect.getsource(fn)
@@ -59,11 +59,11 @@ def constant_prop(src, arg_names, arg_values):
     return src
         
 def _jit(fn):
-    def inner(*args):
+    def slap_kernel(*args):
         if fn not in compiled:
             compiled[fn] = compile(fn, args)
         return compiled[fn](*args)
-    return inner
+    return slap_kernel
 
 def jit(fn=None, dump_code=False, verbose=False):
     if fn:
@@ -71,9 +71,9 @@ def jit(fn=None, dump_code=False, verbose=False):
     else:
         #print('return arg version')
         def jit_with_args(fn1):
-            def inner(*args):
+            def slap_kernel(*args):
                 if fn1 not in compiled:
                     compiled[fn1] = compile(fn1, args, dump_code=dump_code, verbose=verbose)
                 return compiled[fn1](*args)
-            return inner
+            return slap_kernel
         return jit_with_args

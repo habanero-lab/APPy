@@ -1,5 +1,6 @@
 import os
 import re
+import torch
 import textwrap
 from copy import deepcopy
 import ast_comments as ast
@@ -42,12 +43,37 @@ class TritonBackend(object):
     def is_sequential_for(self, node):
         return type(node) is ast.For and (type(node.body[0]) != ast.Comment or '#pragma parallel' not in node.body[0].value)
 
+    def get_kernel_function_parameters(self):
+        newargs = []
+        for name, val in zip(self.arg_names, self.arg_values):
+            if type(val) == int:
+                newargs.append(name+': tl.constexpr')
+            elif type(val) == torch.Tensor:
+                newargs.append(name)
+                for d in range(val.dim()):
+                    newargs.append(f'{name}_stride_{d}')
+            else:
+                newargs.append(name)
+        return newargs
+
+    def get_kernel_function_arguments(self):
+        newargs = []
+        for name, val in zip(self.arg_names, self.arg_values):
+            if type(val) == torch.Tensor:
+                newargs.append(name)
+                for d in range(val.dim()):
+                    newargs.append(f'{name}.stride({d})')
+            else:
+                newargs.append(name)
+        return newargs
+
     def gen_launcher_node(self, node):
         if self.is_parallel_for(node):
-            annotated_args = self.get_constexpr_annotated_args()
+            k_params = self.get_kernel_function_parameters()
+            k_args = self.get_kernel_function_arguments()
             kf = ast.parse(textwrap.dedent(f'''
                 @triton.jit
-                def _kernel({', '.join(annotated_args)}):
+                def _kernel({', '.join(k_params)}):
                     pass
             ''')).body[0]
             # TODO: need to save `self.kf` if not None, to support multiple kernels 
@@ -55,7 +81,8 @@ class TritonBackend(object):
             self.gen_parallel_for(node)
 
             grid = f'({",".join(self.usedBlockDims)},)'
-            self.append_stmts(self.lf, f'_kernel[{grid}]({",".join(self.arg_names)})')
+            self.append_stmts(self.lf, f'_kernel[{grid}]({",".join(k_args)})')
+
         else:
             stmts = ast.unparse(node)
             self.append_stmts(self.lf, stmts)
@@ -102,6 +129,10 @@ class TritonBackend(object):
         if isinstance(left, ast.Name):
             newnode.targets[0] = self.gen_kernel_node(left)
             newnode.value = self.gen_kernel_node(right)
+            if isinstance(newnode.value, ast.Expr):
+                newnode.value = newnode.value.value
+            #print('new assign node')
+            #dump(newnode)
         elif isinstance(left, ast.Subscript):
             newnode = self.gen_subscript(left, value=self.gen_kernel_node(right))
             
@@ -124,7 +155,18 @@ class TritonBackend(object):
 
     def gen_subscript(self, node: ast.Subscript, value=None):
         tensor = node.value.id
-        slice = ast.unparse(self.gen_kernel_node(node.slice))
+        
+        #if isinstance(node.slice, ast.Tuple):  # Strangely this does not work
+        if node.slice.__class__.__name__ == 'Tuple':
+            terms = []
+            for i,e in enumerate(node.slice.elts):
+                if i == len(node.slice.elts) - 1:  # stride would be 1
+                    terms.append(ast.unparse(self.gen_kernel_node(e)))
+                else:
+                    terms.append(ast.unparse(self.gen_kernel_node(e)) + f'*{tensor}_stride_{i}')
+            slice = ' + '.join(terms)
+        else:
+            slice = ast.unparse(self.gen_kernel_node(node.slice))
     
         if isinstance(node.ctx, ast.Load):    
             # varname = f'_t{self.var_count}'
@@ -192,18 +234,6 @@ class TritonBackend(object):
             self.gen_launcher_node(node)
             
 
-        #self.append_stmts(lf, 'blockDimx = (N+BLOCK-1) // BLOCK')
-        
-
-
-        # kf_body = textwrap.dedent(f'''
-        #     _t1 = tl.load(a+ii)
-        #     _t2 = tl.load(b+ii)
-        #     tl.store(c+ii, _t1+_t2)
-        # ''')
-
-        # self.append_stmts(kf, kf_body)
-
         m = ast.parse(textwrap.dedent('''
             import torch
             import triton
@@ -233,11 +263,13 @@ class TritonBackend(object):
         pragma = node.body[0].value
         match = re.search('block\((.*)\)', pragma)
         if match:
+            # TODO: a bit hacky but fine for now
             step = match.groups()[0]
             blocked_index = f'{loop_index}:{loop_index}+{step}'
-            old = f'[{loop_index}]'
-            new = f'[{blocked_index}]'
-            loop_content = ast.unparse(node).replace(old, new)
+            loop_content = ast.unparse(node)\
+                .replace(f'[{loop_index}]', f'[{blocked_index}]')\
+                .replace(f',{loop_index}]', f',{blocked_index}]')\
+                .replace(f', {loop_index}]', f', {blocked_index}]')
             node = to_ast_node(loop_content)
             node.iter = to_ast_node(f'range({start}, {end}, {step})')
             #print(ast.unparse(node))
@@ -247,9 +279,10 @@ class TritonBackend(object):
             self.append_stmts(self.lf, f'blockDim_{blockDim} = ({end}+{step}-1) // {step}')
         else:
             self.append_stmts(self.lf, f'blockDim_{blockDim} = {end}')
-        self.usedBlockDims.append(f'blockDim_{blockDim}')
+    
+        self.append_stmts(self.kf, f'{loop_index} = tl.program_id({len(self.usedBlockDims)}) * {step}')
 
-        self.append_stmts(self.kf, 'i = tl.program_id(0) * BLOCK')
+        self.usedBlockDims.append(f'blockDim_{blockDim}')
 
         for child in node.body:
             if isinstance(child, ast.Comment) and child.value.startswith('#pragma parallel'):
