@@ -206,6 +206,7 @@ class TritonBackend(object):
         # self.append_stmts(kf, kf_body)
 
         m = ast.parse(textwrap.dedent('''
+            import torch
             import triton
             import triton.language as tl
         '''
