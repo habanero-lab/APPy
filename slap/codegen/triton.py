@@ -1,4 +1,5 @@
 import os
+import re
 import textwrap
 import ast_comments as ast
 from slap.ast_utils import dump, get_arg_names, get_first_noncomment_child
@@ -18,6 +19,7 @@ class TritonBackend(object):
         self.allBlockDims = ['x', 'y', 'z']
         self.usedBlockDims = []
         self.var_count = 0
+        self.reduction_vars = []
 
 
     def get_constexpr_annotated_args(self):
@@ -70,11 +72,12 @@ class TritonBackend(object):
             stmts = node.value
         elif isinstance(node, ast.Name):
             stmts = node.id
+        elif isinstance(node, ast.AugAssign):
+            stmts = self.gen_assign(node)
         else:
-            print('pass gen_kernel_node: ')
-            dump(node)
+            
             if not isinstance(node, ast.Comment):
-                assert False
+                assert False, ast.dump(node)
         return stmts
 
     # def gen_kernel_node(self, node):
@@ -85,7 +88,10 @@ class TritonBackend(object):
     #     return stmts
 
     def gen_assign(self, node):
-        left = node.targets[0]
+        if isinstance(node, ast.Assign):
+            left = node.targets[0]
+        elif isinstance(node, ast.AugAssign):
+            left = node.target
         right = node.value
         rightstr = ''
         if isinstance(right, ast.Call):
@@ -102,7 +108,12 @@ class TritonBackend(object):
             stmt = f'{left.id} = {rightstr}'
         elif isinstance(left, ast.Subscript):
             # Store operation
-            stmt = f'tl.store({self.gen_subscript(left)}, {rightstr})'
+            left_var = left.value.id
+            if left_var in self.reduction_vars:
+                # TODO: to add other atomic operations
+                stmt = f'tl.atomic_add({self.gen_subscript(left)}, {rightstr})'
+            else:
+                stmt = f'tl.store({self.gen_subscript(left)}, {rightstr})'
 
         return stmt
 
@@ -120,7 +131,7 @@ class TritonBackend(object):
         return f'{self.gen_kernel_node(low)} + tl.arange(0, {self.gen_kernel_node(up.right)})'
 
     def gen_subscript(self, node: ast.Subscript, value=None):
-        dump(node)
+        
         tensor = node.value.id
         if isinstance(node.slice, ast.Name):
             slice = node.slice.id
@@ -219,6 +230,11 @@ class TritonBackend(object):
         self.append_stmts(self.kf, 'i = tl.program_id(0) * BLOCK')
 
         for child in node.body:
+            if isinstance(child, ast.Comment) and child.value.startswith('#pragma parallel'):
+                pattern = re.search(' reduction\((.*)\)', child.value)
+                reduction_var = pattern.groups()[0]
+                self.reduction_vars.append(reduction_var)
+                
             stmts = self.gen_kernel_node(child)
             self.append_stmts(self.kf, stmts)
         return ''
