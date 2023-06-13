@@ -15,3 +15,6 @@ def get_first_noncomment_child(node):
         if type(c) == ast.Comment:
             continue
         return c
+
+def to_ast_node(s):
+    return ast.parse(s).body[0]

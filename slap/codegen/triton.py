@@ -1,8 +1,9 @@
 import os
 import re
 import textwrap
+from copy import deepcopy
 import ast_comments as ast
-from slap.ast_utils import dump, get_arg_names, get_first_noncomment_child
+from slap.ast_utils import dump, get_arg_names, get_first_noncomment_child, to_ast_node
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values):
@@ -61,25 +62,27 @@ class TritonBackend(object):
         
 
     def gen_kernel_node(self, node):
-        stmts = ''
+        newnode = node
         if isinstance(node, ast.Assign):
-            stmts = self.gen_assign(node)
+            newnode = self.gen_assign(node)
         elif isinstance(node, ast.Subscript):
-            stmts = self.gen_subscript(node)
+            newnode = self.gen_subscript(node)
         elif isinstance(node, ast.BinOp):
-            stmts = self.gen_binOp(node)
+            newnode = self.gen_binOp(node)
         elif isinstance(node, ast.Constant):
-            stmts = node.value
+            newnode = node
         elif isinstance(node, ast.Name):
-            stmts = node.id
+            newnode = node
         elif isinstance(node, ast.AugAssign):
-            stmts = self.gen_assign(node)
+            newnode = self.gen_assign(node)
         elif isinstance(node, ast.Slice):
-            stmts = self.gen_slice(node)
+            newnode = self.gen_slice(node)
+        elif isinstance(node, ast.Call):
+            newnode = self.gen_call(node)
         else:
             if not isinstance(node, ast.Comment):
                 assert False, ast.dump(node)
-        return stmts
+        return newnode
 
     # def gen_kernel_node(self, node):
     #     if isinstance(node, ast.Assign):
@@ -94,55 +97,48 @@ class TritonBackend(object):
         elif isinstance(node, ast.AugAssign):
             left = node.target
         right = node.value
-        rightstr = ''
-        if isinstance(right, ast.Call):
-            rightstr = self.gen_call(right)
-            
-        elif isinstance(right, ast.BinOp):
-            rightstr = self.gen_binOp(right)
-    
-        else:
-            assert False, ast.dump(node)
 
-        stmt = ''
+        newnode = deepcopy(node)
         if isinstance(left, ast.Name):
-            stmt = f'{left.id} = {rightstr}'
+            newnode.targets[0] = self.gen_kernel_node(left)
+            newnode.value = self.gen_kernel_node(right)
         elif isinstance(left, ast.Subscript):
-            # Store operation
-            left_var = left.value.id
-            if left_var in self.reduction_vars:
-                # TODO: to add other atomic operations
-                stmt = f'tl.atomic_add({self.gen_subscript(left)}, {rightstr})'
-            else:
-                stmt = f'tl.store({self.gen_subscript(left)}, {rightstr})'
-
-        return stmt
+            newnode = self.gen_subscript(left, value=self.gen_kernel_node(right))
+            
+        else:
+            assert False
+        return newnode
 
 
     def gen_binOp(self, node):
         left = self.gen_kernel_node(node.left)
         right = self.gen_kernel_node(node.right)
-        op = self.gen_op(node.op)
-        return f'{left} {op} {right}'
+        newnode = ast.BinOp(op=node.op, left=left, right=right)
+        return newnode
 
     def gen_slice(self, node: ast.Slice):
         low = node.lower
         up = node.upper
         assert isinstance(up, ast.BinOp)
-        return f'{self.gen_kernel_node(low)} + tl.arange(0, {self.gen_kernel_node(up.right)})'
+        return to_ast_node(f'{ast.unparse(self.gen_kernel_node(low))} + tl.arange(0, {ast.unparse(self.gen_kernel_node(up.right))})')
 
     def gen_subscript(self, node: ast.Subscript, value=None):
         tensor = node.value.id
-        slice = self.gen_kernel_node(node.slice)
+        slice = ast.unparse(self.gen_kernel_node(node.slice))
     
         if isinstance(node.ctx, ast.Load):    
             # varname = f'_t{self.var_count}'
             # self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
             # self.var_count += 1
             # return varname
-            return f'tl.load({tensor}+{slice})'
+            return to_ast_node(f'tl.load({tensor}+{slice})')
         elif isinstance(node.ctx, ast.Store):
-            return f'{tensor}+{slice}'
+            if tensor in self.reduction_vars:
+                # TODO: to add other atomic operations
+                stmt = f'tl.atomic_add({tensor}+{slice}, {ast.unparse(value)})'
+            else:
+                stmt = f'tl.store({tensor}+{slice}, {ast.unparse(value)})'
+            return to_ast_node(stmt)
         else:
             assert False
 
@@ -160,23 +156,26 @@ class TritonBackend(object):
         
     def gen_call(self, node):
         funcname = node.func.id
+        stmt = ''
         if funcname == 'range':
             start = node.args[0].id
             if isinstance(node.args[1], ast.BinOp):
                 step = node.args[1].right.id
-                return f'{start} + tl.arange(0, {step})'
+                stmt = f'{start} + tl.arange(0, {step})'
             else:
                 assert False, 'range must be in the form `range(i,i+BLOCK)`'
         elif funcname in ['sum', 'max', 'min']:
-            dump(node)
+            
             args = []
             for arg in node.args:
-                args.append(self.gen_kernel_node(arg))
-            print(args)
-            return f'tl.{funcname}({",".join(args)}, axis=0)'
-            exit(1)
+                args.append(ast.unparse(self.gen_kernel_node(arg)))
+            #print(args)
+            stmt = f'tl.{funcname}({",".join(args)}, axis=0)'
+           
         else:
             assert False
+        #print(stmt)
+        return to_ast_node(stmt)
 
     def codegen(self):
         lf = ast.parse(textwrap.dedent(f'''
@@ -211,12 +210,13 @@ class TritonBackend(object):
             import triton.language as tl
         '''
         ))
+        #dump(self.kf)
         m.body += [self.kf, self.lf]
         return ast.unparse(m)
 
     def gen_parallel_for(self, node):
         range_args = [x for x in node.iter.args]
-        print(range_args)
+        #print(range_args)
         start, end, step = '0', '', '1'
         if len(range_args) == 1:
             end = range_args[0].id
@@ -247,8 +247,10 @@ class TritonBackend(object):
             elif self.is_parallel_for(child):
                 self.gen_parallel_for(child)
             else:
-                stmts = self.gen_kernel_node(child)
-                self.append_stmts(self.kf, stmts)
+                newnode = self.gen_kernel_node(child)
+                assert not isinstance(newnode, str), newnode
+                if not isinstance(newnode, ast.Comment):
+                    self.kf.body.append(newnode)
         return ''
         
         
