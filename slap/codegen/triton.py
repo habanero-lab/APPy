@@ -74,6 +74,8 @@ class TritonBackend(object):
             stmts = node.id
         elif isinstance(node, ast.AugAssign):
             stmts = self.gen_assign(node)
+        elif isinstance(node, ast.Slice):
+            stmts = self.gen_slice(node)
         else:
             
             if not isinstance(node, ast.Comment):
@@ -131,15 +133,9 @@ class TritonBackend(object):
         return f'{self.gen_kernel_node(low)} + tl.arange(0, {self.gen_kernel_node(up.right)})'
 
     def gen_subscript(self, node: ast.Subscript, value=None):
-        
         tensor = node.value.id
-        if isinstance(node.slice, ast.Name):
-            slice = node.slice.id
-        elif isinstance(node.slice, ast.Slice):
-            slice = self.gen_slice(node.slice)
-        else:
-            assert False
-
+        slice = self.gen_kernel_node(node.slice)
+    
         if isinstance(node.ctx, ast.Load):    
             varname = f'_t{self.var_count}'
             self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
@@ -163,13 +159,24 @@ class TritonBackend(object):
             assert False, f'unknown operator: {ast.dump(op)}'
         
     def gen_call(self, node):
-        if node.func.id == 'range':
+        funcname = node.func.id
+        if funcname == 'range':
             start = node.args[0].id
             if isinstance(node.args[1], ast.BinOp):
                 step = node.args[1].right.id
                 return f'{start} + tl.arange(0, {step})'
             else:
                 assert False, 'range must be in the form `range(i,i+BLOCK)`'
+        elif funcname in ['sum', 'max', 'min']:
+            dump(node)
+            args = []
+            for arg in node.args:
+                args.append(self.gen_kernel_node(arg))
+            print(args)
+            return f'tl.{funcname}({",".join(args)}, axis=0)'
+            exit(1)
+        else:
+            assert False
 
     def codegen(self):
         lf = ast.parse(textwrap.dedent(f'''
