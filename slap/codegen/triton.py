@@ -77,7 +77,6 @@ class TritonBackend(object):
         elif isinstance(node, ast.Slice):
             stmts = self.gen_slice(node)
         else:
-            
             if not isinstance(node, ast.Comment):
                 assert False, ast.dump(node)
         return stmts
@@ -137,10 +136,11 @@ class TritonBackend(object):
         slice = self.gen_kernel_node(node.slice)
     
         if isinstance(node.ctx, ast.Load):    
-            varname = f'_t{self.var_count}'
-            self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
-            self.var_count += 1
-            return varname
+            # varname = f'_t{self.var_count}'
+            # self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
+            # self.var_count += 1
+            # return varname
+            return f'tl.load({tensor}+{slice})'
         elif isinstance(node.ctx, ast.Store):
             return f'{tensor}+{slice}'
         else:
@@ -239,12 +239,16 @@ class TritonBackend(object):
 
         for child in node.body:
             if isinstance(child, ast.Comment) and child.value.startswith('#pragma parallel'):
-                pattern = re.search(' reduction\((.*)\)', child.value)
-                reduction_var = pattern.groups()[0]
-                self.reduction_vars.append(reduction_var)
+                match = re.search(' reduction\((.*)\)', child.value)
+                if match:
+                    reduction_var = match.groups()[0]
+                    self.reduction_vars.append(reduction_var)
                 
-            stmts = self.gen_kernel_node(child)
-            self.append_stmts(self.kf, stmts)
+            elif self.is_parallel_for(child):
+                self.gen_parallel_for(child)
+            else:
+                stmts = self.gen_kernel_node(child)
+                self.append_stmts(self.kf, stmts)
         return ''
         
         

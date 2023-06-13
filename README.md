@@ -18,7 +18,7 @@ def add(a, b, c, BLOCK):
 In addition to manually block an index, one can also specify which loop to block in the pragma, with a block size parameter (e.g.`auto` indicates auto-chosen by the compiler). 
 
 ```python
-@slap.jit(auto_tile=True)
+@slap.jit()
 def add(a, b, c):
     for i in range(a.shape[0]):  #pragma parallel block(auto)
         c[i] = a[i] + b[i]
@@ -36,7 +36,7 @@ def kernel(a, b, BLOCK):
 
 Or
 ```python
-@slap.jit(auto_tile=True)
+@slap.jit()
 def kernel(a, b):
     b[0] = 0
     for i in range(a.shape[0]):  #pragma parallel block(auto) reduction(+:b)
@@ -56,7 +56,7 @@ def kernel(x, labels, centers):
 
 Or 
 ```python
-@slap.jit(auto_tile=True)
+@slap.jit()
 def kernel(x, labels, centers):
     for i in range(x.shape[0]):  #pragma parallel reduction(+:centers)
         for j in range(x.shape[1]):  #pragma parallel block(auto)
@@ -125,7 +125,7 @@ def kernel(a_rowptrs, a_cols, a_vals, b, c, BLOCK):
 
 Or
 ```python
-@slap.jit(auto_tile=True)
+@slap.jit()
 def kernel(a_rowptrs, a_cols, a_vals, b, c):
     for i in range(a.shape[0]):  #pragma parallel
         for j in range(b.shape[1]):  #pragma parallel block(auto)

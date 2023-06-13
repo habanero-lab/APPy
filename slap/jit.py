@@ -11,7 +11,7 @@ from slap.codegen.triton import TritonBackend
 compiled = {}
 
 def compile(fn, args):
-    print(f'[jit] Compile function {fn.__name__} with type signature {args}')
+    print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
     src = inspect.getsource(fn)
     #arg_names = get_arg_names(src)
     #src = constant_prop(src, arg_names, args)
