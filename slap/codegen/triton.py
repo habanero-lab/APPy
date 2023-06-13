@@ -214,7 +214,8 @@ class TritonBackend(object):
         m.body += [self.kf, self.lf]
         return ast.unparse(m)
 
-    def gen_parallel_for(self, node):
+    def gen_parallel_for(self, node: ast.For):
+        #dump(node)
         range_args = [x for x in node.iter.args]
         #print(range_args)
         start, end, step = '0', '', '1'
@@ -227,6 +228,19 @@ class TritonBackend(object):
             start = range_args[0].value
             end = range_args[1].id
             step = range_args[2].id
+
+        loop_index = node.target.id
+        pragma = node.body[0].value
+        match = re.search('block\((.*)\)', pragma)
+        if match:
+            step = match.groups()[0]
+            blocked_index = f'{loop_index}:{loop_index}+{step}'
+            old = f'[{loop_index}]'
+            new = f'[{blocked_index}]'
+            loop_content = ast.unparse(node).replace(old, new)
+            node = to_ast_node(loop_content)
+            node.iter = to_ast_node(f'range({start}, {end}, {step})')
+            #print(ast.unparse(node))
 
         blockDim = self.allBlockDims.pop(0)
         if step != '1':
