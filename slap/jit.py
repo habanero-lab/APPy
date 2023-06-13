@@ -10,17 +10,19 @@ from slap.codegen.triton import TritonBackend
 
 compiled = {}
 
-def compile(fn, args):
-    print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
+def compile(fn, args, dump_code=False, verbose=False):
+    if verbose:
+        print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
     src = inspect.getsource(fn)
     #arg_names = get_arg_names(src)
     #src = constant_prop(src, arg_names, args)
-    print(src)
+    #print(src)
     tree = ast.parse(src)
     
     backend = TritonBackend(tree, args)
     module = backend.codegen()
-    print(module)
+    if dump_code:
+        print(module)
     #exit(1)
     fn = 'slap_kernel.py'
     Path(fn).write_text(module)
@@ -28,7 +30,8 @@ def compile(fn, args):
     foo = importlib.util.module_from_spec(spec)
     sys.modules["module.name"] = foo
     spec.loader.exec_module(foo)
-    print("[jit] Done compiling")
+    if verbose:
+        print("[jit] Done compiling")
     return foo.kernel
 
 def get_arg_names(src):
@@ -55,12 +58,22 @@ def constant_prop(src, arg_names, arg_values):
             src = src.replace(f'{arg}.shape[{dim}]', str(value.shape[dim]))
     return src
         
-
-def jit(fn):
+def _jit(fn):
     def inner(*args):
         if fn not in compiled:
             compiled[fn] = compile(fn, args)
         return compiled[fn](*args)
-    
     return inner
-    
+
+def jit(fn=None, dump_code=False, verbose=False):
+    if fn:
+        return _jit(fn)
+    else:
+        #print('return arg version')
+        def jit_with_args(fn1):
+            def inner(*args):
+                if fn1 not in compiled:
+                    compiled[fn1] = compile(fn1, args, dump_code=dump_code, verbose=verbose)
+                return compiled[fn1](*args)
+            return inner
+        return jit_with_args
