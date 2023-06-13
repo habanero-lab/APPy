@@ -15,12 +15,12 @@ def add(a, b, c, BLOCK):
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
 ```
 
-With `auto-tile`, the loop is just like a normal sequential loop:
+In addition to manually block an index, one can also specify which loop to block in the pragma, with a block size parameter (e.g.`auto` indicates auto-chosen by the compiler). 
 
 ```python
 @slap.jit(auto_tile=True)
 def add(a, b, c):
-    for i in range(a.shape[0]):  #pragma parallel
+    for i in range(a.shape[0]):  #pragma parallel block(auto)
         c[i] = a[i] + b[i]
 ```
 
@@ -39,7 +39,7 @@ Or
 @slap.jit(auto_tile=True)
 def kernel(a, b):
     b[0] = 0
-    for i in range(a.shape[0]):  #pragma parallel reduction(+:b)
+    for i in range(a.shape[0]):  #pragma parallel block(auto) reduction(+:b)
         b[0] += a[i]
 ```
 
@@ -48,7 +48,7 @@ def kernel(a, b):
 ```python
 @slap.jit()
 def kernel(x, labels, centers):
-    for i in range(x.shape[0]):  #pragma parallel reduction(+:centers) indirect index
+    for i in range(x.shape[0]):  #pragma parallel reduction(+:centers) 
         for j in range(0, x.shape[1], Bj):  #pragma parallel
             label = labels[i]
             centers[label,j:j+Bj] += x[i,j:j+Bj]
@@ -58,8 +58,8 @@ Or
 ```python
 @slap.jit(auto_tile=True)
 def kernel(x, labels, centers):
-    for i in range(x.shape[0]):  #pragma parallel reduction(+:centers) indirect index
-        for j in range(x.shape[1]):  #pragma parallel
+    for i in range(x.shape[0]):  #pragma parallel reduction(+:centers)
+        for j in range(x.shape[1]):  #pragma parallel block(auto)
             label = labels[i]
             centers[label,j] += x[i,j]
 ```
@@ -92,8 +92,8 @@ def matmul(a, b, c, Bi, Bj, Bk):
     # This will be the second kernel launch
     for i in range(0, a.shape[0], Bi):  #pragma parallel
     	for j in range(0, b.shape[-1], Bj):  #pragma parallel
-	    for k in range(0, a.shape[-1], Bk):  #pragma parallel reduction(+:c)
-	    	c[i:i+Bi, j:j+Bj] += a[i:i+Bi, k:k+Bk] @ b[k:k+Bk, j:j+Bj]
+	        for k in range(0, a.shape[-1], Bk):  #pragma parallel reduction(+:c)
+	    	    c[i:i+Bi, j:j+Bj] += a[i:i+Bi, k:k+Bk] @ b[k:k+Bk, j:j+Bj]
 ```
 
 
@@ -115,7 +115,7 @@ def batched_matmul(a, b, c, Bi, Bj, Bk):
 ```python
 @slap.jit()
 def kernel(a_rowptrs, a_cols, a_vals, b, c, BLOCK):
-    for i in range(a.shape[0]):  #pragma parallel indirect index
+    for i in range(a.shape[0]):  #pragma parallel
         for j in range(0, b.shape[1], BLOCK):  #pragma parallel 
             for ki in range(a_rowptrs[i], a_rowptrs[i+1]):
                 a_ik = a_vals[ki]
@@ -127,8 +127,8 @@ Or
 ```python
 @slap.jit(auto_tile=True)
 def kernel(a_rowptrs, a_cols, a_vals, b, c):
-    for i in range(a.shape[0]):  #pragma parallel indirect index
-        for j in range(b.shape[1]):  #pragma parallel 
+    for i in range(a.shape[0]):  #pragma parallel
+        for j in range(b.shape[1]):  #pragma parallel block(auto)
             for ki in range(a_rowptrs[i], a_rowptrs[i+1]):
                 a_ik = a_vals[ki]
                 ks = a_cols[ki]
