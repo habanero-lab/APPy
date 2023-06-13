@@ -17,7 +17,7 @@ class TritonBackend(object):
         self.arg_types = [type(x) for x in arg_values]
         self.allBlockDims = ['x', 'y', 'z']
         self.usedBlockDims = []
-        
+        self.var_count = 0
 
     def get_constexpr_annotated_args(self):
         newargs = []
@@ -39,24 +39,84 @@ class TritonBackend(object):
         return type(node) is ast.For and (type(node.body[0]) != ast.Comment or '#pragma parallel' not in node.body[0].value)
 
     def gen_node(self, node, lf, kf):
+        stmts = ''
         if self.is_parallel_for(node):
-            self.gen_parallel_for(node, lf, kf)
-        elif isinstance(node, ast.Assign):
-            self.gen_assign(node, kf)
+            stmts = self.gen_parallel_for(node, lf, kf)
+        
         else:
             print('pass gen_node')
             dump(node)
             pass
+        return stmts
+
+    def gen_kernel_node(self, node, kf):
+        if isinstance(node, ast.Assign):
+            stmts = self.gen_assign(node, kf)
+        elif isinstance(node, ast.Subscript):
+            stmts = self.gen_subscript(node, kf)
+        return stmts
 
     def gen_assign(self, node, kf):
         left = node.targets[0]
         right = node.value
+        rightstr = ''
         if isinstance(right, ast.Call):
-            call = self.gen_call(right, kf)
-            self.append_stmts(kf, f'{left.id} = {call}')
+            rightstr = self.gen_call(right, kf)
+            
+        elif isinstance(right, ast.BinOp):
+            rightstr = self.gen_binOp(right, kf)
         else:
             print('pass gen_node')
             dump(node)
+
+        stmt = ''
+        if isinstance(left, ast.Name):
+            stmt = f'{left.id} = {rightstr}'
+        elif isinstance(left, ast.Subscript):
+            # Store operation
+            stmt = f'tl.store({self.gen_subscript(left)}, {rightstr})'
+
+        return stmt
+
+
+    def gen_binOp(self, node, kf):
+        dump(node)
+        left = self.gen_kernel_node(node.left, kf)
+        right = self.gen_kernel_node(node.right, kf)
+        op = self.gen_op(node.op)
+        return f'{left} {op} {right}'
+
+    def gen_subscript(self, node: ast.Subscript, kf, value=None):
+        tensor = node.value.id
+        slice = node.slice.id
+        if node.ctx == ast.Load:    
+            varname = f'_t{self.var_count}'
+            self.append_stmts(kf, f'{varname} = tl.load({tensor}+{slice})')
+            self.var_count += 1
+            return varname
+        elif node.ctx == ast.Store:
+            return f'{tensor}+{slice}'
+
+    def gen_tensor_load(self, node: ast.Subscript, kf):
+        assert isinstance(node, ast.Subscript)
+        tensor = node.value.id
+        slice = node.slice.id
+        varname = f'_t{self.var_count}'
+        self.append_stmts(kf, f'{varname} = tl.load({tensor}+{slice})')
+        self.var_count += 1
+        return varname
+
+    def gen_op(self, op):
+        if isinstance(op, ast.Add):
+            return '+'
+        elif isinstance(op, ast.Sub):
+            return '-'
+        elif isinstance(op, ast.Mult):
+            return '*'
+        elif isinstance(op, ast.Div):
+            return '/'
+        else:
+            assert False, f'unknown operator: {ast.dump(op)}'
         
     def gen_call(self, node, kf):
         if node.func.id == 'range':
@@ -128,7 +188,8 @@ class TritonBackend(object):
         self.append_stmts(kf, 'i = tl.program_id(0) * BLOCK')
 
         for child in node.body:
-            self.gen_node(child, lf, kf)
+            stmts = self.gen_node(child, lf, kf)
+            self.append_stmts(kf, stmts)
         
         
     def gen_parallel_reduction(self, node, depth):
