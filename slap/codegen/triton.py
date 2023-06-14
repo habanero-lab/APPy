@@ -277,7 +277,9 @@ class TritonBackend(object):
             loop_content = ast.unparse(node)\
                 .replace(f'[{loop_index}]', f'[{blocked_index}]')\
                 .replace(f',{loop_index}]', f',{blocked_index}]')\
-                .replace(f', {loop_index}]', f', {blocked_index}]')
+                .replace(f', {loop_index}]', f', {blocked_index}]')\
+                .replace(f'[{loop_index},', f'[{blocked_index},')\
+            
             node = to_ast_node(loop_content)
             node.iter = to_ast_node(f'range({start}, {end}, {step})')
             #print(ast.unparse(node))
