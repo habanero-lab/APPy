@@ -272,12 +272,12 @@ class TritonBackend(object):
         pragma = node.body[0].value
 
 
-        match = re.search(' reduction\((.*?)\)', pragma)
+        match = re.search(r' reduction\((.*?)\)', pragma)
         if match:
             reduction_var = match.groups()[0]
             self.reduction_vars.append(reduction_var)
 
-        match = re.search('block\((.*?)\)', pragma)
+        match = re.search(r' block\((.*?)\)', pragma)
         if match:
             # TODO: to insert a range statement in the beginning of the loop
             step = match.groups()[0]
