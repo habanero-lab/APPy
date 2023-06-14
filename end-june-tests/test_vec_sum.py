@@ -11,7 +11,8 @@ def slap_kernel(a, N, BLOCK):
 
 @slap.jit
 def _slap_kernel(a, b, N, BLOCK):
-    for i in range(0, N, BLOCK):  #pragma parallel reduction(b)
+    #pragma parallel reduction(b)
+    for i in range(0, N, BLOCK):  
         b[0] += sum(a[i:i+BLOCK])
 
 def slap_kernel1(a, N, BLOCK):
@@ -21,7 +22,8 @@ def slap_kernel1(a, N, BLOCK):
 
 @slap.jit
 def _slap_kernel1(a, b, N, BLOCK):
-    for i in range(N):  #pragma parallel reduction(b) block(512)
+    #pragma parallel reduction(b) block(512)
+    for i in range(N):  
         b[0] += a[i]
 
 @triton.jit

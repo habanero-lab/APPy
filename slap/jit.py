@@ -14,9 +14,7 @@ def compile(fn, args, dump_code=True, verbose=False):
     if verbose:
         print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
     src = inspect.getsource(fn)
-    #arg_names = get_arg_names(src)
-    #src = constant_prop(src, arg_names, args)
-    #print(src)
+    src = preprocess(src)
     tree = ast.parse(src)
     
     backend = TritonBackend(tree, args)
@@ -33,6 +31,24 @@ def compile(fn, args, dump_code=True, verbose=False):
     if verbose:
         print("[jit] Done compiling")
     return foo.kernel
+
+def preprocess(src):
+    lines = src.split('\n')
+    newsrc = ''
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
+        m = re.match(r' *\#pragma', line)
+        if m:
+            nextline = lines[i+1]
+            assert re.match(r' *for ', nextline)
+            newsrc += nextline + line + '\n'
+            i += 1
+        else:
+            newsrc += line + '\n'
+        i += 1
+    return newsrc
 
 def get_arg_names(src):
     defline = ''
