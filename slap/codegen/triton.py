@@ -4,7 +4,8 @@ import torch
 import textwrap
 from copy import deepcopy
 import ast_comments as ast
-from slap.ast_utils import dump, get_arg_names, get_first_noncomment_child, to_ast_node
+from ast import unparse
+from slap.ast_utils import dump, dump_code, get_arg_names, get_first_noncomment_child, to_ast_node
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values):
@@ -211,7 +212,7 @@ class TritonBackend(object):
         if funcname == 'range':
             start = node.args[0].id
             if isinstance(node.args[1], ast.BinOp):
-                step = node.args[1].right.id
+                step = ast.unparse(self.gen_kernel_node(node.args[1].right))
                 stmt = f'{start} + tl.arange(0, {step})'
             else:
                 assert False, 'range must be in the form `range(i,i+BLOCK)`'
@@ -269,20 +270,29 @@ class TritonBackend(object):
 
         loop_index = node.target.id
         pragma = node.body[0].value
+
+        match = re.search(' reduction\((.*)\)', pragma)
+        if match:
+            reduction_var = match.groups()[0]
+            self.reduction_vars.append(reduction_var)
+
         match = re.search('block\((.*)\)', pragma)
         if match:
             # TODO: to insert a range statement in the beginning of the loop
             step = match.groups()[0]
-            blocked_index = f'{loop_index}:{loop_index}+{step}'
-            loop_content = ast.unparse(node)\
-                .replace(f'[{loop_index}]', f'[{blocked_index}]')\
-                .replace(f',{loop_index}]', f',{blocked_index}]')\
-                .replace(f', {loop_index}]', f', {blocked_index}]')\
-                .replace(f'[{loop_index},', f'[{blocked_index},')\
+            newnode = to_ast_node(f'{loop_index} = range({loop_index}, {loop_index}+{step})')
+            node.body.insert(1, newnode)
             
-            node = to_ast_node(loop_content)
-            node.iter = to_ast_node(f'range({start}, {end}, {step})')
-            #print(ast.unparse(node))
+            # blocked_index = f'{loop_index}:{loop_index}+{step}'
+            # loop_content = ast.unparse(node)\
+            #     .replace(f'[{loop_index}]', f'[{blocked_index}]')\
+            #     .replace(f',{loop_index}]', f',{blocked_index}]')\
+            #     .replace(f', {loop_index}]', f', {blocked_index}]')\
+            #     .replace(f'[{loop_index},', f'[{blocked_index},')\
+            
+            # node = to_ast_node(loop_content)
+            # node.iter = to_ast_node(f'range({start}, {end}, {step})')
+            # #print(ast.unparse(node))
 
         blockDim = self.allBlockDims.pop(0)
         if step != '1':
@@ -295,13 +305,7 @@ class TritonBackend(object):
         self.usedBlockDims.append(f'blockDim_{blockDim}')
 
         for child in node.body:
-            if isinstance(child, ast.Comment) and child.value.startswith('#pragma parallel'):
-                match = re.search(' reduction\((.*)\)', child.value)
-                if match:
-                    reduction_var = match.groups()[0]
-                    self.reduction_vars.append(reduction_var)
-                
-            elif self.is_parallel_for(child):
+            if self.is_parallel_for(child):
                 self.gen_parallel_for(child)
             else:
                 newnode = self.gen_kernel_node(child)

@@ -3,6 +3,9 @@ import ast_comments as ast
 def dump(node):
     print(ast.dump(node))
 
+def dump_code(node):
+    print(ast.unparse(node))
+
 def get_func_name(tree):
     return tree.body[0].name 
 
