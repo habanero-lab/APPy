@@ -263,15 +263,15 @@ class TritonBackend(object):
             start = range_args[0].value
             end = range_args[1].id
         elif len(range_args) == 3:
-            start = range_args[0].value
-            end = range_args[1].id
-            step = range_args[2].id
+            start = ast.unparse(self.gen_kernel_node(range_args[0]))
+            end = ast.unparse(self.gen_kernel_node(range_args[1]))
+            step = ast.unparse(self.gen_kernel_node(range_args[2]))
 
         loop_index = node.target.id
         pragma = node.body[0].value
         match = re.search('block\((.*)\)', pragma)
         if match:
-            # TODO: a bit hacky but fine for now
+            # TODO: to insert a range statement in the beginning of the loop
             step = match.groups()[0]
             blocked_index = f'{loop_index}:{loop_index}+{step}'
             loop_content = ast.unparse(node)\
@@ -286,11 +286,11 @@ class TritonBackend(object):
 
         blockDim = self.allBlockDims.pop(0)
         if step != '1':
-            self.append_stmts(self.lf, f'blockDim_{blockDim} = ({end}+{step}-1) // {step}')
+            self.append_stmts(self.lf, f'blockDim_{blockDim} = ({end}-{start}+{step}-1) // {step}')
         else:
             self.append_stmts(self.lf, f'blockDim_{blockDim} = {end}')
     
-        self.append_stmts(self.kf, f'{loop_index} = tl.program_id({len(self.usedBlockDims)}) * {step}')
+        self.append_stmts(self.kf, f'{loop_index} = {start} + tl.program_id({len(self.usedBlockDims)}) * {step}')
 
         self.usedBlockDims.append(f'blockDim_{blockDim}')
 

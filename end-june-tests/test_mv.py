@@ -18,7 +18,7 @@ def torch_kernel(a, b, c, M, N):
     torch.mv(a, b, out=c)
     
 
-for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4), (4096*16, 4096*8)]:
+for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4), (4096*8, 4096*8)]:
     print(f'M: {M}, N: {N}')
     a = torch.randn(M, N, device='cuda', dtype=torch.float32)
     b = torch.randn(N, device='cuda', dtype=torch.float32)
