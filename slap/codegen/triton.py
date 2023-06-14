@@ -150,8 +150,17 @@ class TritonBackend(object):
     def gen_slice(self, node: ast.Slice):
         low = node.lower
         up = node.upper
-        assert isinstance(up, ast.BinOp)
-        return to_ast_node(f'{ast.unparse(self.gen_kernel_node(low))} + tl.arange(0, {ast.unparse(self.gen_kernel_node(up.right))})')
+       
+        if low is None:
+            s = f'tl.arange(0, {ast.unparse(self.gen_kernel_node(up))})'
+        else:
+            if isinstance(up, ast.BinOp):
+                assert low.id == up.left.id
+                s = f'{ast.unparse(self.gen_kernel_node(low))} + tl.arange(0, {ast.unparse(self.gen_kernel_node(up.right))})'
+            else:
+                s = f'tl.arange({ast.unparse(self.gen_kernel_node(low))}, {ast.unparse(self.gen_kernel_node(up))})'
+
+        return to_ast_node(s)
 
     def gen_subscript(self, node: ast.Subscript, value=None):
         tensor = node.value.id
@@ -163,7 +172,7 @@ class TritonBackend(object):
                 if i == len(node.slice.elts) - 1:  # stride would be 1
                     terms.append(ast.unparse(self.gen_kernel_node(e)))
                 else:
-                    terms.append(ast.unparse(self.gen_kernel_node(e)) + f'*{tensor}_stride_{i}')
+                    terms.append(f'({ast.unparse(self.gen_kernel_node(e))}) * {tensor}_stride_{i}')
             slice = ' + '.join(terms)
         else:
             slice = ast.unparse(self.gen_kernel_node(node.slice))
@@ -225,8 +234,7 @@ class TritonBackend(object):
                 pass
         ''')).body[0]
 
-        
-
+       
         self.lf = lf
         
 

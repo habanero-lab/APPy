@@ -7,6 +7,15 @@ Sequential Loops with Annotated Parallelism (SLAP) is parallel programming model
 python setup.py develop
 ```
 
+# Clauses
+A clause starts with `#pragma`:
+- `parallel`
+  - Indicate different iterations of the loop can run in parallel.
+- `reduction(var)`
+  - Indicate a reduction pattern on variable `var`. 
+- `block(size)`
+  - Indicate adjacent loop iterations are executed in blocks of `size`.
+
 # Element-Wise Operation
 ```python
 @slap.jit()
