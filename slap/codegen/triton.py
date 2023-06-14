@@ -271,28 +271,28 @@ class TritonBackend(object):
         loop_index = node.target.id
         pragma = node.body[0].value
 
-        match = re.search(' reduction\((.*)\)', pragma)
+
+        match = re.search(' reduction\((.*?)\)', pragma)
         if match:
             reduction_var = match.groups()[0]
             self.reduction_vars.append(reduction_var)
 
-        match = re.search('block\((.*)\)', pragma)
+        match = re.search('block\((.*?)\)', pragma)
         if match:
             # TODO: to insert a range statement in the beginning of the loop
             step = match.groups()[0]
             newnode = to_ast_node(f'{loop_index} = range({loop_index}, {loop_index}+{step})')
             node.body.insert(1, newnode)
-            
-            # blocked_index = f'{loop_index}:{loop_index}+{step}'
-            # loop_content = ast.unparse(node)\
-            #     .replace(f'[{loop_index}]', f'[{blocked_index}]')\
-            #     .replace(f',{loop_index}]', f',{blocked_index}]')\
-            #     .replace(f', {loop_index}]', f', {blocked_index}]')\
-            #     .replace(f'[{loop_index},', f'[{blocked_index},')\
-            
-            # node = to_ast_node(loop_content)
-            # node.iter = to_ast_node(f'range({start}, {end}, {step})')
-            # #print(ast.unparse(node))
+
+            if 'reduction' in pragma:
+                for child in node.body:
+                    if isinstance(child, ast.AugAssign):
+                        right = child.value
+                        if isinstance(child.op, ast.Add):
+                            child.value = to_ast_node(f'sum({unparse(right)})').value
+                        else:
+                            assert False, f'reduction unsupported yet {ast.dump(child)}'
+                        
 
         blockDim = self.allBlockDims.pop(0)
         if step != '1':

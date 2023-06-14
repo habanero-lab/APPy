@@ -19,16 +19,16 @@ def torch_kernel(a, N, BLOCK):
     b = (a[0:N-2] + a[1:N-1] + a[2:N]) / 3
     return b
     
+def test1():
+    for shape in [1024*128, 1024*1024, 40*1024*1024]:
+        N = shape
+        print(f'N: {N}')
+        a = torch.randn(N, device='cuda', dtype=torch.float32)
+        b_ref = torch_kernel(a, N, None)
 
-for shape in [1024*128, 1024*1024, 40*1024*1024]:
-    N = shape
-    print(f'N: {N}')
-    a = torch.randn(N, device='cuda', dtype=torch.float32)
-    b_ref = torch_kernel(a, N, None)
-
-    for f in (torch_kernel, slap_kernel):
-        BLOCK = 128 * 4
-        b = f(a, N, BLOCK)
-        assert(torch.allclose(b, b_ref, atol=1e-2))
-        ms, _, _ = triton.testing.do_bench(lambda: f(a, N, BLOCK))
-        print(f'{f.__name__}: {ms:.4f} ms')
+        for f in (torch_kernel, slap_kernel):
+            BLOCK = 128 * 4
+            b = f(a, N, BLOCK)
+            assert(torch.allclose(b, b_ref, atol=1e-2))
+            ms, _, _ = triton.testing.do_bench(lambda: f(a, N, BLOCK))
+            print(f'{f.__name__}: {ms:.4f} ms')

@@ -26,22 +26,22 @@ def triton_kernel(a, b, c, N, BLOCK):
     nblocks = (N+BLOCK-1) // BLOCK
     _kernel[(nblocks,)](a, b, c, N, BLOCK)
     
+def test1():
+    for shape in [1024*128, 1024*1024, 1024*1024*2]:
+        N = shape
+        print(f'N: {N}')
+        a = torch.randn(N, device='cuda', dtype=torch.float32)
+        b = torch.randn(N, device='cuda', dtype=torch.float32)
+        ms, _, _ = triton.testing.do_bench(lambda: a + b)
+        print(f'torch: {ms} ms')
 
-for shape in [1024*128, 1024*1024, 1024*1024*2]:
-    N = shape
-    print(f'N: {N}')
-    a = torch.randn(N, device='cuda', dtype=torch.float32)
-    b = torch.randn(N, device='cuda', dtype=torch.float32)
-    ms, _, _ = triton.testing.do_bench(lambda: a + b)
-    print(f'torch: {ms} ms')
+        #slap_kernel = slap.jit(kernel)
 
-    #slap_kernel = slap.jit(kernel)
-
-    for f in [slap_kernel, slap_kernel1]:
-        c = torch.zeros_like(a)
-        BLOCK = 128 * 1
-        f(a, b, c, N, BLOCK)
-        assert(torch.allclose(c, a+b))
-        ms, _, _ = triton.testing.do_bench(lambda: f(a, b, c, N, BLOCK))
-        print(f'{f.__name__}: {ms:.4f} ms')
+        for f in [slap_kernel, slap_kernel1]:
+            c = torch.zeros_like(a)
+            BLOCK = 128 * 1
+            f(a, b, c, N, BLOCK)
+            assert(torch.allclose(c, a+b))
+            ms, _, _ = triton.testing.do_bench(lambda: f(a, b, c, N, BLOCK))
+            print(f'{f.__name__}: {ms:.4f} ms')
 

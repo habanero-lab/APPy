@@ -9,10 +9,20 @@ def slap_kernel(a, N, BLOCK):
     _slap_kernel(a, b, N, BLOCK)
     return b
 
-@slap.jit(verbose=1)
+@slap.jit
 def _slap_kernel(a, b, N, BLOCK):
     for i in range(0, N, BLOCK):  #pragma parallel reduction(b)
         b[0] += sum(a[i:i+BLOCK])
+
+def slap_kernel1(a, N, BLOCK):
+    b = torch.zeros(1, device=a.device, dtype=a.dtype)
+    _slap_kernel1(a, b, N, BLOCK)
+    return b
+
+@slap.jit
+def _slap_kernel1(a, b, N, BLOCK):
+    for i in range(N):  #pragma parallel reduction(b) block(512)
+        b[0] += a[i]
 
 @triton.jit
 def _triton_kernel(a, b, N: tl.constexpr, BLOCK: tl.constexpr):
@@ -33,16 +43,16 @@ def torch_kernel(a, N, BLOCK):
     b = sum(a)
     return b
     
+def test1():
+    for shape in [1024*128, 1024*1024, 10*1024*1024]:
+        N = shape
+        print(f'N: {N}')
+        a = torch.randn(N, device='cuda', dtype=torch.float32)
+        b_ref = torch_kernel(a, N, None)
 
-for shape in [1024*128, 1024*1024, 10*1024*1024]:
-    N = shape
-    print(f'N: {N}')
-    a = torch.randn(N, device='cuda', dtype=torch.float32)
-    b_ref = torch_kernel(a, N, None)
-
-    for f in (torch_kernel, slap_kernel):
-        BLOCK = 128 * 4
-        b = f(a, N, BLOCK)
-        assert(torch.allclose(b, b_ref, atol=1e-2))
-        ms, _, _ = triton.testing.do_bench(lambda: f(a, N, BLOCK))
-        print(f'{f.__name__}: {ms:.4f} ms')
+        for f in (torch_kernel, slap_kernel, slap_kernel1):
+            BLOCK = 128 * 4
+            b = f(a, N, BLOCK)
+            assert(torch.allclose(b, b_ref, atol=1e-2))
+            ms, _, _ = triton.testing.do_bench(lambda: f(a, N, BLOCK))
+            print(f'{f.__name__}: {ms:.4f} ms')
