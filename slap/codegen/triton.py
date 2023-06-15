@@ -23,7 +23,7 @@ class TritonBackend(object):
         self.usedBlockDims = []
         self.var_count = 0
         self.reduction_vars = []
-
+        
 
     def get_constexpr_annotated_args(self):
         newargs = []
@@ -52,7 +52,7 @@ class TritonBackend(object):
             elif type(val) == torch.Tensor:
                 newargs.append(name)
                 for d in range(val.dim()):
-                    newargs.append(f'{name}_stride_{d}')
+                    newargs.append(f'{name}_stride_{d}: tl.constexpr')
             else:
                 newargs.append(name)
         return newargs
@@ -107,9 +107,27 @@ class TritonBackend(object):
             newnode = self.gen_slice(node)
         elif isinstance(node, ast.Call):
             newnode = self.gen_call(node)
+        elif isinstance(node, ast.For):
+            newnode = self.gen_for(node)
         else:
             if not isinstance(node, ast.Comment):
                 assert False, ast.dump(node)
+        return newnode
+
+    def gen_for(self, node: ast.For):
+        newbody = []
+        for child in node.body:
+            newbody.append(self.gen_kernel_node(child))
+        newnode = deepcopy(node)
+        newnode.body = newbody
+        
+        assert newnode.iter.func.id == 'range'
+        range_args = newnode.iter.args
+        newargs = []
+        for arg in range_args:
+            newargs.append(self.gen_kernel_node(arg))
+        newnode.iter.args = newargs
+        
         return newnode
 
     # def gen_kernel_node(self, node):
@@ -128,15 +146,15 @@ class TritonBackend(object):
 
         newnode = deepcopy(node)
         if isinstance(left, ast.Name):
-            newnode.targets[0] = self.gen_kernel_node(left)
+            # In our programming model, storing to a global array must be a subscript 
+            # expression, even if the array has only one element.
             newnode.value = self.gen_kernel_node(right)
             if isinstance(newnode.value, ast.Expr):
                 newnode.value = newnode.value.value
             #print('new assign node')
             #dump(newnode)
         elif isinstance(left, ast.Subscript):
-            newnode = self.gen_subscript(left, value=self.gen_kernel_node(right))
-            
+            newnode = self.gen_subscript(left, value=self.gen_kernel_node(right))            
         else:
             assert False
         return newnode
@@ -183,7 +201,7 @@ class TritonBackend(object):
             # self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
             # self.var_count += 1
             # return varname
-            return to_ast_node(f'tl.load({tensor}+{slice})')
+            return to_ast_node(f'tl.load({tensor}+{slice})').value
         elif isinstance(node.ctx, ast.Store):
             if tensor in self.reduction_vars:
                 # TODO: to add other atomic operations
@@ -206,7 +224,8 @@ class TritonBackend(object):
         else:
             assert False, f'unknown operator: {ast.dump(op)}'
         
-    def gen_call(self, node):
+    def gen_call(self, node: ast.Call):
+        node_s = unparse(node)
         funcname = node.func.id
         stmt = ''
         if funcname == 'range':
@@ -216,14 +235,15 @@ class TritonBackend(object):
                 stmt = f'{start} + tl.arange(0, {step})'
             else:
                 assert False, 'range must be in the form `range(i,i+BLOCK)`'
-        elif funcname in ['sum', 'max', 'min']:
-            
+        elif funcname in ['sum', 'max', 'min']:            
             args = []
             for arg in node.args:
                 args.append(ast.unparse(self.gen_kernel_node(arg)))
-            #print(args)
             stmt = f'tl.{funcname}({",".join(args)}, axis=0)'
-           
+        elif funcname in ['zeros', 'empty']:
+            shape = node.args[0]
+            dtype = re.search(r'dtype=(.*)\)', node_s).groups()[0].replace('torch.', 'tl.')
+            stmt = f'tl.{funcname}([{unparse(shape)}], dtype={dtype})'
         else:
             assert False
         #print(stmt)

@@ -20,4 +20,7 @@ def get_first_noncomment_child(node):
         return c
 
 def to_ast_node(s):
-    return ast.parse(s).body[0]
+    n = ast.parse(s).body[0]
+    # if isinstance(n, ast.Expr):
+    #     n = n.value
+    return n
