@@ -83,6 +83,9 @@ class TritonBackend(object):
 
     def gen_launcher_node(self, node):
         if self.is_parallel_for(node):
+            pragma = node.body[0].value
+            self.record_const_vars(pragma)
+            
             k_params = self.get_kernel_function_parameters()
             k_args = self.get_kernel_function_arguments()
             kf = ast.parse(textwrap.dedent(f'''
@@ -93,8 +96,6 @@ class TritonBackend(object):
             # TODO: need to save `self.kf` if not None, to support multiple kernels 
             self.kf = kf
             self.gen_parallel_for(node)
-
-            # const vars are only known here
 
             grid = f'({",".join(self.usedBlockDims)},)'
             self.append_stmts(self.lf, f'_kernel[{grid}]({",".join(k_args)})')
@@ -304,6 +305,16 @@ class TritonBackend(object):
         m.body += [self.kf, self.lf]
         return ast.unparse(m)
 
+    def record_const_vars(self, pragma):
+        match = re.search(r' const\((.*?)\)', pragma)
+        if match:
+            const_vars = match.groups()[0]
+            print(const_vars)
+            for var in const_vars.split(','):
+                var = var.strip()
+                self.lf_local_vars[var] = True
+                
+
     def gen_parallel_for(self, node: ast.For):
         #dump(node)
         range_args = [x for x in node.iter.args]
@@ -343,14 +354,7 @@ class TritonBackend(object):
                         else:
                             assert False, f'reduction unsupported yet {ast.dump(child)}'
 
-        match = re.search(r' const\((.*?)\)', pragma)
-        if match:
-            const_vars = step = match.groups()[0]
-            print(const_vars)
-            for var in const_vars.split(','):
-                var = var.strip()
-                self.lf_local_vars[var] = True
-                
+        
                         
 
         blockDim = self.allBlockDims.pop(0)

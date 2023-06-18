@@ -3,23 +3,12 @@ import triton
 import slap
 from torch import arange, zeros, empty, sum
 
-@slap.jit
+
 def slap_kernel0(a, b):
     M, K = a.shape
     K, N = b.shape
     c = torch.empty([M, N], device='cuda', dtype=torch.float32)
-    a_rowptrs, a_cols, a_vals = a.crow_indices(), a.col_indices(), a.values()
-    BN = N  
-    #pragma parallel const(M, N, BN)
-    for i in range(M):  
-        #pragma parallel 
-        for j in range(0, N, BN):  
-            acc = zeros(BN, device='cuda', dtype=torch.float32)
-            for ki in range(a_rowptrs[i], a_rowptrs[i+1]):
-                a_ik = a_vals[ki]
-                ks = a_cols[ki]
-                acc += a_ik * b[ks,j:j+BN]
-            c[i,j:j+BN] = acc
+    _slap_kernel0(a.crow_indices(), a.col_indices(), a.values(), b, c, M, K, N, 128)
     return c
 
 @slap.jit
@@ -33,23 +22,24 @@ def _slap_kernel0(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN):
                 acc += a_ik * b[ks,j:j+BN]
             c[i,j:j+BN] = acc
 
-@slap.jit
+
 def slap_kernel(a, b):
     M, K = a.shape
     K, N = b.shape
     c = torch.empty([M, N], device='cuda', dtype=torch.float32)
-    a_rowptrs, a_cols, a_vals = a.crow_indices(), a.col_indices(), a.values()
-    #pragma parallel 
-    for i in range(M):  
-        #pragma parallel block(128)
-        for j in range(N):  
+    _slap_kernel(a.crow_indices(), a.col_indices(), a.values(), b, c, M, K, N)
+    return c
+
+#@slap.jit
+def _slap_kernel(a_rowptrs, a_cols, a_vals, b, c, M, K, N):
+    for i in range(M):  #pragma parallel 
+        for j in range(N):  #pragma parallel block(128)
             acc = 0
             for ki in range(a_rowptrs[i], a_rowptrs[i+1]):
                 a_ik = a_vals[ki]
                 ks = a_cols[ki]
                 acc += a_ik * b[ks,j]
             c[i,j] = acc
-    return c
 
 
 def torch_kernel(a, b):
@@ -73,3 +63,6 @@ def test1():
             assert(torch.allclose(c, c_ref, atol=1e-2))
             ms, _, _ = triton.testing.do_bench(lambda: f(a, b))
             print(f'{f.__name__}: {ms:.4f} ms')
+
+if __name__ == '__main__':
+    test1()
