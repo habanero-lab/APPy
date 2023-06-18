@@ -10,11 +10,11 @@ python setup.py develop
 # Clauses
 A clause starts with `#pragma`:
 - `parallel`
-  - Indicate different iterations of the loop can run in parallel.
+  - Indicate different iterations of the loop can be executed by parallel thread blocks in a grid.
+- `block`
+  - Indicate adjacent loop iterations can be executed by parallel threads in a thread block.
 - `reduction(var)`
   - Indicate a reduction pattern on variable `var`. 
-- `block(size)`
-  - Indicate adjacent loop iterations are executed in blocks of `size`.
 
 # Element-Wise Operation
 ```python

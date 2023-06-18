@@ -23,7 +23,7 @@ class TritonBackend(object):
         self.usedBlockDims = []
         self.var_count = 0
         self.reduction_vars = []
-        
+        self.lf_local_vars = {}
 
     def get_constexpr_annotated_args(self):
         newargs = []
@@ -55,6 +55,12 @@ class TritonBackend(object):
                     newargs.append(f'{name}_stride_{d}: tl.constexpr')
             else:
                 newargs.append(name)
+
+        for var, is_const in self.lf_local_vars.items():
+            if is_const:
+                newargs.append(var+': tl.constexpr')
+            else:
+                newargs.append(var)
         return newargs
 
     def get_kernel_function_arguments(self):
@@ -66,6 +72,9 @@ class TritonBackend(object):
                     newargs.append(f'{name}.stride({d})')
             else:
                 newargs.append(name)
+
+        for var, is_const in self.lf_local_vars.items():
+            newargs.append(var)
         return newargs
 
     def gen_launcher_node(self, node):
@@ -85,6 +94,13 @@ class TritonBackend(object):
             self.append_stmts(self.lf, f'_kernel[{grid}]({",".join(k_args)})')
 
         else:
+            if isinstance(node, ast.Assign):
+                for var in node.targets:
+                    if isinstance(var, ast.Name):
+                        self.lf_local_vars[var.id] = False
+                    
+                        if isinstance(node.value, ast.Constant) or '.shape' in unparse(node.value):
+                            self.lf_local_vars[var.id] = True
             stmts = ast.unparse(node)
             self.append_stmts(self.lf, stmts)
         
