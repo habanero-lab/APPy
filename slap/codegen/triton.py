@@ -50,6 +50,8 @@ class TritonBackend(object):
             if type(val) == int:
                 newargs.append(name+': tl.constexpr')
             elif type(val) == torch.Tensor:
+                if val.layout != torch.strided:
+                    continue
                 newargs.append(name)
                 for d in range(val.dim()):
                     newargs.append(f'{name}_stride_{d}: tl.constexpr')
@@ -67,6 +69,8 @@ class TritonBackend(object):
         newargs = []
         for name, val in zip(self.arg_names, self.arg_values):
             if type(val) == torch.Tensor:
+                if val.layout != torch.strided:
+                    continue
                 newargs.append(name)
                 for d in range(val.dim()):
                     newargs.append(f'{name}.stride({d})')
@@ -90,17 +94,28 @@ class TritonBackend(object):
             self.kf = kf
             self.gen_parallel_for(node)
 
+            # const vars are only known here
+
             grid = f'({",".join(self.usedBlockDims)},)'
             self.append_stmts(self.lf, f'_kernel[{grid}]({",".join(k_args)})')
 
         else:
             if isinstance(node, ast.Assign):
-                for var in node.targets:
-                    if isinstance(var, ast.Name):
-                        self.lf_local_vars[var.id] = False
+                dump(node)
+                assert len(node.targets) == 1
+                target = node.targets[0]
+                assert isinstance(target, ast.Name) or target.__class__.__name__ == 'Tuple', ast.dump(target)
+                
+                vars = []
+                if isinstance(target, ast.Name):
+                    vars.append(target.id)
+                elif target.__class__.__name__ == 'Tuple':
+                    for e in target.elts:
+                        vars.append(e.id)
+
+                for var in vars:
+                    self.lf_local_vars[var] = False
                     
-                        if isinstance(node.value, ast.Constant) or '.shape' in unparse(node.value):
-                            self.lf_local_vars[var.id] = True
             stmts = ast.unparse(node)
             self.append_stmts(self.lf, stmts)
         
@@ -315,7 +330,6 @@ class TritonBackend(object):
 
         match = re.search(r' block\((.*?)\)', pragma)
         if match:
-            # TODO: to insert a range statement in the beginning of the loop
             step = match.groups()[0]
             newnode = to_ast_node(f'{loop_index} = range({loop_index}, {loop_index}+{step})')
             node.body.insert(1, newnode)
@@ -328,6 +342,15 @@ class TritonBackend(object):
                             child.value = to_ast_node(f'sum({unparse(right)})').value
                         else:
                             assert False, f'reduction unsupported yet {ast.dump(child)}'
+
+        match = re.search(r' const\((.*?)\)', pragma)
+        if match:
+            const_vars = step = match.groups()[0]
+            print(const_vars)
+            for var in const_vars.split(','):
+                var = var.strip()
+                self.lf_local_vars[var] = True
+                
                         
 
         blockDim = self.allBlockDims.pop(0)

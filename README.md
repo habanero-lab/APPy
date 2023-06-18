@@ -10,9 +10,9 @@ python setup.py develop
 # Clauses
 A clause starts with `#pragma`:
 - `parallel`
-  - Indicate different iterations of the loop can be executed by parallel thread blocks in a grid.
+  - Indicate different iterations of the loop can run in parallel in SPMD style.
 - `block`
-  - Indicate adjacent loop iterations can be executed by parallel threads in a thread block.
+  - To block the loop, for SIMD parallelism or data reuse.
 - `reduction(var)`
   - Indicate a reduction pattern on variable `var`. 
 

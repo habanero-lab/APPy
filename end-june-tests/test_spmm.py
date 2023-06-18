@@ -3,11 +3,23 @@ import triton
 import slap
 from torch import arange, zeros, empty, sum
 
+@slap.jit
 def slap_kernel0(a, b):
     M, K = a.shape
     K, N = b.shape
     c = torch.empty([M, N], device='cuda', dtype=torch.float32)
-    _slap_kernel0(a.crow_indices(), a.col_indices(), a.values(), b, c, M, K, N, 128)
+    a_rowptrs, a_cols, a_vals = a.crow_indices(), a.col_indices(), a.values()
+    BN = N  
+    #pragma parallel const(M, N, BN)
+    for i in range(M):  
+        #pragma parallel 
+        for j in range(0, N, BN):  
+            acc = zeros(BN, device='cuda', dtype=torch.float32)
+            for ki in range(a_rowptrs[i], a_rowptrs[i+1]):
+                a_ik = a_vals[ki]
+                ks = a_cols[ki]
+                acc += a_ik * b[ks,j:j+BN]
+            c[i,j:j+BN] = acc
     return c
 
 @slap.jit
@@ -21,23 +33,24 @@ def _slap_kernel0(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN):
                 acc += a_ik * b[ks,j:j+BN]
             c[i,j:j+BN] = acc
 
+@slap.jit
 def slap_kernel(a, b):
     M, K = a.shape
     K, N = b.shape
     c = torch.empty([M, N], device='cuda', dtype=torch.float32)
-    _slap_kernel(a.crow_indices(), a.col_indices(), a.values(), b, c, M, K, N)
-    return c
-
-#@slap.jit
-def _slap_kernel(a_rowptrs, a_cols, a_vals, b, c, M, K, N):
-    for i in range(M):  #pragma parallel 
-        for j in range(N):  #pragma parallel block(128)
+    a_rowptrs, a_cols, a_vals = a.crow_indices(), a.col_indices(), a.values()
+    #pragma parallel 
+    for i in range(M):  
+        #pragma parallel block(128)
+        for j in range(N):  
             acc = 0
             for ki in range(a_rowptrs[i], a_rowptrs[i+1]):
                 a_ik = a_vals[ki]
                 ks = a_cols[ki]
                 acc += a_ik * b[ks,j]
             c[i,j] = acc
+    return c
+
 
 def torch_kernel(a, b):
     return torch.mm(a, b)
