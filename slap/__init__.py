@@ -1,5 +1,6 @@
 from torch import arange
 from .jit import jit
+from .config import configs
 
 parallel = None
 shared = None

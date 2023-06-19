@@ -7,14 +7,16 @@ import ast_comments as ast
 import importlib.util
 from pathlib import Path
 from slap.codegen.triton import TritonBackend
+import slap.config as config
 
 compiled = {}
 
-def compile(fn, args, dump_code=True, verbose=False):
+def compile(fn, args, dump_code=0, verbose=False):
     if verbose:
         print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
     src = inspect.getsource(fn)
     src = preprocess(src)
+    src = constant_prop(src, get_arg_names(src), args)
     tree = ast.parse(src)
     
     backend = TritonBackend(tree, args)
@@ -30,7 +32,9 @@ def compile(fn, args, dump_code=True, verbose=False):
     spec.loader.exec_module(foo)
     if verbose:
         print("[jit] Done compiling")
-    return foo.kernel
+    compiled = foo.kernel
+    
+    return compiled
 
 def preprocess(src):
     lines = src.split('\n')
@@ -70,26 +74,47 @@ def constant_prop(src, arg_names, arg_values):
         if not isinstance(value, torch.Tensor):
             continue
 
-        for dim in range(len(value.shape)):
-            src = src.replace(f'{arg}.shape[{dim}]', str(value.shape[dim]))
+        src = src.replace(f'{arg}.dtype', str(value.dtype))
+
+        # for dim in range(len(value.shape)):
+        #     src = src.replace(f'{arg}.shape[{dim}]', str(value.shape[dim]))
     return src
+
+def get_type_sig(*args):
+    sigs = []
+    for arg in args:
+        if isinstance(arg, torch.Tensor):
+            sigs.append(f'<{arg.dtype}*{arg.dim()}>')
+        else:
+            sigs.append(f'{type(arg)}')
+    return ','.join(sigs)
         
 def _jit(fn):
-    def slap_kernel(*args):
-        if fn not in compiled:
-            compiled[fn] = compile(fn, args)
-        return compiled[fn](*args)
-    return slap_kernel
+    def inner(*args):
+        key = f'{fn}+{get_type_sig(*args)}'
+        
+        if key not in compiled:
+            compiled[key] = compile(fn, args)
+        return compiled[key](*args)
+    inner.__name__ = fn.__name__  
+    return inner
 
-def jit(fn=None, dump_code=False, verbose=False):
+def jit(fn=None, dump_code=None, verbose=None):
     if fn:
         return _jit(fn)
     else:
+        # if dump_code != None:
+        #     config.configs['dump_code'] = dump_code
+        # if verbose != None:
+        #     config.configs['verbose'] = verbose
+            
         #print('return arg version')
         def jit_with_args(fn1):
-            def slap_kernel(*args):
-                if fn1 not in compiled:
-                    compiled[fn1] = compile(fn1, args, dump_code=dump_code, verbose=verbose)
-                return compiled[fn1](*args)
-            return slap_kernel
+            def inner(*args):
+                key = f'{fn}+{get_type_sig(*args)}'
+                if key not in compiled:
+                    compiled[key] = compile(fn1, args, dump_code=dump_code, verbose=verbose)
+                return compiled[key](*args)
+            inner.__name__ = fn.__name__  
+            return inner
         return jit_with_args
