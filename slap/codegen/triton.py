@@ -28,7 +28,7 @@ class TritonBackend(object):
     def get_constexpr_annotated_args(self):
         newargs = []
         for i, a in enumerate(self.arg_names):
-            if self.arg_types[i] == int:
+            if self.arg_types[i] in (int, torch.dtype):
                 newargs.append(a+': tl.constexpr')
             else:
                 newargs.append(a)
@@ -47,7 +47,7 @@ class TritonBackend(object):
     def get_kernel_function_parameters(self):
         newargs = []
         for name, val in zip(self.arg_names, self.arg_values):
-            if type(val) == int:
+            if type(val) in (int, torch.dtype):
                 newargs.append(name+': tl.constexpr')
             elif type(val) == torch.Tensor:
                 if val.layout != torch.strided:
@@ -74,6 +74,8 @@ class TritonBackend(object):
                 newargs.append(name)
                 for d in range(val.dim()):
                     newargs.append(f'{name}.stride({d})')
+            elif type(val) == torch.dtype:
+                newargs.append(str(val).replace('torch.', 'tl.'))
             else:
                 newargs.append(name)
 
