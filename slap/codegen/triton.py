@@ -13,7 +13,10 @@ class TritonBackend(object):
             if isinstance(node, ast.FunctionDef):
                 self.func = node
                 break
-        self.arg_values = arg_values
+        self.arg_values = list(arg_values)
+        for keyword_arg in self.func.args.defaults:
+            assert isinstance(keyword_arg, ast.Constant)
+            self.arg_values.append(keyword_arg.value)
         self.launcher_code = ''
         self.kernel_code = ''
         self.include_code = textwrap.dedent('''
@@ -67,6 +70,8 @@ class TritonBackend(object):
                 newargs.append(var+': tl.constexpr')
             else:
                 newargs.append(var)
+        #print(newargs)
+        #exit(1)
         return newargs
 
     def get_kernel_function_arguments(self):
@@ -300,15 +305,13 @@ class TritonBackend(object):
         return to_ast_node(stmt)
 
     def codegen(self):
-        lf = ast.parse(textwrap.dedent(f'''
-            def kernel({', '.join(self.arg_names)}):
-                pass
-        ''')).body[0]
-
-       
+        # lf = ast.parse(textwrap.dedent(f'''
+        #     def kernel({', '.join(self.arg_names)}):
+        #         pass
+        # ''')).body[0]
+        lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
         self.lf = lf
         
-
         for node in self.func.body:
             self.gen_launcher_node(node)
             

@@ -67,7 +67,7 @@ def get_arg_names(src):
     args_str = result.groups()[0]
     items = list(map(lambda x: x.strip(), args_str.split(',')))
     items = list(filter(lambda x: '=' not in x, items))
-    print(items)
+    
     return items
     
 
