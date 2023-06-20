@@ -23,7 +23,7 @@ def compile(fn, args, dump_code=0, verbose=False):
     module = backend.codegen()
     if dump_code:
         print(module)
-    
+    exit(1)
     fn = 'slap_kernel.py'
     Path(fn).write_text(module)
     spec = importlib.util.spec_from_file_location("module.name", fn)

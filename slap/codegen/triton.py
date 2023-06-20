@@ -222,6 +222,7 @@ class TritonBackend(object):
         if node.slice.__class__.__name__ == 'Tuple':
             terms = []
             for i,e in enumerate(node.slice.elts):
+                dump(e)
                 if i == len(node.slice.elts) - 1:  # stride would be 1
                     terms.append(ast.unparse(self.gen_kernel_node(e)))
                 else:
@@ -229,7 +230,7 @@ class TritonBackend(object):
             slice = ' + '.join(terms)
         else:
             slice = ast.unparse(self.gen_kernel_node(node.slice))
-    
+        
         if isinstance(node.ctx, ast.Load):    
             # varname = f'_t{self.var_count}'
             # self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
