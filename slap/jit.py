@@ -23,9 +23,10 @@ def compile(fn, args, dump_code=0, verbose=False):
     module = backend.codegen()
     if dump_code:
         print(module)
-    exit(1)
     fn = 'slap_kernel.py'
     Path(fn).write_text(module)
+    os.system(f'black {fn}')
+    
     spec = importlib.util.spec_from_file_location("module.name", fn)
     foo = importlib.util.module_from_spec(spec)
     sys.modules["module.name"] = foo
@@ -65,6 +66,8 @@ def get_arg_names(src):
     result = re.search(r'\((.*)\)', defline)
     args_str = result.groups()[0]
     items = list(map(lambda x: x.strip(), args_str.split(',')))
+    items = list(filter(lambda x: '=' not in x, items))
+    print(items)
     return items
     
 

@@ -11,6 +11,8 @@ def get_func_name(tree):
 
 def get_arg_names(func):
     args = [x.arg for x in func.args.args]
+    dump(func)
+    exit(1)
     return args
 
 def get_first_noncomment_child(node):

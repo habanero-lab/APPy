@@ -9,7 +9,10 @@ from slap.ast_utils import dump, dump_code, get_arg_names, get_first_noncomment_
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values):
-        self.func = ast_tree.body[0]
+        for node in ast_tree.body:
+            if isinstance(node, ast.FunctionDef):
+                self.func = node
+                break
         self.arg_values = arg_values
         self.launcher_code = ''
         self.kernel_code = ''
@@ -17,6 +20,7 @@ class TritonBackend(object):
             import triton
             import triton.language as tl
         ''')
+        
         self.arg_names = get_arg_names(self.func)
         self.arg_types = [type(x) for x in arg_values]
         self.allBlockDims = ['x', 'y', 'z']
@@ -104,7 +108,7 @@ class TritonBackend(object):
 
         else:
             if isinstance(node, ast.Assign):
-                dump(node)
+                #dump(node)
                 assert len(node.targets) == 1
                 target = node.targets[0]
                 assert isinstance(target, ast.Name) or target.__class__.__name__ == 'Tuple', ast.dump(target)
@@ -222,15 +226,18 @@ class TritonBackend(object):
         if node.slice.__class__.__name__ == 'Tuple':
             terms = []
             for i,e in enumerate(node.slice.elts):
-                dump(e)
                 if i == len(node.slice.elts) - 1:  # stride would be 1
                     terms.append(ast.unparse(self.gen_kernel_node(e)))
                 else:
-                    terms.append(f'({ast.unparse(self.gen_kernel_node(e))}) * {tensor}_stride_{i}')
+                    es = ast.unparse(self.gen_kernel_node(e))
+                    if isinstance(e, ast.Slice):
+                        terms.append(f'(({es}) * {tensor}_stride_{i})[:,None]') 
+                    else:
+                        terms.append(f'({es}) * {tensor}_stride_{i}')
             slice = ' + '.join(terms)
         else:
             slice = ast.unparse(self.gen_kernel_node(node.slice))
-        
+
         if isinstance(node.ctx, ast.Load):    
             # varname = f'_t{self.var_count}'
             # self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
@@ -270,11 +277,19 @@ class TritonBackend(object):
                 stmt = f'{start} + tl.arange(0, {step})'
             else:
                 assert False, 'range must be in the form `range(i,i+BLOCK)`'
-        elif funcname in ['sum', 'max', 'min']:            
+        elif funcname in ['sum', 'max', 'min']: 
             args = []
             for arg in node.args:
-                args.append(ast.unparse(self.gen_kernel_node(arg)))
-            stmt = f'tl.{funcname}({",".join(args)}, axis=0)'
+                args.append(ast.unparse(self.gen_kernel_node(arg)))              
+            keyword_args = []
+            for keyword in node.keywords:
+                arg, value = keyword.arg, keyword.value.value
+                args.append(f'{arg}={value}')
+                keyword_args.append(arg)
+            if 'axis' not in keyword_args:
+                args.append(f'axis=0')
+            
+            stmt = f'tl.{funcname}({",".join(args)})'
         elif funcname in ['zeros', 'empty']:
             shape = node.args[0]
             dtype = re.search(r'dtype=(.*)\)', node_s).groups()[0].replace('torch.', 'tl.')
