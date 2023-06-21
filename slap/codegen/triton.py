@@ -225,7 +225,10 @@ class TritonBackend(object):
         return to_ast_node(s)
 
     def gen_subscript(self, node: ast.Subscript, value=None):
-        dump(node)
+       
+        if unparse(node.slice) in ['(None, :)', '(:, None)']:
+            return ast.Subscript(value=self.gen_kernel_node(node.value), slice=node.slice)
+
         tensor = node.value.id
         
         #if isinstance(node.slice, ast.Tuple):  # Strangely this does not work
@@ -317,8 +320,13 @@ class TritonBackend(object):
             stmt = f'tl.{funcname}({",".join(args)})'
         elif funcname in ['zeros', 'empty']:
             shape = node.args[0]
+            if shape.__class__.__name__ in ['List', 'Tuple']:
+                shape_arg = unparse(shape)
+            else:
+                shape_arg = f'[{unparse(shape)}]'
+            
             dtype = re.search(r'dtype=(.*)\)', node_s).groups()[0].replace('torch.', 'tl.')
-            stmt = f'tl.{funcname}([{unparse(shape)}], dtype={dtype})'
+            stmt = f'tl.{funcname}({shape_arg}, dtype={dtype})'
         else:
             assert False
         #print(stmt)

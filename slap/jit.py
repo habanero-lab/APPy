@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import subprocess
 import torch
 import inspect
 import ast_comments as ast
@@ -25,7 +26,7 @@ def compile(fn, args, dump_code=0, verbose=False):
         print(module)
     fn = 'slap_kernel.py'
     Path(fn).write_text(module)
-    os.system(f'black {fn}')
+    subprocess.run(['black', fn], capture_output=True, text=True)
     
     spec = importlib.util.spec_from_file_location("module.name", fn)
     foo = importlib.util.module_from_spec(spec)
