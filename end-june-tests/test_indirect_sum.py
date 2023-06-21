@@ -46,3 +46,5 @@ def test1():
             ms, _, _ = triton.testing.do_bench(lambda: f(X, labels, centers, M, N, BLOCK))
             print(f'{f.__name__}: {ms:.4f} ms')
             
+if __name__ == '__main__':
+    test1()

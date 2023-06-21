@@ -33,7 +33,7 @@ def test1():
                 assert(torch.allclose(c, c_ref, atol=10, rtol=0.1))
                 ms, _, _ = triton.testing.do_bench(lambda: f(a, b, c, M, N))
                 print(f'{f.__name__}: {ms:.4f} ms')
-            exit(1)
+            #exit(1)
 
 if __name__ == '__main__':
     test1()

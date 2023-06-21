@@ -225,20 +225,40 @@ class TritonBackend(object):
         return to_ast_node(s)
 
     def gen_subscript(self, node: ast.Subscript, value=None):
+        dump(node)
         tensor = node.value.id
         
         #if isinstance(node.slice, ast.Tuple):  # Strangely this does not work
         if node.slice.__class__.__name__ == 'Tuple':
-            terms = []
+            all_2d = True
             for i,e in enumerate(node.slice.elts):
-                if i == len(node.slice.elts) - 1:  # stride would be 1
-                    terms.append(ast.unparse(self.gen_kernel_node(e)))
-                else:
-                    es = ast.unparse(self.gen_kernel_node(e))
-                    if isinstance(e, ast.Slice):
-                        terms.append(f'(({es}) * {tensor}_stride_{i})[:,None]') 
-                    else:
-                        terms.append(f'({es}) * {tensor}_stride_{i}')
+                if not isinstance(e, ast.Slice):
+                    all_2d = False
+
+            terms = []
+            
+            shape_broadcasts = []
+            ndim = len(node.slice.elts)
+            if ndim == 1:
+                shape_broadcasts.append('')
+            else:
+                for i in range(ndim):
+                    slices = []
+                    for _ in range(i):
+                        slices.append('None')
+                    slices.append(':')
+                    for _ in range(i+1, ndim):
+                        slices.append('None')
+                    shape_broadcasts.append(f'[{",".join(slices)}]')
+                
+            for i,e in enumerate(node.slice.elts):
+                term_str = ast.unparse(self.gen_kernel_node(e))
+                if i != len(node.slice.elts) - 1:
+                    term_str = f'({term_str}) * {tensor}_stride_{i}'
+                if all_2d:
+                    term_str = f'({term_str}){shape_broadcasts[i]}'
+                terms.append(term_str)
+                    
             slice = ' + '.join(terms)
         else:
             slice = ast.unparse(self.gen_kernel_node(node.slice))
