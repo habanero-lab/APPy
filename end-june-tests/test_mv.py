@@ -8,14 +8,9 @@ from torch import arange, zeros, empty, sum
 def slap_kernel(a, b, c, M, N):
     for i in range(M):  #pragma parallel
         c[i] = sum(a[i,:N] * b[:N])
-        
-@slap.jit  
-def slap_kernel1(a, b, c, M, N, BM=8):
-    for i in range(0, M, BM):  #pragma parallel
-        c[i:i+BM] = sum(a[i:i+BM,:N] * b[:N][None,:], axis=1)
 
 @slap.jit
-def slap_kernel2(a, b, c, M, N, BN=256):
+def slap_kernel1(a, b, c, M, N, BN=256):
     for i in range(M):  #pragma parallel
         acc = zeros([BN], device=a.device, dtype=a.dtype)
         for j in range(0, N, BN):
@@ -23,7 +18,7 @@ def slap_kernel2(a, b, c, M, N, BN=256):
         c[i] = sum(acc)
 
 @slap.jit
-def slap_kernel3(a, b, c, M, N, BM=8, BN=256):
+def slap_kernel2(a, b, c, M, N, BM=8, BN=256):
     for i in range(0, M, BM):  #pragma parallel
         acc = zeros([BM, BN], device=a.device, dtype=a.dtype)
         for j in range(0, N, BN):
@@ -34,8 +29,8 @@ def torch_kernel(a, b, c, M, N):
     torch.mv(a, b, out=c)
     
 def test1():
-    #for dtype in [torch.float16, torch.float32, torch.float64]:
-    for dtype in [torch.float64]:
+    for dtype in [torch.float16, torch.float32, torch.float64]:
+    #for dtype in [torch.float64]:
         for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4), (4096*8, 4096*8)]:
             print(f'M: {M}, N: {N}')
             a = torch.randn(M, N, device='cuda', dtype=dtype)
@@ -44,7 +39,7 @@ def test1():
             c_ref = torch.randn(M, device='cuda', dtype=dtype)
             torch_kernel(a, b, c_ref, M, N)
 
-            for f in (torch_kernel, slap_kernel, slap_kernel1, slap_kernel2, slap_kernel3):
+            for f in (torch_kernel, slap_kernel, slap_kernel1, slap_kernel2):
                 BLOCK = None
                 f(a, b, c, M, N)
                 assert(torch.allclose(c, c_ref, atol=10, rtol=0.1))

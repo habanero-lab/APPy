@@ -5,7 +5,7 @@ import textwrap
 from copy import deepcopy
 import ast_comments as ast
 from ast import unparse
-from slap.ast_utils import dump, dump_code, get_arg_names, get_first_noncomment_child, to_ast_node
+from slap.ast_utils import dump, dump_code, get_arg_names, new_call_node, to_ast_node
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values):
@@ -206,7 +206,12 @@ class TritonBackend(object):
     def gen_binOp(self, node):
         left = self.gen_kernel_node(node.left)
         right = self.gen_kernel_node(node.right)
-        newnode = ast.BinOp(op=node.op, left=left, right=right)
+
+        if isinstance(node.op, ast.MatMult):
+            s = f'tl.dot({unparse(left)}, {unparse(right)})'
+            newnode = to_ast_node(s)
+        else:
+            newnode = ast.BinOp(op=node.op, left=left, right=right)
         return newnode
 
     def gen_slice(self, node: ast.Slice):
