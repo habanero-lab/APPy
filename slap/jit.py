@@ -8,7 +8,7 @@ import ast_comments as ast
 import importlib.util
 from pathlib import Path
 from slap.codegen.triton import TritonBackend
-import slap.config as config
+#import slap.config as config
 
 compiled = {}
 
