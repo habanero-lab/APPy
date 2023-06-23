@@ -31,6 +31,7 @@ class TritonBackend(object):
         self.var_count = 0
         self.reduction_vars = []
         self.lf_local_vars = {}
+        self.range_vars = {}
 
     def get_constexpr_annotated_args(self):
         newargs = []
@@ -191,11 +192,15 @@ class TritonBackend(object):
         if isinstance(left, ast.Name):
             # In our programming model, storing to a global array must be a subscript 
             # expression, even if the array has only one element.
-            newnode.value = self.gen_kernel_node(right)
-            if isinstance(newnode.value, ast.Expr):
-                newnode.value = newnode.value.value
-            #print('new assign node')
-            #dump(newnode)
+            rightnode = self.gen_kernel_node(right)
+            if isinstance(rightnode, ast.Expr):
+                newnode.value = rightnode.value
+            else:
+                newnode.value = rightnode
+
+            if isinstance(node.value, ast.Call) and node.value.func == 'range':
+                self.range_vars[left.id] = {}
+                
         elif isinstance(left, ast.Subscript):
             newnode = self.gen_subscript(left, value=self.gen_kernel_node(right))            
         else:
