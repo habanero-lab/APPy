@@ -33,6 +33,8 @@ class TritonBackend(object):
         self.reduction_vars = []
         self.lf_local_vars = {}
         self.range_vars = {}
+        self.index_block_sizes = {}
+        self.index_bounds = {}
 
     def get_arg_value(self, arg_name):
         for name, value in zip(self.arg_names, self.arg_values):
@@ -416,7 +418,7 @@ class TritonBackend(object):
         match = re.search(r' block\((.*?)\)', pragma)
         if match:
             step = match.groups()[0]
-
+            self.index_block_sizes[loop_index] = step
             newnode = to_ast_node(f'{loop_index} = range({loop_index}, {loop_index}+{step})')
             node.body.insert(1, newnode)
 

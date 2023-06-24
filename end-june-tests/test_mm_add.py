@@ -5,7 +5,7 @@ import slap
 from torch import arange, zeros, empty, sum
 
 @slap.jit
-def slap_kernel(a, b, d, c, M, N, K, BM=32, BN=32, BK=32):
+def slap_kernel(a, b, d, c, M, N, K, BM=64, BN=64, BK=32):
     for i in range(0, M, BM):  #pragma parallel
         for j in range(0, N, BN):  #pragma parallel
             acc = zeros([BM, BN], device=a.device, dtype=torch.float32)
@@ -20,7 +20,7 @@ def torch_kernel(a, b, d, c, M, N, K):
     
 def test1():
     #for dtype in [torch.float32]:
-    for dtype in [torch.float16, torch.float32, torch.float64]:
+    for dtype in [torch.float16, torch.float32]:
         for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4)]:
             K = 64
             print(f'M: {M}, N: {N}, K: {K}')

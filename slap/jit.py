@@ -25,7 +25,7 @@ def compile(fn, args, dump_code=0, verbose=False):
     module = backend.codegen()
     if dump_code:
         print(module)
-    filename = f'/tmp/appyl/{fn}.py'
+    filename = f'/tmp/appyl/{fn.__name__}.py'
     Path(filename).write_text(module)
     subprocess.run(['black', filename], capture_output=True, text=True)
     
