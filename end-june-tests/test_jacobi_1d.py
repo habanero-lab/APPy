@@ -11,9 +11,8 @@ def slap_kernel(a, N):
 
 @slap.jit
 def _slap_kernel(a, b, N, BLOCK=512):
-    for i in range(1, N-1, BLOCK):  #pragma parallel
-        i = range(i, i+BLOCK)
-        b[i-1] = (a[i-1] + a[i] + a[i+1]) / 3
+    for i in range(0, N-2):  #pragma parallel block(BLOCK)
+        b[i] = (a[i] + a[i+1] + a[i+2]) / 3
 
 def torch_kernel(a, N):
     b = (a[0:N-2] + a[1:N-1] + a[2:N]) / 3

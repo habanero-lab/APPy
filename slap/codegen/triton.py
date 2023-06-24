@@ -394,10 +394,10 @@ class TritonBackend(object):
         #print(range_args)
         start, end, step = '0', '', '1'
         if len(range_args) == 1:
-            end = range_args[0].id
+            end = ast.unparse(self.gen_kernel_node(range_args[0]))
         elif len(range_args) == 2:
-            start = range_args[0].value
-            end = range_args[1].id
+            start = ast.unparse(self.gen_kernel_node(range_args[0]))
+            end = ast.unparse(self.gen_kernel_node(range_args[1]))
         elif len(range_args) == 3:
             start = ast.unparse(self.gen_kernel_node(range_args[0]))
             end = ast.unparse(self.gen_kernel_node(range_args[1]))
