@@ -1,4 +1,4 @@
-Sequential Loops with Annotated Parallelism (SLAP) is parallel programming model that allows you to parallelize your sequential loops with annotations in the comments.
+Annotated Parallelism for Python Loops (APPyL) is parallel programming model that allows you to parallelize your sequential loops with annotations in the comments.
 
 
 # Install
@@ -13,12 +13,15 @@ A clause starts with `#pragma`:
   - Indicate different iterations of the loop can run in parallel in SPMD style.
 - `block`
   - To block the loop, for SIMD parallelism or data reuse.
+  - Two conditions to block a loop
+    - Adjacent loop iterations apply the same operation (to different data)
+    - Adjacent loop iterations reuse the same data
 - `reduction(var)`
   - Indicate a reduction pattern on variable `var`. 
 
 # Element-Wise Operation
 ```python
-@slap.jit()
+@jit
 def add(a, b, c, BLOCK):
     for i in range(0, a.shape[0], BLOCK):  #pragma parallel
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
@@ -27,7 +30,7 @@ def add(a, b, c, BLOCK):
 In addition to manually block an index, one can also specify which loop to block in the pragma, with a block size parameter (e.g.`auto` indicates auto-chosen by the compiler). 
 
 ```python
-@slap.jit()
+@jit
 def add(a, b, c):
     for i in range(a.shape[0]):  #pragma parallel block(auto)
         c[i] = a[i] + b[i]
@@ -36,7 +39,7 @@ def add(a, b, c):
 # Grid Reduction
 
 ```python
-@slap.jit()
+@jit
 def kernel(a, b, BLOCK):
     b[0] = 0
     for i in range(0, a.shape[0], BLOCK):  #pragma parallel reduction(+:b)
@@ -45,7 +48,7 @@ def kernel(a, b, BLOCK):
 
 Or
 ```python
-@slap.jit()
+@jit
 def kernel(a, b):
     b[0] = 0
     for i in range(a.shape[0]):  #pragma parallel block(auto) reduction(+:b)
@@ -55,7 +58,7 @@ def kernel(a, b):
 # Indirect Reduction
 
 ```python
-@slap.jit()
+@jit
 def kernel(x, labels, centers):
     for i in range(x.shape[0]):  #pragma parallel reduction(+:centers) 
         for j in range(0, x.shape[1], Bj):  #pragma parallel
@@ -65,7 +68,7 @@ def kernel(x, labels, centers):
 
 Or 
 ```python
-@slap.jit()
+@jit
 def kernel(x, labels, centers):
     for i in range(x.shape[0]):  #pragma parallel reduction(+:centers)
         for j in range(x.shape[1]):  #pragma parallel block(auto)
@@ -77,7 +80,7 @@ def kernel(x, labels, centers):
 
 An blocked matrix multiplication implementation can be expressed as:
 ```python
-@slap.jit()
+@jit
 def matmul(a, b, c, Bi, Bj, Bk):
     for i in range(0, a.shape[0], Bi):  #pragma parallel
         for j in range(0, b.shape[-1], Bj):  #pragma parallel
@@ -91,7 +94,7 @@ When `k` dimension is relatively large, the following kernel reduces `k` in para
 ```python
 import slap
 
-@slap.jit()
+@jit
 def matmul(a, b, c, Bi, Bj, Bk):
     # The first kernel launch
     for i in range(0, a.shape[0], Bi):  #pragma parallel
@@ -109,7 +112,7 @@ def matmul(a, b, c, Bi, Bj, Bk):
 Batched matmul is as easy as adding one extra outer loop and some minor changes:
 
 ```python
-@slap.jit()
+@jit
 def batched_matmul(a, b, c, Bi, Bj, Bk):
     for z in range(a.shape[0]):  #pragma parallel
         for i in range(0, a.shape[1], Bi):  #pragma parallel
@@ -122,7 +125,7 @@ def batched_matmul(a, b, c, Bi, Bj, Bk):
 
 # Sparse-Dense Matrix Multiplication
 ```python
-@slap.jit()
+@jit
 def kernel(a_rowptrs, a_cols, a_vals, b, c, BLOCK):
     for i in range(a.shape[0]):  #pragma parallel
         for j in range(0, b.shape[1], BLOCK):  #pragma parallel 
@@ -134,7 +137,7 @@ def kernel(a_rowptrs, a_cols, a_vals, b, c, BLOCK):
 
 Or
 ```python
-@slap.jit()
+@jit
 def kernel(a_rowptrs, a_cols, a_vals, b, c):
     for i in range(a.shape[0]):  #pragma parallel
         for j in range(b.shape[1]):  #pragma parallel block(auto)

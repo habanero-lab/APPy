@@ -5,6 +5,7 @@ import textwrap
 from copy import deepcopy
 import ast_comments as ast
 from ast import unparse
+from typesys import Tensor
 from slap.ast_utils import dump, dump_code, get_arg_names, new_call_node, to_ast_node
 
 class TritonBackend(object):
@@ -313,6 +314,7 @@ class TritonBackend(object):
             if isinstance(node.args[1], ast.BinOp):
                 step = ast.unparse(self.gen_kernel_node(node.args[1].right))
                 stmt = f'{start} + tl.arange(0, {step})'
+                node_type = Tensor(torch.int32, 1, shape=[int(step)])
             else:
                 assert False, 'range must be in the form `range(i,i+BLOCK)`'
         elif funcname in ['sum', 'max', 'min']: 
