@@ -5,8 +5,8 @@ import textwrap
 from copy import deepcopy
 import ast_comments as ast
 from ast import unparse
-from typesys import Tensor
-from slap.ast_utils import dump, dump_code, get_arg_names, new_call_node, to_ast_node
+from .typesys import Tensor
+from ..ast_utils import dump, dump_code, get_arg_names, new_call_node, to_ast_node
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values):
@@ -33,6 +33,12 @@ class TritonBackend(object):
         self.reduction_vars = []
         self.lf_local_vars = {}
         self.range_vars = {}
+
+    def get_arg_value(self, arg_name):
+        for name, value in zip(self.arg_names, self.arg_values):
+            if name == arg_name:
+                return value
+        assert False, f"argument `{arg_name}` not found"
 
     def get_constexpr_annotated_args(self):
         newargs = []
@@ -310,11 +316,17 @@ class TritonBackend(object):
         funcname = node.func.id
         stmt = ''
         if funcname == 'range':
-            start = node.args[0].id
+            start_s = node.args[0].id
             if isinstance(node.args[1], ast.BinOp):
-                step = ast.unparse(self.gen_kernel_node(node.args[1].right))
-                stmt = f'{start} + tl.arange(0, {step})'
-                node_type = Tensor(torch.int32, 1, shape=[int(step)])
+                step_arg = node.args[1].right
+                step_s = ast.unparse(self.gen_kernel_node(step_arg))
+                stmt = f'{start_s} + tl.arange(0, {step_s})'
+                if isinstance(step_arg, ast.Constant):
+                    node_type = Tensor(torch.int32, 1, shape=[int(step_s)])
+                elif isinstance(step_arg, ast.Name):
+                    node_type = Tensor(torch.int32, 1, shape=[self.get_arg_value(step_s)])
+                else:
+                    assert False
             else:
                 assert False, 'range must be in the form `range(i,i+BLOCK)`'
         elif funcname in ['sum', 'max', 'min']: 

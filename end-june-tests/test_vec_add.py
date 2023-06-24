@@ -5,16 +5,16 @@ import slap
 from torch import arange, zeros, empty
 
 @slap.jit
-def slap_kernel0(a, b, c, N, BLOCK):  
+def slap_kernel0(a, b, c, N, BLOCK=256):
     for i in range(0, N, BLOCK):  #pragma parallel
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
 
 @slap.jit
-def slap_kernel(a, b, c, N, BLOCK):  
-    for i in range(N):  #pragma parallel block(256)
+def slap_kernel(a, b, c, N, BLOCK=256):  
+    for i in range(N):  #pragma parallel block(BLOCK)
         c[i] = a[i] + b[i]
 
-def torch_kernel(a, b, c, N, BLOCK=None):
+def torch_kernel(a, b, c, N):
     torch.add(a, b, out=c)
     
 def test1():
@@ -28,11 +28,10 @@ def test1():
             torch_kernel(a, b, c_ref, N)
             
             for f in [torch_kernel, slap_kernel0, slap_kernel]:
-                BLOCK = 128 * 2
                 c = torch.zeros_like(a)
-                f(a, b, c, N, BLOCK)
+                f(a, b, c, N)
                 assert(torch.allclose(c, c_ref))
-                ms, _, _ = triton.testing.do_bench(lambda: f(a, b, c, N, BLOCK))
+                ms, _, _ = triton.testing.do_bench(lambda: f(a, b, c, N))
                 print(f'{f.__name__}: {ms:.4f} ms')
 
 if __name__ == '__main__':
