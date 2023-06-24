@@ -412,9 +412,11 @@ class TritonBackend(object):
             reduction_var = match.groups()[0]
             self.reduction_vars.append(reduction_var)
 
+        
         match = re.search(r' block\((.*?)\)', pragma)
         if match:
             step = match.groups()[0]
+
             newnode = to_ast_node(f'{loop_index} = range({loop_index}, {loop_index}+{step})')
             node.body.insert(1, newnode)
 

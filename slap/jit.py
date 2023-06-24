@@ -13,6 +13,7 @@ from slap.codegen.triton import TritonBackend
 compiled = {}
 
 def compile(fn, args, dump_code=0, verbose=False):
+    os.makedirs('/tmp/appyl', exist_ok=True)
     if verbose:
         print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
     src = inspect.getsource(fn)
@@ -24,11 +25,11 @@ def compile(fn, args, dump_code=0, verbose=False):
     module = backend.codegen()
     if dump_code:
         print(module)
-    fn = 'slap_kernel.py'
-    Path(fn).write_text(module)
-    subprocess.run(['black', fn], capture_output=True, text=True)
+    filename = f'/tmp/appyl/{fn}.py'
+    Path(filename).write_text(module)
+    subprocess.run(['black', filename], capture_output=True, text=True)
     
-    spec = importlib.util.spec_from_file_location("module.name", fn)
+    spec = importlib.util.spec_from_file_location("module.name", filename)
     foo = importlib.util.module_from_spec(spec)
     sys.modules["module.name"] = foo
     spec.loader.exec_module(foo)
