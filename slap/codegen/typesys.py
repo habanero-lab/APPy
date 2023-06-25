@@ -9,6 +9,9 @@ class Tensor(object):
     def get_tl_dtype(self):
         return get_tl_dtype_from_str(str(self.dtype))
 
+    def __str__(self):
+        return f'Tensor({self.dtype}, {self.ndim})'
+
 class Constant(object):
     def __init__(self, dtype, value):
         self.dtype = dtype

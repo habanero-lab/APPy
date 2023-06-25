@@ -37,6 +37,7 @@ class TritonBackend(object):
         self.range_vars = {}
         self.index_block_sizes = {}
         self.index_bounds = {}
+        self.var_types = {}
 
     def get_arg_value(self, arg_name):
         for name, value in zip(self.arg_names, self.arg_values):
@@ -208,38 +209,40 @@ class TritonBackend(object):
             newnode = ast.Assign(targets=[left], lineno=node.lineno)
             # In our programming model, storing to a global array must be a subscript 
             # expression, even if the array has only one element.
-            rightnode = self.gen_kernel_node(right)
+            newright = self.gen_kernel_node(right)
+
             if isinstance(node.value, ast.Constant):
-                dump(node)
-                print(self.arg_types[0])
                 assert isinstance(self.arg_types[0], TensorType)
                 dtype = self.arg_types[0].get_tl_dtype()
             
                 if isinstance(node, ast.AnnAssign):
                     dtype = get_tl_dtype_from_str(node.annotation.id)
             
-                #dump(to_ast_node(dtype))
-                #dump(newnode)
-                #exit(1)
                 blocksizes = self.index_block_sizes.values()
-                e = f'tl.zeros([{",".join(blocksizes)}], dtype={dtype}) + {rightnode.value}'
-                rightnode = to_ast_node(e)
+                e = f'tl.zeros([{",".join(blocksizes)}], dtype={dtype}) + {node.value.value}'
+                newright = to_ast_node(e)
 
-            if isinstance(rightnode, ast.Expr):
-                rightnode = rightnode.value
+            if isinstance(newright, ast.Expr):
+                newright = newright.value
 
-            newnode.value = rightnode
+            newnode.value = newright
 
-            if isinstance(rightnode, ast.Call) and node.value.func == 'range':
+            if isinstance(newright, ast.Call) and node.value.func == 'range':
                 self.range_vars[left.id] = {}
+
+            if hasattr(newright, 'type'):
+                self.var_types[left.id] = newright.type
+                print(self.var_types)
+                print(newright.type)
+                exit(1)
                 
                 
         elif isinstance(left, ast.Subscript):
             newnode = self.gen_subscript(left, value=self.gen_kernel_node(right))            
         else:
             assert False
+        
         return newnode
-
 
     def gen_binOp(self, node):
         left = self.gen_kernel_node(node.left)
@@ -341,6 +344,7 @@ class TritonBackend(object):
         node_s = unparse(node)
         funcname = node.func.id
         stmt = ''
+        node_type = None
         if funcname == 'range':
             start_s = node.args[0].id
             if isinstance(node.args[1], ast.BinOp):
@@ -379,8 +383,11 @@ class TritonBackend(object):
             stmt = f'tl.{funcname}({shape_arg}, dtype={dtype})'
         else:
             assert False
-        #print(stmt)
-        return to_ast_node(stmt)
+        newnode = to_ast_node(stmt)
+        if node_type != None:
+           newnode.type = node_type
+           newnode.value.type = node_type
+        return newnode
 
     def codegen(self):
         # lf = ast.parse(textwrap.dedent(f'''
