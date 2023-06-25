@@ -5,8 +5,10 @@ import textwrap
 from copy import deepcopy
 import ast_comments as ast
 from ast import unparse
-from .typesys import Tensor
-from ..ast_utils import dump, dump_code, get_arg_names, new_call_node, to_ast_node
+from .typesys import build_type_from_value, get_tl_dtype_from_str
+from .typesys import Tensor as TensorType
+from .typesys import Constant as ConstantType
+from ..ast_utils import dump, dump_code, get_arg_names, new_call_node, to_ast_node, to_ast_expr
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values):
@@ -26,7 +28,7 @@ class TritonBackend(object):
         ''')
         
         self.arg_names = get_arg_names(self.func)
-        self.arg_types = [type(x) for x in arg_values]
+        self.arg_types = [build_type_from_value(x) for x in arg_values]
         self.allBlockDims = ['x', 'y', 'z']
         self.usedBlockDims = []
         self.var_count = 0
@@ -45,7 +47,7 @@ class TritonBackend(object):
     def get_constexpr_annotated_args(self):
         newargs = []
         for i, a in enumerate(self.arg_names):
-            if self.arg_types[i] in (int, torch.dtype):
+            if isinstance(self.arg_types[i], ConstantType):
                 newargs.append(a+': tl.constexpr')
             else:
                 newargs.append(a)
@@ -156,6 +158,8 @@ class TritonBackend(object):
             newnode = node
         elif isinstance(node, ast.AugAssign):
             newnode = self.gen_assign(node)
+        elif isinstance(node, ast.AnnAssign):
+            newnode = self.gen_assign(node)
         elif isinstance(node, ast.Slice):
             newnode = self.gen_slice(node)
         elif isinstance(node, ast.Call):
@@ -190,25 +194,45 @@ class TritonBackend(object):
     #         stmts = self.gen_subscript(node)
     #     return stmts
 
+    def get_tl_dtype(self, dtype):
+        return 'tl.' + dtype.replace('torch.', '')
+
     def gen_assign(self, node):
         if isinstance(node, ast.Assign):
             left = node.targets[0]
-        elif isinstance(node, ast.AugAssign):
+        elif isinstance(node, ast.AugAssign) or isinstance(node, ast.AnnAssign):
             left = node.target
         right = node.value
-
-        newnode = deepcopy(node)
+    
         if isinstance(left, ast.Name):
+            newnode = ast.Assign(targets=[left], lineno=node.lineno)
             # In our programming model, storing to a global array must be a subscript 
             # expression, even if the array has only one element.
             rightnode = self.gen_kernel_node(right)
-            if isinstance(rightnode, ast.Expr):
-                newnode.value = rightnode.value
-            else:
-                newnode.value = rightnode
+            if isinstance(node.value, ast.Constant):
+                dump(node)
+                print(self.arg_types[0])
+                assert isinstance(self.arg_types[0], TensorType)
+                dtype = self.arg_types[0].get_tl_dtype()
+            
+                if isinstance(node, ast.AnnAssign):
+                    dtype = get_tl_dtype_from_str(node.annotation.id)
+            
+                #dump(to_ast_node(dtype))
+                #dump(newnode)
+                #exit(1)
+                blocksizes = self.index_block_sizes.values()
+                e = f'tl.zeros([{",".join(blocksizes)}], dtype={dtype}) + {rightnode.value}'
+                rightnode = to_ast_node(e)
 
-            if isinstance(node.value, ast.Call) and node.value.func == 'range':
+            if isinstance(rightnode, ast.Expr):
+                rightnode = rightnode.value
+
+            newnode.value = rightnode
+
+            if isinstance(rightnode, ast.Call) and node.value.func == 'range':
                 self.range_vars[left.id] = {}
+                
                 
         elif isinstance(left, ast.Subscript):
             newnode = self.gen_subscript(left, value=self.gen_kernel_node(right))            
@@ -324,9 +348,9 @@ class TritonBackend(object):
                 step_s = ast.unparse(self.gen_kernel_node(step_arg))
                 stmt = f'{start_s} + tl.arange(0, {step_s})'
                 if isinstance(step_arg, ast.Constant):
-                    node_type = Tensor(torch.int32, 1, shape=[int(step_s)])
+                    node_type = TensorType(torch.int32, 1, shape=[int(step_s)])
                 elif isinstance(step_arg, ast.Name):
-                    node_type = Tensor(torch.int32, 1, shape=[self.get_arg_value(step_s)])
+                    node_type = TensorType(torch.int32, 1, shape=[self.get_arg_value(step_s)])
                 else:
                     assert False
             else:

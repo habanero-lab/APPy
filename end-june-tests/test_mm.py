@@ -2,7 +2,7 @@ import torch
 import triton
 import triton.language as tl
 import slap
-from torch import arange, zeros, empty, sum
+from torch import arange, zeros, empty, sum, float32
 
 @slap.jit
 def slap_kernel0(a, b, c, M, N, K, BM=64, BN=64, BK=32):
@@ -13,11 +13,11 @@ def slap_kernel0(a, b, c, M, N, K, BM=64, BN=64, BK=32):
                 acc += a[i:i+BM,k:k+BK] @ b[k:k+BK, j:j+BN]
             c[i:i+BM,j:j+BN] = acc
 
-#@slap.jit
+@slap.jit
 def slap_kernel(a, b, c, M, N, K, BM=64, BN=64, BK=32):
     for i in range(M):  #pragma parallel block(BM)
         for j in range(N):  #pragma parallel block(BN)
-            acc = 0
+            acc: float32 = 0
             for k in range(K):  #pragma block(BK)
                 acc += a[i,k] * b[k,j]
             c[i,j] = acc
@@ -38,7 +38,7 @@ def test1():
             c_ref = torch.randn(M, N, device='cuda', dtype=dtype)
             torch_kernel(a, b, c_ref, M, N, K)
 
-            for f in (torch_kernel, slap_kernel0):
+            for f in (torch_kernel, slap_kernel):
                 f(a, b, c, M, N, K)
                 assert(torch.allclose(c, c_ref, atol=10, rtol=0.1))
                 ms, _, _ = triton.testing.do_bench(lambda: f(a, b, c, M, N, K))

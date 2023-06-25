@@ -28,7 +28,7 @@ def compile(fn, args, dump_code=0, verbose=False):
     filename = f'/tmp/appyl/{fn.__name__}.py'
     Path(filename).write_text(module)
     subprocess.run(['black', filename], capture_output=True, text=True)
-    
+    #exit(1)
     spec = importlib.util.spec_from_file_location("module.name", filename)
     foo = importlib.util.module_from_spec(spec)
     sys.modules["module.name"] = foo
