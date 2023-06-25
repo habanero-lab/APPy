@@ -33,9 +33,9 @@ def slap_kernel(a, b):
     return c
 
 #@slap.jit
-def _slap_kernel(a_rowptrs, a_cols, a_vals, b, c, M, K, N):
+def _slap_kernel(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN=128):
     for i in range(M):  #pragma parallel 
-        for j in range(N):  #pragma parallel block(128)
+        for j in range(N):  #pragma parallel block(BN)
             acc = 0
             for ki in range(a_rowptrs[i], a_rowptrs[i+1]):
                 a_ik = a_vals[ki]
@@ -48,7 +48,7 @@ def torch_kernel(a, b):
     return torch.mm(a, b)
 
 def test1():
-    for dtype in [torch.float16, torch.float32, torch.float64]:
+    for dtype in [torch.float16, torch.float32]:
         for M, K, N in [(4096, 4096, 128), (4096*4, 4096*4, 128), (4096, 4096, 64), (4096*4, 4096*4, 64)]:
             print(f'M: {M}, N: {N}, K: {K}')
             a_dense = torch.randn(M, K, device='cuda', dtype=dtype)

@@ -147,6 +147,8 @@ class TritonBackend(object):
 
     def gen_kernel_node(self, node):
         newnode = node
+        print('gen kernel node')
+        dump(node)
         if isinstance(node, ast.Assign):
             newnode = self.gen_assign(node)
         elif isinstance(node, ast.Subscript):
@@ -173,20 +175,53 @@ class TritonBackend(object):
         return newnode
 
     def gen_for(self, node: ast.For):
+        newloop = deepcopy(node)
         newbody = []
+        newloop.body = newbody
+        
+        loop_index = node.target.id
+        self.var_types[loop_index] = TensorType(torch.int32, 0)
+        step = '1'
+        if isinstance(node.body[0], ast.Comment) and node.body[0].value.startswith('#pragma'):
+            pragma = node.body[0].value
+
+            match = re.search(r' block\((.*?)\)', pragma)
+            if match:
+                step = match.groups()[0]
+                self.index_block_sizes[loop_index] = step
+                # Update range
+
+                rangenode = to_ast_node(f'{loop_index} = range({loop_index}, {loop_index}+{step})')
+                node.body.insert(1, rangenode)
+
+                # Need to add reduction call when blocking a reduction loop
+                if 'reduction' in pragma:
+                    for child in node.body:
+                        if isinstance(child, ast.AugAssign):
+                            right = child.value
+                            if isinstance(child.op, ast.Add):
+                                child.value = to_ast_node(f'sum({unparse(right)})').value
+                            else:
+                                assert False, f'reduction type unsupported yet {ast.dump(child)}'
+                        
+
         for child in node.body:
             newbody.append(self.gen_kernel_node(child))
-        newnode = deepcopy(node)
-        newnode.body = newbody
         
-        assert newnode.iter.func.id == 'range'
-        range_args = newnode.iter.args
+        
+        assert newloop.iter.func.id == 'range'
+        range_args = newloop.iter.args
         newargs = []
         for arg in range_args:
             newargs.append(self.gen_kernel_node(arg))
-        newnode.iter.args = newargs
+
+        if step != '1':
+            newargs.append(self.gen_kernel_node(arg))
+        newloop.iter.args = newargs
         
-        return newnode
+        
+        
+        return newloop
 
     # def gen_kernel_node(self, node):
     #     if isinstance(node, ast.Assign):
@@ -234,7 +269,7 @@ class TritonBackend(object):
                 self.var_types[left.id] = newright.type
                 print(self.var_types)
                 print(newright.type)
-                exit(1)
+                #exit(1)
                 
                 
         elif isinstance(left, ast.Subscript):
@@ -279,10 +314,16 @@ class TritonBackend(object):
         
         #if isinstance(node.slice, ast.Tuple):  # Strangely this does not work
         if node.slice.__class__.__name__ == 'Tuple':
-            all_2d = True
+            all_1d = True
             for i,e in enumerate(node.slice.elts):
                 if not isinstance(e, ast.Slice):
-                    all_2d = False
+                    all_1d = False
+
+                if isinstance(e, ast.Name):
+                    var_type = self.var_types[e.id]
+                    assert var_type.ndim <= 1
+                    if var_type.ndim == 0:
+                        all_1d = False
 
             terms = []
             
@@ -304,7 +345,7 @@ class TritonBackend(object):
                 term_str = ast.unparse(self.gen_kernel_node(e))
                 if i != len(node.slice.elts) - 1:
                     term_str = f'({term_str}) * {tensor}_stride_{i}'
-                if all_2d:
+                if all_1d:
                     term_str = f'({term_str}){shape_broadcasts[i]}'
                 terms.append(term_str)
                     
@@ -437,6 +478,7 @@ class TritonBackend(object):
             step = ast.unparse(self.gen_kernel_node(range_args[2]))
 
         loop_index = node.target.id
+        self.var_types[loop_index] = TensorType(torch.int32, 0)
         pragma = node.body[0].value
 
 
@@ -453,6 +495,7 @@ class TritonBackend(object):
             newnode = to_ast_node(f'{loop_index} = range({loop_index}, {loop_index}+{step})')
             node.body.insert(1, newnode)
 
+            # Need to add reduction call when blocking a reduction loop
             if 'reduction' in pragma:
                 for child in node.body:
                     if isinstance(child, ast.AugAssign):
@@ -460,9 +503,7 @@ class TritonBackend(object):
                         if isinstance(child.op, ast.Add):
                             child.value = to_ast_node(f'sum({unparse(right)})').value
                         else:
-                            assert False, f'reduction unsupported yet {ast.dump(child)}'
-
-        
+                            assert False, f'reduction type unsupported yet {ast.dump(child)}'
                         
 
         blockDim = self.allBlockDims.pop(0)
