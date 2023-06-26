@@ -101,8 +101,8 @@ def torch_kernel(a, M, N):
 def test1():
     for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
-        #for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4), (4096*8, 4096*8)]:
-        for M, N in [(64, 128)]:
+        for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (4096*8, 4096)]:
+        #for M, N in [(4096, 4096*8)]:
             print(f'M: {M}, N: {N}')
             a = torch.randn(M, N, dtype=dtype)
             b_ref = torch_kernel(a, M, N)
@@ -115,7 +115,7 @@ def test1():
                 assert(torch.allclose(b, b_ref, atol=1, rtol=0.1))
                 ms, _, _ = triton.testing.do_bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
-            #exit(1)
+            
 
 if __name__ == '__main__':
     test1()

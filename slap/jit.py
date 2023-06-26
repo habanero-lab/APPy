@@ -13,7 +13,7 @@ from slap.codegen.triton import TritonBackend
 compiled = {}
 
 def compile(fn, args, dump_code=0, verbose=False):
-    os.makedirs('/tmp/appyl', exist_ok=True)
+    os.makedirs('./.appyl_kernels', exist_ok=True)
     if verbose:
         print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
     src = inspect.getsource(fn)
@@ -25,7 +25,7 @@ def compile(fn, args, dump_code=0, verbose=False):
     module = backend.codegen()
     if dump_code:
         print(module)
-    filename = f'/tmp/appyl/{fn.__name__}.py'
+    filename = f'./.appyl_kernels/{fn.__name__}.py'
     Path(filename).write_text(module)
     subprocess.run(['black', filename], capture_output=True, text=True)
     #exit(1)

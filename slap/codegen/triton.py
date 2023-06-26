@@ -122,7 +122,9 @@ class TritonBackend(object):
             self.gen_parallel_for(node)
 
             grid = f'({",".join(self.usedBlockDims)},)'
-            self.append_stmts(self.lf, f'_kernel[{grid}]({",".join(k_args)})')
+            self.append_stmts(self.lf, f'fn = _kernel[{grid}]({",".join(k_args)})')
+            #self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
+            #self.append_stmts(self.lf, 'exit(1)')
 
         else:
             if isinstance(node, ast.Assign):
@@ -147,8 +149,8 @@ class TritonBackend(object):
 
     def gen_kernel_node(self, node):
         newnode = node
-        print('gen kernel node')
-        dump(node)
+        #print('gen kernel node')
+        #dump(node)
         if isinstance(node, ast.Assign):
             newnode = self.gen_assign(node)
         elif isinstance(node, ast.Subscript):
@@ -262,7 +264,7 @@ class TritonBackend(object):
 
             newnode.value = newright
 
-            if isinstance(newright, ast.Call) and node.value.func == 'range':
+            if isinstance(node.value, ast.Call) and node.value.func == 'range':
                 self.range_vars[left.id] = {}
 
             if hasattr(newright, 'type'):
@@ -422,6 +424,11 @@ class TritonBackend(object):
             
             dtype = re.search(r'dtype=(.*)\)', node_s).groups()[0].replace('torch.', 'tl.')
             stmt = f'tl.{funcname}({shape_arg}, dtype={dtype})'
+        elif funcname in ['exp', 'log']:
+            args = []
+            for arg in node.args:
+                args.append(ast.unparse(self.gen_kernel_node(arg))) 
+            stmt = f'tl.{funcname}({",".join(args)})'
         else:
             assert False
         newnode = to_ast_node(stmt)
