@@ -4,6 +4,21 @@ import triton.language as tl
 import slap
 from torch import arange, zeros, empty, sum
 
+def seq(a, b, c, M, N):
+    for i in range(M):  #pragma parallel block
+        acc = 0
+        for j in range(N):  #pragama block reduction(acc)
+            acc += a[i,j] * b[j]
+        a[i] = acc
+
+
+def seq(a, b, c, M, N):
+    for i in range(0, M, BM):  #pragma parallel block
+        acc = zeros([BM], device=a.device, dtype=a.dtype)
+        for j in range(0, N, BN):  #pragama block
+            acc += sum(a[i:i+BM,j:j+BN] * b[j:j+BN][None,:], axis=1)
+        a[i] = acc
+
 @slap.jit
 def slap_kernel(a, b, c, M, N):
     for i in range(M):  #pragma parallel
