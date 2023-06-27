@@ -40,9 +40,9 @@ def _mykernel_unfused(a, b, t0, t1, t2, M, N, BLOCK=128):
         for j in range(N):  #pragma parallel block(BLOCK)
             b[i,j] = t1[i,j] / t2[i]
 
-def _mykernel_max_parallelism(a, b, t0, t1, t2, M, N, BLOCK=128):
+def _mykernel_max_parallelism(a, b, t0, t1, t2, M, N, BN=128):
     for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma parallel block(BLOCK) reduction(max:t0)
+        for j in range(N):  #pragma parallel
             t0[i] = max(t0[i], a[i,j])
 
     for i in range(M):  #pragma parallel

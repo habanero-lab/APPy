@@ -11,28 +11,32 @@ python setup.py develop
 A clause starts with `#pragma`:
 - `parallel`
   - Indicate different iterations of the loop can run in parallel in SPMD style.
-- `block`
+- `block(BLOCKSIZE)`
   - To block the loop, for SIMD parallelism or data reuse.
+  - With an optional blocksize, which defaults to 128 if not specified.
   - Two conditions to block a loop
     - Adjacent loop iterations apply the same operation (to different data)
     - Adjacent loop iterations reuse the same data
+  - Supported with contraints
+    - A with annotated with `block` cannot be annotated with `reduction` at the same time.
+    - No other loops are blocked, automatically via pragma or mannually.
 - `reduction(var)`
   - Indicate a reduction pattern on variable `var`. 
 
 # Element-Wise Operation
 ```python
 @jit
-def add(a, b, c, BLOCK):
+def add(a, b, c, BLOCK=128):
     for i in range(0, a.shape[0], BLOCK):  #pragma parallel
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
 ```
 
-In addition to manually block an index, one can also specify which loop to block in the pragma, with a block size parameter (e.g.`auto` indicates auto-chosen by the compiler). 
+In addition to manually block an index, one can also specify which loop to block in the pragma, with a block size parameter. 
 
 ```python
 @jit
-def add(a, b, c):
-    for i in range(a.shape[0]):  #pragma parallel block(auto)
+def add(a, b, c, BLOCK=128):
+    for i in range(a.shape[0]):  #pragma parallel block(BLOCK)
         c[i] = a[i] + b[i]
 ```
 
@@ -42,24 +46,15 @@ def add(a, b, c):
 @jit
 def kernel(a, b, BLOCK):
     b[0] = 0
-    for i in range(0, a.shape[0], BLOCK):  #pragma parallel reduction(+:b)
+    for i in range(0, a.shape[0], BLOCK):  #pragma parallel reduction(b)
         b[0] += torch.sum(a[i:i+BLOCK])
-```
-
-Or
-```python
-@jit
-def kernel(a, b):
-    b[0] = 0
-    for i in range(a.shape[0]):  #pragma parallel block(auto) reduction(+:b)
-        b[0] += a[i]
 ```
 
 # Indirect Reduction
 
 ```python
 @jit
-def kernel(x, labels, centers):
+def kernel(x, labels, centers, Bj=128):
     for i in range(x.shape[0]):  #pragma parallel reduction(+:centers) 
         for j in range(0, x.shape[1], Bj):  #pragma parallel
             label = labels[i]
@@ -69,9 +64,9 @@ def kernel(x, labels, centers):
 Or 
 ```python
 @jit
-def kernel(x, labels, centers):
-    for i in range(x.shape[0]):  #pragma parallel reduction(+:centers)
-        for j in range(x.shape[1]):  #pragma parallel block(auto)
+def kernel(x, labels, centers, Bj):
+    for i in range(x.shape[0]):  #pragma parallel reduction(centers)
+        for j in range(x.shape[1]):  #pragma parallel block(Bj)
             label = labels[i]
             centers[label,j] += x[i,j]
 ```
@@ -138,9 +133,9 @@ def kernel(a_rowptrs, a_cols, a_vals, b, c, BLOCK):
 Or
 ```python
 @jit
-def kernel(a_rowptrs, a_cols, a_vals, b, c):
+def kernel(a_rowptrs, a_cols, a_vals, b, c, BLOCK):
     for i in range(a.shape[0]):  #pragma parallel
-        for j in range(b.shape[1]):  #pragma parallel block(auto)
+        for j in range(b.shape[1]):  #pragma parallel block(BLOCK)
             for ki in range(a_rowptrs[i], a_rowptrs[i+1]):
                 a_ik = a_vals[ki]
                 ks = a_cols[ki]
