@@ -77,7 +77,7 @@ def _mykernel_max_locality_dim_reduced(a, b, t0, t1, t2, M, N, BLOCK=128):
             t1[0,j:j+BLOCK] = exp(a[i,j:j+BLOCK] - t0[0])
             t2[0] = t2[0] + sum(t1[0,j:j+BLOCK])
 
-        for j in range(0, N, BLOCK):  #pragma block(BLOCK)
+        for j in range(0, N, BLOCK):
             b[i,j:j+BLOCK] = t1[0,j:j+BLOCK] / t2[0]
 
 @jit

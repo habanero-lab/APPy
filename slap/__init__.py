@@ -1,3 +1,4 @@
+import torch
 from torch import arange
 from .jit import jit
 #from .config import configs
@@ -13,3 +14,6 @@ def prange(start, end, step=1):
 
 def syncthreads():
     return
+
+def max(a, axis=0):
+    return torch.max(a, axis=axis)[0]

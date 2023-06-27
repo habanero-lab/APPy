@@ -199,7 +199,6 @@ class TritonBackend(object):
                 step = match.groups()[0]
                 self.index_block_sizes[loop_index] = step
                 # Update range
-
                 rangenode = to_ast_node(f'{loop_index} = range({loop_index}, {loop_index}+{step})')
                 node.body.insert(1, rangenode)
                         
@@ -277,11 +276,7 @@ class TritonBackend(object):
         else:
             return node
 
-
     def gen_assign(self, node):
-        if loop is blocked:
-            node = self.block_reduction(node)
-
         if isinstance(node, ast.Assign):
             left = node.targets[0]
         elif isinstance(node, ast.AugAssign) or isinstance(node, ast.AnnAssign):
@@ -470,7 +465,7 @@ class TritonBackend(object):
             
             dtype = re.search(r'dtype=(.*)\)', node_s).groups()[0].replace('torch.', 'tl.')
             stmt = f'tl.{funcname}({shape_arg}, dtype={dtype})'
-        elif funcname in ['exp', 'log']:
+        elif funcname in ['exp', 'log', 'maximum']:
             args = []
             for arg in node.args:
                 args.append(ast.unparse(self.gen_kernel_node(arg))) 

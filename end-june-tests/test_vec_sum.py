@@ -11,11 +11,9 @@ def slap_kernel(a, N):
 
 @slap.jit
 def _slap_kernel(a, b, N, BLOCK=512):
-    #pragma parallel
+    #pragma parallel reduction(b)
     for i in range(0, N, BLOCK):  
-        #pragma reduction(index=i, axis=0)
         b[0] += sum(a[i:i+BLOCK])
-        # atomic_add(b, 0, sum(a[i:i+BLOCK], axis=0))
 
 def slap_kernel1(a, N):
     b = torch.zeros(1, device=a.device, dtype=a.dtype)
