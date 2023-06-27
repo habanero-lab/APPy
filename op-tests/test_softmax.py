@@ -67,18 +67,19 @@ def _mykernel_max_locality(a, b, t0, t1, t2, M, N):
             b[i,j] = t1[i,j] / t2[i]
 
 @jit
-def _mykernel_max_locality_dim_reduced(a, b, t0, t1, t2, M, N, BN=256):
+def _mykernel_max_locality_scalar_repl(a, b, t0, t1, t2, M, N, BN=256):
     #pragma parallel
     for i in range(M):  
         for j in range(0, N, BN):
             t0[i] = maximum(t0[i], max(a[i,j:j+BN]))
 
         for j in range(0, N, BN): 
-            t1[i,j:j+BN] = exp(a[i,j:j+BN] - t0[i])
-            t2[i] += sum(t1[i,j:j+BN])
+            _t1 = exp(a[i,j:j+BN] - t0[i])
+            t1[i,j:j+BN] = _t1
+            t2[i] += sum(_t1)
 
-        # for j in range(0, N, BN):
-        #     b[i,j:j+BN] = t1[i,j:j+BN] / t2[i]
+        for j in range(0, N, BN):
+            b[i,j:j+BN] = t1[i,j:j+BN] / t2[i]
 
 @jit
 def _mykernel_max_locality_full_block_col(a, b, t0, t1, t2, M, N):
@@ -104,13 +105,13 @@ def torch_kernel(a, M, N):
 def test1():
     for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
-        for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (4096*8, 4096)]:
+        for M, N in [(4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16)]:
         #for M, N in [(4096, 4096*8)]:
             print(f'M: {M}, N: {N}')
             a = torch.randn(M, N, dtype=dtype)
             b_ref = torch_kernel(a, M, N)
 
-            for f in (torch_kernel, _mykernel_max_locality_full_block_col_on_chip_tmp, _mykernel_max_locality_full_block_col, _mykernel_max_locality_dim_reduced):
+            for f in (torch_kernel, _mykernel_max_locality_full_block_col_on_chip_tmp, _mykernel_max_locality_scalar_repl):
                 ff = lambda: f(a, M, N)
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, M, N, f)

@@ -297,8 +297,9 @@ class TritonBackend(object):
                     dtype = get_tl_dtype_from_str(node.annotation.id)
             
                 blocksizes = self.index_block_sizes.values()
-                e = f'tl.zeros([{",".join(blocksizes)}], dtype={dtype}) + {node.value.value}'
-                newright = to_ast_node(e)
+                if len(blocksizes) > 0:
+                    e = f'tl.zeros([{",".join(blocksizes)}], dtype={dtype}) + {node.value.value}'
+                    newright = to_ast_expr(e)
 
             if isinstance(newright, ast.Expr):
                 newright = newright.value
@@ -540,7 +541,7 @@ class TritonBackend(object):
             stmt = f'tl.{funcname}({",".join(args)})'
         else:
             assert False
-        newnode = to_ast_node(stmt)
+        newnode = to_ast_expr(stmt)
         if node_type != None:
            newnode.type = node_type
            newnode.value.type = node_type
