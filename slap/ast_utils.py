@@ -31,5 +31,5 @@ def to_ast_expr(s):
     return n.value
 
 def new_call_node(func_name, args):
-    node = ast.Call(func=ast.Name(func_name), args=args)
+    node = ast.Call(func=ast.Name(func_name), args=args, keywords=[])
     return node

@@ -2,7 +2,7 @@ import torch
 import triton
 import triton.language as tl
 from slap import jit
-from torch import arange, zeros, empty, sum, max, exp
+from torch import arange, zeros, empty, sum, max, add, exp
 
 torch.set_default_device('cuda')
 
@@ -56,28 +56,31 @@ def _mykernel_max_parallelism(a, b, t0, t1, t2, M, N, BLOCK=128):
 
 def _mykernel_max_locality(a, b, t0, t1, t2, M, N):
     for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma parallel block reduction(max:t0)
+        for j in range(N):  #pragma parallel block(BLOCK) reduction(max:t0)
             t0[i] = max(t0[i], a[i,j])
 
-        for j in range(N):  #pragma parallel block reduction(+:t2)
+        for j in range(N):  #pragma parallel block(BLOCK) reduction(+:t2)
             t1[i,j] = exp(a[i,j] - t0[i])
             t2[i] += t1[i,j]
 
-        for j in range(N):  #pragma parallel block
+        for j in range(N):  #pragma parallel block(BLOCK)
             b[i,j] = t1[i,j] / t2[i]
 
-def _mykernel_max_locality_dim_reduced(a, b, t0, t1, t2, M, N):
-    for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma block reduction(max:t0)
-            t0[0] = max(t0[0], a[i,j])
+@jit
+def _mykernel_max_locality_dim_reduced(a, b, t0, t1, t2, M, N, BLOCK=128):
+    #pragma parallel
+    for i in range(M):  
+        for j in range(0, N, BLOCK):
+            t0[0] = max(t0[0], max(a[i,j:j+BLOCK]))
 
-        for j in range(N):  #pragma block reduction(+:t2)
-            t1[0,j] = exp(a[i,j] - t0[0])
-            t2[0] += t1[0,j]
+        for j in range(0, N, BLOCK): 
+            t1[0,j:j+BLOCK] = exp(a[i,j:j+BLOCK] - t0[0])
+            t2[0] = t2[0] + sum(t1[0,j:j+BLOCK])
 
-        for j in range(N):  #pragma block
-            b[i,j] = t1[0,j] / t2[0]
+        for j in range(0, N, BLOCK):  #pragma block(BLOCK)
+            b[i,j:j+BLOCK] = t1[0,j:j+BLOCK] / t2[0]
 
+@jit
 def _mykernel_max_locality_full_block_col(a, b, t0, t1, t2, M, N):
     for i in range(M):  #pragma parallel
         t0[0] = max(a[i,0:N])
@@ -107,7 +110,7 @@ def test1():
             a = torch.randn(M, N, dtype=dtype)
             b_ref = torch_kernel(a, M, N)
 
-            for f in (torch_kernel, mykernel_op, _mykernel_max_locality_full_block_col_on_chip_tmp):
+            for f in (torch_kernel, mykernel_op, _mykernel_max_locality_full_block_col_on_chip_tmp, _mykernel_max_locality_full_block_col, _mykernel_max_locality_dim_reduced):
                 ff = lambda: f(a, M, N)
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, M, N, f)

@@ -176,6 +176,8 @@ class TritonBackend(object):
                 assert False, ast.dump(node)
         return newnode
 
+
+
     def gen_for(self, node: ast.For):
         newloop = deepcopy(node)
         newbody = []
@@ -187,6 +189,11 @@ class TritonBackend(object):
         if isinstance(node.body[0], ast.Comment) and node.body[0].value.startswith('#pragma'):
             pragma = node.body[0].value
 
+            match = re.search(r' reduction\((.*?)\)', pragma)
+            if match:
+                reduction_var = match.groups()[0]
+                self.reduction_vars.append(reduction_var)
+
             match = re.search(r' block\((.*?)\)', pragma)
             if match:
                 step = match.groups()[0]
@@ -195,16 +202,6 @@ class TritonBackend(object):
 
                 rangenode = to_ast_node(f'{loop_index} = range({loop_index}, {loop_index}+{step})')
                 node.body.insert(1, rangenode)
-
-                # Need to add reduction call when blocking a reduction loop
-                if 'reduction' in pragma:
-                    for child in node.body:
-                        if isinstance(child, ast.AugAssign):
-                            right = child.value
-                            if isinstance(child.op, ast.Add):
-                                child.value = to_ast_node(f'sum({unparse(right)})').value
-                            else:
-                                assert False, f'reduction type unsupported yet {ast.dump(child)}'
                         
 
         for child in node.body:
@@ -220,9 +217,7 @@ class TritonBackend(object):
         if step != '1':
             newargs.append(self.gen_kernel_node(arg))
         newloop.iter.args = newargs
-        
-        
-        
+
         return newloop
 
     # def gen_kernel_node(self, node):
@@ -235,7 +230,58 @@ class TritonBackend(object):
     def get_tl_dtype(self, dtype):
         return 'tl.' + dtype.replace('torch.', '')
 
+    def block_reduction(self, node):
+        newnode = ast.Assign
+        newtarget = None
+        newvalue = None
+        if isinstance(node, ast.AugAssign):
+            if (isinstance(node.target, ast.Name) and node.target.id in self.reduction_vars) or \
+                (isinstance(node.target, ast.Subscript) and node.target.value.id in self.reduction_vars):    
+                # Example: s += a[i]  =>  s = sum(a[i])
+                # Reduction statement found
+                newtarget = node.target
+                if isinstance(node.op, ast.Add):
+                    newvalue = ast.Call(func=ast.Name('sum'), args=[node.value], keywords=[])
+                else:
+                    assert False, f'non-sum reduction type unsupported yet: {ast.dump(node)}'
+            
+        if isinstance(node, ast.Assign):
+            if isinstance(node.targets[0], ast.Name) and node.targets[0].id in self.reduction_vars:
+                newtarget = node.targets[0]
+                if isinstance(node.value, ast.BinOp) and isinstance(node.value.op, ast.Add):
+                    # Example: s = s + a[i]  =>  s = sum(a[i])
+                    assert unparse(newtarget) == unparse(node.value.left)
+                    newvalue = ast.Call(func=ast.Name('sum'), args=[node.value.right], keywords=[])
+                elif isinstance(node.value, ast.Call) and node.value.func.id in 'max, min':
+                    assert unparse(newtarget) == unparse(node.value.args[0])
+                    # Example: s = max(s, a[i])  =>  s = max(a[i])
+                    newvalue = ast.Call(func=ast.Name('sum'), args=[node.value.args[1]], keywords=[])
+
+            if isinstance(node.targets[0], ast.Subscript) and node.targets[0].value.id in self.reduction_vars:
+                newtarget = node.targets[0]
+                if isinstance(node.value, ast.BinOp) and isinstance(node.value.op, ast.Add):
+                    # Example: s[0] = s[0] + a[i]  =>  s = sum(a[i])
+                    assert unparse(newtarget) == unparse(node.value.left)
+                    newvalue = ast.Call(func=ast.Name('sum'), args=[node.value.right], keywords=[])
+                elif isinstance(node.value, ast.Call) and node.value.func.id in 'max, min':
+                    # Example: s[0] = max(s[0] + a[i])  =>  s = max(a[i])
+                    assert unparse(newtarget) == unparse(node.value.args[0])
+                    newvalue = ast.Call(func=ast.Name('sum'), args=[node.value.args[1]], keywords=[])
+
+        if newtarget:
+            newnode = ast.Assign(targets=[newtarget], value=newvalue, lineno=node.lineno)
+            dump(newnode)
+            print(unparse(newnode))
+            exit(1)
+            return 
+        else:
+            return node
+
+
     def gen_assign(self, node):
+        if loop is blocked:
+            node = self.block_reduction(node)
+
         if isinstance(node, ast.Assign):
             left = node.targets[0]
         elif isinstance(node, ast.AugAssign) or isinstance(node, ast.AnnAssign):
@@ -493,7 +539,6 @@ class TritonBackend(object):
         if match:
             reduction_var = match.groups()[0]
             self.reduction_vars.append(reduction_var)
-
         
         match = re.search(r' block\((.*?)\)', pragma)
         if match:
@@ -502,15 +547,15 @@ class TritonBackend(object):
             newnode = to_ast_node(f'{loop_index} = range({loop_index}, {loop_index}+{step})')
             node.body.insert(1, newnode)
 
-            # Need to add reduction call when blocking a reduction loop
-            if 'reduction' in pragma:
-                for child in node.body:
-                    if isinstance(child, ast.AugAssign):
-                        right = child.value
-                        if isinstance(child.op, ast.Add):
-                            child.value = to_ast_node(f'sum({unparse(right)})').value
-                        else:
-                            assert False, f'reduction type unsupported yet {ast.dump(child)}'
+            # # Need to add reduction call when blocking a reduction loop
+            # if 'reduction' in pragma:
+            #     for child in node.body:
+            #         if isinstance(child, ast.AugAssign):
+            #             right = child.value
+            #             if isinstance(child.op, ast.Add):
+            #                 child.value = to_ast_node(f'sum({unparse(right)})').value
+            #             else:
+            #                 assert False, f'reduction type unsupported yet {ast.dump(child)}'
                         
 
         blockDim = self.allBlockDims.pop(0)
