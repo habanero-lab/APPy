@@ -540,7 +540,7 @@ class TritonBackend(object):
                 args.append(ast.unparse(self.gen_kernel_node(arg))) 
             stmt = f'tl.{funcname}({",".join(args)})'
         else:
-            assert False
+            assert False, 'unknown function call: ' + ast.dump(node)
         newnode = to_ast_expr(stmt)
         if node_type != None:
            newnode.type = node_type

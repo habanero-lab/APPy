@@ -17,3 +17,10 @@ def syncthreads():
 
 def max(a, axis=0):
     return torch.max(a, axis=axis)[0]
+
+def step(start, stepsize, bound=None):
+    if bound:
+        r = torch.arange(start, min(bound, start+stepsize))
+    else:
+        r = torch.arange(start, start+stepsize)
+    return r
