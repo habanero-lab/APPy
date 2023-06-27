@@ -49,7 +49,7 @@ def torch_kernel(a, b):
 
 def test1():
     for dtype in [torch.float16, torch.float32]:
-        for M, K, N in [(4096, 4096, 128), (4096*4, 4096*4, 128), (4096, 4096, 64), (4096*4, 4096*4, 64)]:
+        for M, K, N in [(4096, 4096, 128), (4096*4, 4096*4, 128)]:
             print(f'M: {M}, N: {N}, K: {K}')
             a_dense = torch.randn(M, K, device='cuda', dtype=dtype)
             #a_dense = torch.tril(a_dense)

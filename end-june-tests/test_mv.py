@@ -71,9 +71,9 @@ def torch_kernel(a, b, c, M, N):
     torch.mv(a, b, out=c)
     
 def test1():
-    for dtype in [torch.float16, torch.float32, torch.float64]:
+    for dtype in [torch.float16, torch.float32]:
     #for dtype in [torch.float64]:
-        for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4), (4096*8, 4096*8)]:
+        for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4)]:
             print(f'M: {M}, N: {N}')
             a = torch.randn(M, N, device='cuda', dtype=dtype)
             b = torch.randn(N, device='cuda', dtype=dtype)

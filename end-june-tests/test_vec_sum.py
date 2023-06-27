@@ -15,19 +15,6 @@ def _slap_kernel(a, b, N, BLOCK=512):
     for i in range(0, N, BLOCK):  
         b[0] += sum(a[i:i+BLOCK])
 
-def slap_kernel1(a, N):
-    b = torch.zeros(1, device=a.device, dtype=a.dtype)
-    _slap_kernel1(a, b, N)
-    return b
-
-@slap.jit
-def _slap_kernel1(a, b, N, BLOCK=512):
-    #pragma parallel block(BLOCK)
-    for i in range(N):  
-        #pragma reduction(index=i, axis=0)
-        b[0] += a[i]  
-        # atomic_add(b, 0, sum(a[i:i+BLOCK], axis=0))
-
 def torch_kernel(a, N):
     b = sum(a)
     return b
@@ -40,7 +27,7 @@ def test1():
             a = torch.randn(N, device='cuda', dtype=dtype)
             b_ref = torch_kernel(a, N)
 
-            for f in (torch_kernel, slap_kernel, slap_kernel1):
+            for f in (torch_kernel, slap_kernel):
                 b = f(a, N)
                 
                 assert(torch.allclose(b, b_ref, atol=0.1, rtol=0.1))

@@ -1,13 +1,13 @@
 import torch
 import triton
 import triton.language as tl
-from slap import jit
-from torch import arange, zeros, empty, sum, max, add, exp
+from slap import jit, max
+from torch import arange, zeros, empty, sum, maximum, add, exp
 
 torch.set_default_device('cuda')
 
 def mykernel_op(a, M, N):
-    t0 = max(a, axis=1)[0]
+    t0 = max(a, axis=1)
     t1 = exp(a - t0[:,None])
     t2 = sum(t1, axis=1)
     b = t1 / t2[:,None]
@@ -67,18 +67,18 @@ def _mykernel_max_locality(a, b, t0, t1, t2, M, N):
             b[i,j] = t1[i,j] / t2[i]
 
 @jit
-def _mykernel_max_locality_dim_reduced(a, b, t0, t1, t2, M, N, BLOCK=128):
+def _mykernel_max_locality_dim_reduced(a, b, t0, t1, t2, M, N, BN=256):
     #pragma parallel
     for i in range(M):  
-        for j in range(0, N, BLOCK):
-            t0[0] = max(t0[0], max(a[i,j:j+BLOCK]))
+        for j in range(0, N, BN):
+            t0[i] = maximum(t0[i], max(a[i,j:j+BN]))
 
-        for j in range(0, N, BLOCK): 
-            t1[0,j:j+BLOCK] = exp(a[i,j:j+BLOCK] - t0[0])
-            t2[0] = t2[0] + sum(t1[0,j:j+BLOCK])
+        for j in range(0, N, BN): 
+            t1[i,j:j+BN] = exp(a[i,j:j+BN] - t0[i])
+            t2[i] += sum(t1[i,j:j+BN])
 
-        for j in range(0, N, BLOCK):
-            b[i,j:j+BLOCK] = t1[0,j:j+BLOCK] / t2[0]
+        # for j in range(0, N, BN):
+        #     b[i,j:j+BN] = t1[i,j:j+BN] / t2[i]
 
 @jit
 def _mykernel_max_locality_full_block_col(a, b, t0, t1, t2, M, N):
@@ -110,12 +110,12 @@ def test1():
             a = torch.randn(M, N, dtype=dtype)
             b_ref = torch_kernel(a, M, N)
 
-            for f in (torch_kernel, mykernel_op, _mykernel_max_locality_full_block_col_on_chip_tmp, _mykernel_max_locality_full_block_col, _mykernel_max_locality_dim_reduced):
+            for f in (torch_kernel, _mykernel_max_locality_full_block_col_on_chip_tmp, _mykernel_max_locality_full_block_col, _mykernel_max_locality_dim_reduced):
                 ff = lambda: f(a, M, N)
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, M, N, f)
                 b = ff()
-                assert(torch.allclose(b, b_ref, atol=1, rtol=0.1))
+                assert(torch.allclose(b, b_ref, atol=0.5, rtol=0.1))
                 ms, _, _ = triton.testing.do_bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
             

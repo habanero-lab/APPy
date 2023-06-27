@@ -18,19 +18,25 @@ def _mykernel(a, b, M, N, BN=256):
         for j in range(0, N, BN):
             b[i] = maximum(b[i], max(a[i,j:j+BN]))
 
+@jit
+def _mykernel_max_parallelism(a, b, M, N, BN=1024):
+    for i in range(M):  #pragma parallel
+        for j in range(0, N, BN):  #pragma parallel reduction(b)
+            b[i] = maximum(b[i], max(a[i,j:j+BN]))
+
 def torch_kernel(a, M, N):
     return max(a, axis=1)
 
 def test1():
     for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
-        for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (4096*8, 4096)]:
-        #for M, N in [(4096, 4096*8)]:
+        #for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (128, 4096*16), (256, 4096*16)]:
+        for M, N in [(4096, 4096*8), (128, 4096*8)]:
             print(f'M: {M}, N: {N}')
             a = torch.randn(M, N, dtype=dtype)
             b_ref = torch_kernel(a, M, N)
 
-            for f in (torch_kernel, _mykernel):
+            for f in (torch_kernel, _mykernel, _mykernel_max_parallelism):
                 ff = lambda: f(a, M, N)
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, M, N, f)
