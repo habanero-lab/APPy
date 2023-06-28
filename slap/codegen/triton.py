@@ -20,17 +20,19 @@ class TritonBackend(object):
         for keyword_arg in self.func.args.defaults:
             assert isinstance(keyword_arg, ast.Constant)
             self.arg_values.append(keyword_arg.value)
-        self.launcher_code = ''
-        self.kernel_code = ''
-        self.include_code = textwrap.dedent('''
+        
+        
+        self.module = ast.parse(textwrap.dedent('''
+            import torch
             import triton
             import triton.language as tl
-        ''')
-        
+        '''
+        ))
         self.arg_names = get_arg_names(self.func)
         self.arg_types = [build_type_from_value(x) for x in arg_values]
         self.allBlockDims = ['x', 'y', 'z']
         self.usedBlockDims = []
+        self.kernel_count = 0
         self.var_count = 0
         self.reduction_vars = []
         self.lf_local_vars = {}
@@ -111,22 +113,24 @@ class TritonBackend(object):
             pragma = node.body[0].value
             self.record_const_vars(pragma)
             
+            kernel_name = f'_kernel{self.kernel_count}'
+            self.kernel_count += 1
             k_params = self.get_kernel_function_parameters()
             k_args = self.get_kernel_function_arguments()
             kf = ast.parse(textwrap.dedent(f'''
                 @triton.jit
-                def _kernel({', '.join(k_params)}):
+                def {kernel_name}({', '.join(k_params)}):
                     pass
             ''')).body[0]
-            # TODO: need to save `self.kf` if not None, to support multiple kernels 
+            
             self.kf = kf
             self.gen_parallel_for(node)
 
             grid = f'({",".join(self.usedBlockDims)},)'
-            self.append_stmts(self.lf, f'fn = _kernel[{grid}]({",".join(k_args)})')
+            self.append_stmts(self.lf, f'fn = {kernel_name}[{grid}]({",".join(k_args)})')
             #self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
             #self.append_stmts(self.lf, 'exit(1)')
-
+            self.module.body.append(kf)
         else:
             if isinstance(node, ast.Assign):
                 #dump(node)
@@ -558,28 +562,6 @@ class TritonBackend(object):
            newnode.type = node_type
         return newnode
 
-    def codegen(self):
-        # lf = ast.parse(textwrap.dedent(f'''
-        #     def kernel({', '.join(self.arg_names)}):
-        #         pass
-        # ''')).body[0]
-        lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
-        self.lf = lf
-        
-        for node in self.func.body:
-            self.gen_launcher_node(node)
-            
-
-        m = ast.parse(textwrap.dedent('''
-            import torch
-            import triton
-            import triton.language as tl
-        '''
-        ))
-        #dump(self.kf)
-        m.body += [self.kf, self.lf]
-        return ast.unparse(m)
-
     def record_const_vars(self, pragma):
         match = re.search(r' const\((.*?)\)', pragma)
         if match:
@@ -653,8 +635,18 @@ class TritonBackend(object):
                     self.kf.body.append(newnode)
         return ''
         
+    def codegen(self):
+        # lf = ast.parse(textwrap.dedent(f'''
+        #     def kernel({', '.join(self.arg_names)}):
+        #         pass
+        # ''')).body[0]
+        lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
+        self.lf = lf
         
-    def gen_parallel_reduction(self, node, depth):
-        return []
-        
-        
+        for node in self.func.body:
+            self.gen_launcher_node(node)
+            
+        m = self.module
+        #dump(self.kf)
+        m.body += [self.lf]
+        return ast.unparse(m)
