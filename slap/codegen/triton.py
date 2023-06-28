@@ -296,6 +296,7 @@ class TritonBackend(object):
                 dump(node)
                 print(self.range_var_mask[name])
                 exit(1)
+                # what about statements like   a[i[i<N]]
             else:
                 newright = self.gen_kernel_node(right)
                 if isinstance(node.value, ast.Constant):
@@ -480,16 +481,17 @@ class TritonBackend(object):
             # self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
             # self.var_count += 1
             # return varname
-            return to_ast_node(f'tl.load({tensor}+{slice})').value
-        elif isinstance(node.ctx, ast.Store):
-            if tensor in self.reduction_vars:
-                # TODO: to add other atomic operations
-                stmt = f'tl.atomic_add({tensor}+{slice}, {ast.unparse(value)})'
-            else:
-                stmt = f'tl.store({tensor}+{slice}, {ast.unparse(value)})'
-            return to_ast_node(stmt)
-        else:
-            assert False
+            return to_ast_expr(f'tl.load({tensor}+{slice})')
+            # TODO: perhaps directly add `mask=tensor_shape_x` here, which requires knowning the dim and shapes
+        # elif isinstance(node.ctx, ast.Store):
+        #     if tensor in self.reduction_vars:
+        #         # TODO: to add other atomic operations
+        #         stmt = f'tl.atomic_add({tensor}+{slice}, {ast.unparse(value)})'
+        #     else:
+        #         stmt = f'tl.store({tensor}+{slice}, {ast.unparse(value)})'
+        #     return to_ast_node(stmt)
+        # else:
+        #     assert False
 
     def gen_op(self, op):
         if isinstance(op, ast.Add):

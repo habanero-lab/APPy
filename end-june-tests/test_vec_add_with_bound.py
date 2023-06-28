@@ -8,7 +8,6 @@ from torch import arange, zeros, empty
 def slap_kernel0(a, b, c, N, BLOCK=256):
     for i in range(0, N, BLOCK):  #pragma parallel
         i = arange(i, i+BLOCK)
-        i = i[i<N]
         c[i] = a[i] + b[i]
 
 #@jit
