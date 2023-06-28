@@ -180,10 +180,15 @@ class TritonBackend(object):
         elif isinstance(node, ast.For):
             newnode = self.gen_for(node)
         elif isinstance(node, ast.Compare):
-            newnode = node
+            newnode = self.gen_compare(node)
         else:
             if not isinstance(node, ast.Comment):
                 assert False, ast.dump(node)
+        return newnode
+
+    def gen_compare(self, node: ast.Compare):
+        newnode = deepcopy(node)
+        newnode.left = self.gen_kernel_node(node.left)
         return newnode
 
     def gen_for(self, node: ast.For):
@@ -562,7 +567,7 @@ class TritonBackend(object):
             
             dtype = re.search(r'dtype=(.*)\)', node_s).groups()[0].replace('torch.', 'tl.')
             stmt = f'tl.{funcname}({shape_arg}, dtype={dtype})'
-        elif funcname in ['exp', 'log', 'maximum']:
+        elif funcname in ['exp', 'log', 'maximum', 'sin', 'cos', 'where']:
             args = []
             for arg in node.args:
                 args.append(ast.unparse(self.gen_kernel_node(arg))) 
