@@ -25,19 +25,19 @@ def mykernel(a, M, N, inner):
 
 def _mykernel_unfused(a, b, t0, t1, t2, M, N, BLOCK=128):
     for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma parallel block(BLOCK) reduction(max:t0)
+        for j in range(N):  #pragma parallel reduction(t0)
             t0[i] = max(t0[i], a[i,j])
 
     for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma parallel block(BLOCK)
+        for j in range(N):  #pragma parallel
             t1[i,j] = exp(a[i,j] - t0[i])
 
     for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma parallel block(BLOCK) reduction(+:t2)
+        for j in range(N):  #pragma parallel reduction(t2)
             t2[i] += t1[i,j]
 
     for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma parallel block(BLOCK)
+        for j in range(N):  #pragma parallel
             b[i,j] = t1[i,j] / t2[i]
 
 @jit

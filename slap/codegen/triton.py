@@ -21,7 +21,6 @@ class TritonBackend(object):
             assert isinstance(keyword_arg, ast.Constant)
             self.arg_values.append(keyword_arg.value)
         
-        
         self.module = ast.parse(textwrap.dedent('''
             import torch
             import triton
@@ -30,6 +29,9 @@ class TritonBackend(object):
         ))
         self.arg_names = get_arg_names(self.func)
         self.arg_types = [build_type_from_value(x) for x in arg_values]
+        self.arg_type_map = {}
+        for name, type in zip(self.arg_names, self.arg_types):
+            self.arg_type_map[name] = type
         
         self.kernel_count = 0
         self.var_count = 0
@@ -76,7 +78,8 @@ class TritonBackend(object):
                     continue
                 newargs.append(name)
                 for d in range(val.dim()):
-                    newargs.append(f'{name}_stride_{d}: tl.constexpr')
+                    newargs.append(f'{name}_shape_{d}: tl.constexpr')
+                    newargs.append(f'{name}_stride_{d}: tl.constexpr')                    
             else:
                 newargs.append(name)
 
@@ -84,9 +87,7 @@ class TritonBackend(object):
             if is_const:
                 newargs.append(var+': tl.constexpr')
             else:
-                newargs.append(var)
-        #print(newargs)
-        #exit(1)
+                newargs.append(var)        
         return newargs
 
     def get_kernel_function_arguments(self):
@@ -97,6 +98,7 @@ class TritonBackend(object):
                     continue
                 newargs.append(name)
                 for d in range(val.dim()):
+                    newargs.append(f'{name}.size({d})')
                     newargs.append(f'{name}.stride({d})')
             elif type(val) == torch.dtype:
                 newargs.append(str(val).replace('torch.', 'tl.'))
@@ -350,8 +352,11 @@ class TritonBackend(object):
                     store_value = self.gen_kernel_node(right.args[1])
                 else:
                     assert False, "Supported reduction op: maximum, minimum and +"
-                    
-            s = f'{store_func}({tensor}+{slice}, {unparse(store_value)})'
+
+            s = f'{store_func}({tensor}+{slice}, {unparse(store_value)})'        
+            tensor_dim = self.get_tensor_ndim(tensor)
+            if tensor_dim == 1 and store_func == 'tl.store':  # no atomic mask support
+                s = f'{store_func}({tensor}+{slice}, {unparse(store_value)}, mask=({slice})<{tensor}_shape_0)'
             newnode = to_ast_node(s)        
         else:
             assert False
@@ -472,6 +477,8 @@ class TritonBackend(object):
         else:
             return self.gen_kernel_node(slice)
 
+    def get_tensor_ndim(self, name):
+        return self.arg_type_map[name].ndim
 
     def gen_subscript(self, node: ast.Subscript, value=None):
         if unparse(node.slice) in ['(None, :)', '(:, None)']:
@@ -486,8 +493,12 @@ class TritonBackend(object):
             # self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
             # self.var_count += 1
             # return varname
-            return to_ast_expr(f'tl.load({tensor}+{slice})')
-            # TODO: perhaps directly add `mask=tensor_shape_x` here, which requires knowning the dim and shapes
+            tensor_dim = self.get_tensor_ndim(tensor)            
+            s = f'tl.load({tensor}+{slice})'
+            if tensor_dim == 1:
+                s = f'tl.load({tensor}+{slice}, mask=({slice})<{tensor}_shape_0, other=0)'
+            
+        return to_ast_expr(s)
         # elif isinstance(node.ctx, ast.Store):
         #     if tensor in self.reduction_vars:
         #         # TODO: to add other atomic operations

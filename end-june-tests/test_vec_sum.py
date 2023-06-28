@@ -21,7 +21,7 @@ def torch_kernel(a, N):
     
 def test1():
     for dtype in [torch.float16, torch.float32]:
-        for shape in [1024*128, 1024*1024, 10*1024*1024]:
+        for shape in [1024*128, 1024*1024, 10*1024*1024, 10*1024*1024+1]:
             N = shape
             print(f'N: {N}')
             a = torch.randn(N, device='cuda', dtype=dtype)
