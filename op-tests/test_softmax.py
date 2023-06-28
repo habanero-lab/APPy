@@ -40,34 +40,25 @@ def _mykernel_unfused(a, b, t0, t1, t2, M, N, BLOCK=128):
         for j in range(N):  #pragma parallel block(BLOCK)
             b[i,j] = t1[i,j] / t2[i]
 
+
 def _mykernel_max_parallelism(a, b, t0, t1, t2, M, N, BN=128):
     for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma parallel
-            t0[i] = max(t0[i], a[i,j])
+        for j in range(0, N, BN):  #pragma parallel reduction(t0)
+            t0[i] = maximum(t0[i], max(a[i,j:j+BN]))
 
     for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma parallel block(BLOCK) reduction(+:t2)
-            t1[i,j] = exp(a[i,j] - t0[i])
-            t2[i] += t1[i,j]
+        for j in range(0, N, BN):  #pragma parallel reduction(t2)
+            _t1 = exp(a[i,j:j+BN] - t0[i])
+            t1[i,j:j+BN] = _t1
+            t2[i] += sum(_t1)
 
     for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma parallel block(BLOCK)
-            b[i,j] = t1[i,j] / t2[i]
+        for j in range(0, N, BN):  #pragma parallel 
+            b[i,j:j+BN] = t1[i,j:j+BN] / t2[i]
 
-def _mykernel_max_locality(a, b, t0, t1, t2, M, N):
-    for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma parallel block(BLOCK) reduction(max:t0)
-            t0[i] = max(t0[i], a[i,j])
-
-        for j in range(N):  #pragma parallel block(BLOCK) reduction(+:t2)
-            t1[i,j] = exp(a[i,j] - t0[i])
-            t2[i] += t1[i,j]
-
-        for j in range(N):  #pragma parallel block(BLOCK)
-            b[i,j] = t1[i,j] / t2[i]
 
 @jit
-def _mykernel_max_locality_scalar_repl(a, b, t0, t1, t2, M, N, BN=256):
+def _mykernel_max_locality(a, b, t0, t1, t2, M, N, BN=256):
     #pragma parallel
     for i in range(M):  
         for j in range(0, N, BN):
@@ -90,7 +81,7 @@ def _mykernel_max_locality_full_block_col(a, b, t0, t1, t2, M, N):
         b[i,0:N] = t1[0,0:N] / t2[0]
 
 @jit
-def _mykernel_max_locality_full_block_col_on_chip_tmp(a, b, t0, t1, t2, M, N):
+def _mykernel_max_locality_cache_row(a, b, t0, t1, t2, M, N):
     for i in range(M):  #pragma parallel
         _a = a[i,0:N]
         _t0 = max(_a)
@@ -105,13 +96,13 @@ def torch_kernel(a, M, N):
 def test1():
     for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
-        for M, N in [(4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16)]:
+        for M, N in [(4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (128, 4096*16)]:
         #for M, N in [(4096, 4096*8)]:
             print(f'M: {M}, N: {N}')
             a = torch.randn(M, N, dtype=dtype)
             b_ref = torch_kernel(a, M, N)
 
-            for f in (torch_kernel, _mykernel_max_locality_full_block_col_on_chip_tmp, _mykernel_max_locality_scalar_repl):
+            for f in (torch_kernel, _mykernel_max_locality_cache_row, _mykernel_max_locality, _mykernel_max_parallelism):
                 ff = lambda: f(a, M, N)
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, M, N, f)
