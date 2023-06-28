@@ -40,8 +40,8 @@ def _mykernel_unfused(a, b, t0, t1, t2, M, N, BLOCK=128):
         for j in range(N):  #pragma parallel block(BLOCK)
             b[i,j] = t1[i,j] / t2[i]
 
-
-def _mykernel_max_parallelism(a, b, t0, t1, t2, M, N, BN=128):
+@jit
+def _mykernel_max_parallelism(a, b, t0, t1, t2, M, N, BN=512):
     for i in range(M):  #pragma parallel
         for j in range(0, N, BN):  #pragma parallel reduction(t0)
             t0[i] = maximum(t0[i], max(a[i,j:j+BN]))
@@ -58,7 +58,7 @@ def _mykernel_max_parallelism(a, b, t0, t1, t2, M, N, BN=128):
 
 
 @jit
-def _mykernel_max_locality(a, b, t0, t1, t2, M, N, BN=256):
+def _mykernel_max_locality_no_cache(a, b, t0, t1, t2, M, N, BN=512):
     #pragma parallel
     for i in range(M):  
         for j in range(0, N, BN):
@@ -96,13 +96,13 @@ def torch_kernel(a, M, N):
 def test1():
     for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
-        for M, N in [(4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (128, 4096*16)]:
+        for M, N in [(4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (64, 4096*16)]:
         #for M, N in [(4096, 4096*8)]:
             print(f'M: {M}, N: {N}')
             a = torch.randn(M, N, dtype=dtype)
             b_ref = torch_kernel(a, M, N)
 
-            for f in (torch_kernel, _mykernel_max_locality_cache_row, _mykernel_max_locality, _mykernel_max_parallelism):
+            for f in (torch_kernel, _mykernel_max_locality_cache_row, _mykernel_max_locality_no_cache, _mykernel_max_parallelism):
                 ff = lambda: f(a, M, N)
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, M, N, f)

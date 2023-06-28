@@ -30,8 +30,7 @@ class TritonBackend(object):
         ))
         self.arg_names = get_arg_names(self.func)
         self.arg_types = [build_type_from_value(x) for x in arg_values]
-        self.allBlockDims = ['x', 'y', 'z']
-        self.usedBlockDims = []
+        
         self.kernel_count = 0
         self.var_count = 0
         self.reduction_vars = []
@@ -124,6 +123,8 @@ class TritonBackend(object):
             ''')).body[0]
             
             self.kf = kf
+            self.allBlockDims = ['x', 'y', 'z']
+            self.usedBlockDims = []
             self.gen_parallel_for(node)
 
             grid = f'({",".join(self.usedBlockDims)},)'

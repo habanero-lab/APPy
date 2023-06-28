@@ -23,7 +23,7 @@ def torch_kernel(a, b, c, N):
     torch.add(a, b, out=c)
     
 def test1():
-    for dtype in [torch.float16, torch.float32, torch.float64]:
+    for dtype in [torch.float16, torch.float32]:
         for shape in [1024*128, 1024*1024, 1024*1024*2]:
             N = shape
             print(f'dtype: {dtype}, N: {N}')

@@ -20,7 +20,7 @@ def torch_kernel(a, N):
     return b
     
 def test1():
-    for dtype in [torch.float32, torch.float64]:
+    for dtype in [torch.float16, torch.float32]:
         for shape in [1024*128, 1024*1024, 10*1024*1024]:
             N = shape
             print(f'N: {N}')
