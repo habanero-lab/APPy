@@ -34,7 +34,8 @@ class TritonBackend(object):
         self.var_count = 0
         self.reduction_vars = []
         self.lf_local_vars = {}
-        self.range_vars = {}
+        self.range_vars = []
+        self.range_var_mask = {}
         self.index_block_sizes = {}
         self.index_bounds = {}
         self.var_types = {}
@@ -171,12 +172,12 @@ class TritonBackend(object):
             newnode = self.gen_call(node)
         elif isinstance(node, ast.For):
             newnode = self.gen_for(node)
+        elif isinstance(node, ast.Compare):
+            newnode = node
         else:
             if not isinstance(node, ast.Comment):
                 assert False, ast.dump(node)
         return newnode
-
-
 
     def gen_for(self, node: ast.For):
         newloop = deepcopy(node)
@@ -287,27 +288,36 @@ class TritonBackend(object):
             newnode = ast.Assign(targets=[left], lineno=node.lineno)
             # In our programming model, storing to a global array must be a subscript 
             # expression, even if the array has only one element.
-            newright = self.gen_kernel_node(right)
-
-            if isinstance(node.value, ast.Constant):
-                assert isinstance(self.arg_types[0], TensorType)
-                dtype = self.arg_types[0].get_tl_dtype()
             
-                if isinstance(node, ast.AnnAssign):
-                    dtype = get_tl_dtype_from_str(node.annotation.id)
             
-                blocksizes = self.index_block_sizes.values()
-                if len(blocksizes) > 0:
-                    e = f'tl.zeros([{",".join(blocksizes)}], dtype={dtype}) + {node.value.value}'
-                    newright = to_ast_expr(e)
+            if isinstance(node.value, ast.Subscript) and node.value.value.id in self.range_vars:
+                # Mask pattern
+                name = node.value.value.id
+                dump(node)
+                print(self.range_var_mask[name])
+                exit(1)
+            else:
+                newright = self.gen_kernel_node(right)
+                if isinstance(node.value, ast.Constant):
+                    assert isinstance(self.arg_types[0], TensorType)
+                    dtype = self.arg_types[0].get_tl_dtype()
+                
+                    if isinstance(node, ast.AnnAssign):
+                        dtype = get_tl_dtype_from_str(node.annotation.id)
+                
+                    blocksizes = self.index_block_sizes.values()
+                    if len(blocksizes) > 0:
+                        e = f'tl.zeros([{",".join(blocksizes)}], dtype={dtype}) + {node.value.value}'
+                        newright = to_ast_expr(e)
 
-            if isinstance(newright, ast.Expr):
-                newright = newright.value
+                if isinstance(newright, ast.Expr):
+                    newright = newright.value
 
-            newnode.value = newright
+                if isinstance(node.value, ast.Call) and node.value.func.id in ['range', 'arange']:
+                    self.range_vars.append(left.id)
 
-            if isinstance(node.value, ast.Call) and node.value.func == 'range':
-                self.range_vars[left.id] = {}
+                newnode.value = newright
+            
 
             if hasattr(newright, 'type'):
                 self.var_types[left.id] = newright.type
@@ -498,7 +508,7 @@ class TritonBackend(object):
         funcname = node.func.id
         stmt = ''
         node_type = None
-        if funcname == 'range':
+        if funcname in ['range', 'arange']:
             start_s = node.args[0].id
             if isinstance(node.args[1], ast.BinOp):
                 step_arg = node.args[1].right
@@ -544,7 +554,6 @@ class TritonBackend(object):
         newnode = to_ast_expr(stmt)
         if node_type != None:
            newnode.type = node_type
-           newnode.value.type = node_type
         return newnode
 
     def codegen(self):
