@@ -15,8 +15,8 @@ def _slap_kernel(a, b, N, BLOCK=512):
     for i in range(0, N, BLOCK):  
         b[0] += sum(a[i:i+BLOCK])
 
-def _slap_kernel(a, b, N, BLOCK=512):
-    #pragma parallel reduction(b)
+def _slap_kernel1(a, b, N, BLOCK=512):
+    #pragma parallel reduction(b) block(BLOCK)
     for i in range(N):  
         b[0] += sum(a[i])
 

@@ -361,7 +361,8 @@ class TritonBackend(object):
             s = f'{store_func}({tensor}+{slice}, {unparse(store_value)})'        
             tensor_dim = self.get_tensor_ndim(tensor)
             if tensor_dim == 1 and store_func == 'tl.store':  # no atomic mask support
-                s = f'{store_func}({tensor}+{slice}, {unparse(store_value)}, mask=({slice})<{tensor}_shape_0)'
+                pass
+                #s = f'{store_func}({tensor}+{slice}, {unparse(store_value)}, mask=({slice})<{tensor}_shape_0)'
             newnode = to_ast_node(s)        
         else:
             assert False
@@ -501,7 +502,8 @@ class TritonBackend(object):
             tensor_dim = self.get_tensor_ndim(tensor)            
             s = f'tl.load({tensor}+{slice})'
             if tensor_dim == 1:
-                s = f'tl.load({tensor}+{slice}, mask=({slice})<{tensor}_shape_0, other=0)'
+                pass
+                #s = f'tl.load({tensor}+{slice}, mask=({slice})<{tensor}_shape_0, other=0)'
             
         return to_ast_expr(s)
         # elif isinstance(node.ctx, ast.Store):

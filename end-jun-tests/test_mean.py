@@ -17,7 +17,6 @@ def _mykernel(a, b, M, N, BN=256):
     for i in range(M):  #pragma parallel
         for j in range(0, N, BN):
             b[i] += sum(a[i,j:j+BN] / N)
-    return b
 
 def torch_kernel(a):
     return torch.mean(a, dim=1)
