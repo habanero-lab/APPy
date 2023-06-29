@@ -15,6 +15,11 @@ def _slap_kernel(a, b, N, BLOCK=512):
     for i in range(0, N, BLOCK):  
         b[0] += sum(a[i:i+BLOCK])
 
+def _slap_kernel(a, b, N, BLOCK=512):
+    #pragma parallel reduction(b)
+    for i in range(N):  
+        b[0] += sum(a[i])
+
 def torch_kernel(a, N):
     b = sum(a)
     return b
