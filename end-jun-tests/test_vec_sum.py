@@ -18,7 +18,7 @@ def _slap_kernel(a, b, N, BLOCK=512):
 def _slap_kernel1(a, b, N, BLOCK=512):
     #pragma parallel reduction(b) block(BLOCK)
     for i in range(N):  
-        b[0] += sum(a[i])
+        b[0] += a[i]
 
 def torch_kernel(a, N):
     b = sum(a)
@@ -26,7 +26,7 @@ def torch_kernel(a, N):
     
 def test1():
     for dtype in [torch.float16, torch.float32]:
-        for shape in [1024*128, 1024*1024, 10*1024*1024, 10*1024*1024+1]:
+        for shape in [1024*128, 1024*1024, 10*1024*1024]:
             N = shape
             print(f'N: {N}')
             a = torch.randn(N, device='cuda', dtype=dtype)

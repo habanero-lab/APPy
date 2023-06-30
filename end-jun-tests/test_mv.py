@@ -31,12 +31,9 @@ def kernel_unfused(a, b, c, t0, M, N):
 def seq(a, b, c, M, N):
     #pragma parallel block
     for i in range(M):  
-        acc = 0
-        #pragma block
+        #pragma block reduction(+:acc)
         for j in range(N):  
-            #pragma reduction(j, axis=1)
-            acc += a[i,j] * b[j]
-        a[i] = acc
+            c[i] += a[i,j] * b[j]
 
 
 def seq(a, b, c, M, N):

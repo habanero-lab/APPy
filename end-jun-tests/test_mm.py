@@ -18,7 +18,7 @@ def slap_kernel(a, b, c, M, N, K, BM=64, BN=64, BK=32):
     for i in range(M):  #pragma parallel block(BM)
         for j in range(N):  #pragma parallel block(BN)
             acc: float32 = 0
-            for k in range(K):  #pragma block(BK) reduction(+:acc)
+            for k in range(K):  #pragma reduction(+:acc) block(BK)
                 acc += a[i,k] * b[k,j]
             c[i,j] = acc
 
