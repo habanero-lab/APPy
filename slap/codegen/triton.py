@@ -533,6 +533,12 @@ class TritonBackend(object):
         funcname = node.func.id
         stmt = ''
         node_type = None
+
+        if funcname == 't':
+            funcname = 'trans'
+        elif funcname == 'mm':
+            funcname = 'dot'
+
         if funcname in ['range', 'arange']:
             start_s = node.args[0].id
             if isinstance(node.args[1], ast.BinOp):
@@ -569,11 +575,12 @@ class TritonBackend(object):
             
             dtype = re.search(r'dtype=(.*)\)', node_s).groups()[0].replace('torch.', 'tl.')
             stmt = f'tl.{funcname}({shape_arg}, dtype={dtype})'
-        elif funcname in ['exp', 'log', 'maximum', 'sin', 'cos', 'where']:
+        elif funcname in ['exp', 'log', 'maximum', 'sin', 'cos', 'where', 'trans', 'dot']:
             args = []
             for arg in node.args:
                 args.append(ast.unparse(self.gen_kernel_node(arg))) 
             stmt = f'tl.{funcname}({",".join(args)})'
+        
         else:
             assert False, 'unknown function call: ' + ast.dump(node)
         newnode = to_ast_expr(stmt)

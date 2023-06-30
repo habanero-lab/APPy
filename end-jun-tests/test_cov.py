@@ -5,7 +5,7 @@ from slap import jit, max
 import numba
 from numba import prange
 import numpy as np
-from torch import arange, zeros, empty, sum, maximum, add, exp
+from torch import arange, zeros, empty, sum, maximum, add, exp, t, mm
 
 import torch.utils.benchmark as torchbench
 
@@ -42,6 +42,25 @@ def _mykernel(a, b, u, M, N, BM=8, BN=512):
                 cov += sum((a[i,k:k+BN] - u[i]) * (a[j,k:k+BN] - u[j]))
             b[i,j] = cov / (N-1)
 
+@jit
+def _mykernel_blocked(a, b, u, M, N, BM=64, BN=64):
+    for i in range(M):  #pragma parallel
+        s = 0.0
+        for j in range(0, N, 256):
+            #s += sum(a[i,j:j+BN]) / N  # somehow this triggers a segfault
+            s += sum(a[i,j:j+256] / N)
+        b[i] = s
+
+    for i in range(0, M, BM):  #pragma parallel
+        for j in range(0, M, BM):  #pragma parallel
+            cov = zeros([BM, BM], dtype=torch.float32)
+            for k in range(0, N, BN):
+                x = a[i:i+BM, k:k+BN] - u[i:i+BM][:,None]
+                y = a[j:j+BM, k:k+BN] - u[j:j+BM][:,None]
+                cov += mm(x, t(y))
+            b[i:i+BM, j:j+BM] = cov / (N-1)
+
+
 def numba_kernel(a):
     n_vars, n_obs = a.shape
     u = torch.zeros([n_vars], dtype=a.dtype)
@@ -70,7 +89,7 @@ def torch_kernel(a):
     return torch.cov(a)
 
 def test1():
-    for dtype in [torch.float32]:
+    for dtype in [torch.float16]:
     #for dtype in [torch.float64]:
         for M, N in [(1024, 1024), (1024*2, 1024*2)]:
         #for M, N in [(1024, 256*2), (4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (128, 4096*16), (256, 4096*16)]:
@@ -79,13 +98,14 @@ def test1():
             a = torch.randn(M, N, dtype=dtype)
             b_ref = torch_kernel(a)
 
-            for f in (torch_kernel, _mykernel, numba_kernel):
+            for f in (torch_kernel, _mykernel, _mykernel_blocked):
                 ff = lambda: f(a)
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, f)
                 b = ff()
-                #print(b)
-                #print(b_ref)
+                if not torch.allclose(b, b_ref, atol=0.1, rtol=0.1):
+                    print(b)
+                    print(b_ref)
                 assert(torch.allclose(b, b_ref, atol=0.1, rtol=0.1))
                 #ms, _, _ = triton.testing.do_bench(ff)
                 ms = bench(ff)
