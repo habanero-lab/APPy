@@ -409,7 +409,7 @@ class TritonBackend(object):
         right = self.gen_kernel_node(node.right)
 
         if isinstance(node.op, ast.MatMult):
-            s = f'tl.dot({unparse(left)}, {unparse(right)})'
+            s = f'tl.dot({unparse(left)}, {unparse(right)}, allow_tf32=False)'
             newnode = to_ast_expr(s)
         else:
             newnode = ast.BinOp(op=node.op, left=left, right=right)
@@ -579,6 +579,8 @@ class TritonBackend(object):
             args = []
             for arg in node.args:
                 args.append(ast.unparse(self.gen_kernel_node(arg))) 
+            if funcname == 'dot':
+                args.append('allow_tf32=False')
             stmt = f'tl.{funcname}({",".join(args)})'
         
         else:
