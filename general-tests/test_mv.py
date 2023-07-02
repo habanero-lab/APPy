@@ -31,8 +31,9 @@ def kernel_unfused(a, b, c, t0, M, N):
 def seq(a, b, c, M, N):
     #pragma parallel block
     for i in range(M):  
-        #pragma block reduction(+:acc)
+        #pragma block
         for j in range(N):  
+            #pragma tensorfy c[i] += sum(a[i,j] * b[None,j], axis=1)
             c[i] += a[i,j] * b[j]
 
 

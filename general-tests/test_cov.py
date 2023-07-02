@@ -7,15 +7,7 @@ from numba import prange
 import numpy as np
 from torch import arange, zeros, empty, sum, maximum, add, exp, t, mm
 
-import torch.utils.benchmark as torchbench
-
-def bench(fn):
-    t0 = torchbench.Timer(
-        stmt='fn()',
-        globals={'fn': fn},
-        num_threads=torch.get_num_threads()
-    )
-    return t0.timeit(20).mean * 1000
+from slap.utils import bench
 
 torch.set_default_device('cuda')
 

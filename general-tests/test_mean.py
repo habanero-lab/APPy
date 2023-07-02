@@ -18,6 +18,14 @@ def _mykernel(a, b, M, N, BN=256):
         for j in range(0, N, BN):
             b[i] += sum(a[i,j:j+BN] / N)
 
+@jit
+def _mykernel1(a, b, M, N, BN=256):
+    for i in range(M):  #pragma parallel
+        for j in range(N):  #pragma block
+            #pragma tensorfy b[i] += sum(a[i,j])
+            b[i] += a[i,j]
+        b[i] /= N
+
 def torch_kernel(a):
     return torch.mean(a, dim=1)
     #return torch.cov(a)

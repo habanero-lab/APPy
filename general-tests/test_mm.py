@@ -10,18 +10,24 @@ def slap_kernel0(a, b, c, M, N, K, BM=64, BN=64, BK=32):
         for j in range(0, N, BN):  #pragma parallel
             acc = zeros([BM, BN], device=a.device, dtype=torch.float32)
             for k in range(0, K, BK):     
-                acc += a[i:i+BM,k:k+BK] @ b[k:k+BK, j:j+BN]
-            c[i:i+BM,j:j+BN] = acc
+                acc += a[i:i+BM, k:k+BK] @ b[k:k+BK, j:j+BN]
+            c[i:i+BM, j:j+BN] = acc
 
 #@slap.jit
 def slap_kernel(a, b, c, M, N, K, BM=64, BN=64, BK=32):
     for i in range(M):  #pragma parallel block(BM)
         for j in range(N):  #pragma parallel block(BN)
             acc: float32 = 0
-            for k in range(K):  #pragma reduction(+:acc) block(BK)
+            for k in range(K):  #pragma block(BK)
+                #pragma tensorfy acc += a[i,k] @ b[k,j]
                 acc += a[i,k] * b[k,j]
             c[i,j] = acc
+            
 
+def op_kernel(a, b, c, M, N, K, BM=64, BN=64, BK=32):
+    #pragma implicit loop i(0, M, BM) j(0, N, BN) k(0, K, BK)
+    c[:M, :N] = a[:M, :K] @ b[:K, :N]
+    c[:M, :N] += d[None, :N]
 
 def torch_kernel(a, b, c, M, N, K):
     torch.mm(a, b, out=c)

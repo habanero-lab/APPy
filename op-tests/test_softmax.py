@@ -72,6 +72,17 @@ def _mykernel_max_locality_no_cache(a, b, t0, t1, t2, M, N, BN=512):
         for j in range(0, N, BN):
             b[i,j:j+BN] = t1[i,j:j+BN] / t2[i]
 
+
+@jit
+def _mykernel_max_locality_no_cache_op(a, b, t0, t1, t2, M, N):
+    for i in range(M):  #pragma parallel
+        _t0 = max(a[i,:N])
+        #pragma fuse start
+        t1[i,:N] = exp(a[i,:N] - _t0)
+        _t2 = sum(t1[i,:N])
+        #pragma fuse end
+        b[i,0:N] = t1[i,:N] / _t2
+
 @jit
 def _mykernel_max_locality_full_block_col(a, b, t0, t1, t2, M, N):
     for i in range(M):  #pragma parallel

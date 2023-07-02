@@ -4,7 +4,7 @@ import triton.language as tl
 import slap 
 from torch import arange, zeros, empty, sum
 
-nclusters = 200
+nclusters = 100
 
 @slap.jit(dump_code=0)
 def slap_kernel(x, labels, centers, M, N, Bj):
