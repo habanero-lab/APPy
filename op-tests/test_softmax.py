@@ -77,10 +77,10 @@ def _mykernel_max_locality_no_cache(a, b, t0, t1, t2, M, N, BN=512):
 def _mykernel_max_locality_no_cache_op(a, b, t0, t1, t2, M, N):
     for i in range(M):  #pragma parallel
         _t0 = max(a[i,:N])
-        #pragma fuse start
+        #pragma start fusion
         t1[i,:N] = exp(a[i,:N] - _t0)
         _t2 = sum(t1[i,:N])
-        #pragma fuse end
+        #pragma end fusion
         b[i,0:N] = t1[i,:N] / _t2
 
 @jit
