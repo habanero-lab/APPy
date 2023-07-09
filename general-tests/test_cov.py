@@ -13,7 +13,7 @@ torch.set_default_device('cuda')
 
 def mykernel(a, inner):
     n_vars, n_obs = a.shape
-    u = torch.zeros([n_vars], dtype=a.dtype)
+    u = torch.empty([n_vars], dtype=a.dtype)
     b = torch.empty([n_vars, n_vars], dtype=a.dtype)
     inner(a, b, u, n_vars, n_obs)
     return b
@@ -25,6 +25,7 @@ def _mykernel_2_loops(a, b, u, M, N, BM=8, BN=512):
         for j in range(0, N, BN):
             #s += sum(a[i,j:j+BN]) / N  # somehow this triggers a segfault
             s += sum(a[i,j:j+BN] / N)
+        u[i] = s
 
     for i in range(M):  #pragma parallel
         for j in range(M):  #pragma parallel
@@ -41,6 +42,7 @@ def _mykernel_3_loops(a, b, u, M, N, BM=8, BN=512):
         for j in range(0, N, BN):
             #s += sum(a[i,j:j+BN]) / N  # somehow this triggers a segfault
             s += sum(a[i,j:j+BN] / N)
+        u[i] = s
 
     for i in range(M):  #pragma parallel
         for j in range(0, N, BN):  #pragma parallel
@@ -60,10 +62,11 @@ def _mykernel_blocked(a, b, u, M, N, BM=64, BN=32):
         for j in range(0, N, 256):
             #s += sum(a[i,j:j+BN]) / N  # somehow this triggers a segfault
             s += sum(a[i,j:j+256] / N)
+        u[i] = s
 
     for i in range(M):  #pragma parallel
-        for j in range(0, N, BN):  #pragma parallel
-            a[i,j:j+BN] -= u[i]
+        for j in range(0, N, 256):  #pragma parallel
+            a[i,j:j+256] -= u[i]
 
     for i in range(0, M, BM):  #pragma parallel
         for j in range(0, M, BM):  #pragma parallel
@@ -73,6 +76,16 @@ def _mykernel_blocked(a, b, u, M, N, BM=64, BN=32):
                 y = a[j:j+BM, k:k+BN]
                 cov += x @ t(y)
             b[i:i+BM, j:j+BM] = cov / (N-1)
+
+def _mykernel_ops(a, b, u, M, N, BM=64, BN=32):
+    #pragma par_dim(:M) seq_dim(:N:256) {
+    u[:M] = sum(a[:M, :N], axis=0) / N
+    a[:M, :N] -= u[:M, None]
+    #pragma }
+
+    #pragma par_dim(:M:BM, :M:BM) seq_dim(:N:BN)
+    b[:M, :M] = a[:M, :N] @ t(a[:M, :N]) / (N-1)
+
 
 
 def numba_kernel(a):
@@ -140,15 +153,16 @@ def test1():
             a = torch.randn(M, N, dtype=dtype)
             b_ref = torch_kernel(a)
 
-            for f in (torch_kernel, _mykernel_2_loops, _mykernel_3_loops,  _mykernel_blocked):
+            for f in (torch_kernel, _mykernel_2_loops, _mykernel_3_loops,  _mykernel_blocked, _mykernel_ops):
+            #for f in (torch_kernel, _mykernel_2_loops):
                 ff = lambda: f(a)
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, f)
                 b = ff()
-                if not torch.allclose(b, b_ref, atol=0.1, rtol=0.05):
+                if not torch.allclose(b, b_ref, atol=0.1, rtol=0.01):
                     print(b)
                     print(b_ref)
-                assert(torch.allclose(b, b_ref, atol=0.1, rtol=0.05))
+                assert(torch.allclose(b, b_ref, atol=0.1, rtol=0.01))
                 #ms, _, _ = triton.testing.do_bench(ff)
                 ms = bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
