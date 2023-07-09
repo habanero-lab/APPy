@@ -20,11 +20,8 @@ def _mykernel(a, b, M, N, BN=256):
 
 @jit
 def _mykernel1(a, b, M, N, BN=256):
-    for i in range(M):  #pragma parallel
-        for j in range(N):  #pragma block
-            #pragma tensorfy b[i] += sum(a[i,j])
-            b[i] += a[i,j]
-        b[i] /= N
+    #pragma par_dim(:M) seq_dim(:N:BN)
+    b[:M] = sum(a[:M, :N]) / N
 
 def torch_kernel(a):
     return torch.mean(a, dim=1)

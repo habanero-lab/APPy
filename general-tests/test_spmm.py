@@ -43,6 +43,15 @@ def _slap_kernel(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN=128):
                 acc += a_ik * b[ks,j]
             c[i,j] = acc
 
+#@slap.jit
+def mykernel_ops(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN=128):
+    for i in range(M):  #pragma parallel     
+        c[i,:N] = 0.0
+        for ki in range(a_rowptrs[i], a_rowptrs[i+1]):
+            a_ik = a_vals[ki]
+            ks = a_cols[ki]
+            #pragma par_dim(:N:BN)    # this is not supported yet, there cannot be statements between parallel pragmas
+            c[i,:N] += a_ik * b[ks,:N]
 
 def torch_kernel(a, b):
     return torch.mm(a, b)

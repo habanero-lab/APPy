@@ -20,6 +20,12 @@ def slap_kernel1(x, labels, centers, M, N, Bj):
             label = labels[i]
             centers[label,j] += x[i,j]
 
+@slap.jit(dump_code=0)
+def slap_kernel2(x, labels, centers, M, N, Bj):
+    for i in range(M):  #pragma parallel reduction(centers) 
+        #pragma par_dim(:N:Bj)
+        centers[labels[i], :N] += x[i, :N]
+
 def torch_kernel(x, labels, centers, M, N, Bj=None):
     for i in range(M):
         label = labels[i]

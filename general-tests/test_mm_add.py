@@ -14,6 +14,10 @@ def slap_kernel(a, b, d, c, M, N, K, BM=64, BN=64, BK=32):
             acc += d[j:j+BN][None,:]
             c[i:i+BM,j:j+BN] = acc
 
+def mykernel_ops(a, b, d, c, M, N, K, BM=64, BN=64, BK=32):
+    #pragma par_dim(:M:BM, :N:BN) seq_dim(:K:BK)
+    c[:M, :N] = a[:M, :K] @ b[:K, :N] + d[None, :N]
+
 def torch_kernel(a, b, d, c, M, N, K):
     t = a @ b
     torch.add(t, d[None,:], out=c)

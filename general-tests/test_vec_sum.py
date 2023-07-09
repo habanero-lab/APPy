@@ -20,6 +20,9 @@ def _slap_kernel1(a, b, N, BLOCK=512):
     for i in range(N):  
         b[0] += a[i]
 
+#pragma par_dim(:N:256)
+#b[0] = sum(a[:N])
+
 def torch_kernel(a, N):
     b = sum(a)
     return b

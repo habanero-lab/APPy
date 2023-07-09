@@ -26,28 +26,36 @@ A clause starts with `#pragma`:
 # Element-Wise Operation
 ```python
 @jit
-def add(a, b, c, BLOCK=128):
-    for i in range(0, a.shape[0], BLOCK):  #pragma parallel
+def add(a, b, c, N, BLOCK=128):
+    for i in range(0, N, BLOCK):  #pragma parallel
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
 ```
 
-In addition to manually block an index, one can also specify which loop to block in the pragma, with a block size parameter. 
-
+or tensor operator based pragmas:
 ```python
 @jit
-def add(a, b, c, BLOCK=128):
-    for i in range(a.shape[0]):  #pragma parallel block(BLOCK)
-        c[i] = a[i] + b[i]
+def add(a, b, c, N, BLOCK=128):
+    #pragma par_dim(0:N:BLOCK)
+    c[:N] = a[:N] + b[:N]
 ```
+
 
 # Grid Reduction
 
 ```python
 @jit
-def kernel(a, b, BLOCK):
+def sum(a, b, N, BLOCK=256):
     b[0] = 0
-    for i in range(0, a.shape[0], BLOCK):  #pragma parallel reduction(b)
+    for i in range(0, N, BLOCK):  #pragma parallel reduction(b)
         b[0] += torch.sum(a[i:i+BLOCK])
+```
+
+or 
+```python
+@jit
+def kernel(a, b, N, BLOCK=256):
+    #pragma par_dim(0:N:BLOCK)
+    b[0] = torch.sum(a[:N])
 ```
 
 # Indirect Reduction
@@ -64,11 +72,11 @@ def kernel(x, labels, centers, Bj=128):
 Or 
 ```python
 @jit
-def kernel(x, labels, centers, Bj):
-    for i in range(x.shape[0]):  #pragma parallel reduction(centers)
-        for j in range(x.shape[1]):  #pragma parallel block(Bj)
-            label = labels[i]
-            centers[label,j] += x[i,j]
+def kernel(x, labels, centers, Bj=128):
+    #pragma parallel reduction(centers)
+    for i in range(x.shape[0]):
+    	#pragma par_dim(0:x.shape[1]:Bj)
+    	centers[labels[i],j] += x[i,j]
 ```
 
 # Matrix Multiplications
@@ -83,6 +91,15 @@ def matmul(a, b, c, Bi, Bj, Bk):
             for k in range(0, a.shape[-1], Bk):
                 c_block[:, :] += a[i:i+Bi, k:k+Bk] @ b[k:k+Bk, j:j+Bj]
             c[i:i+Bi, j:j+Bj] = c_block
+```
+
+Or
+
+```python
+@jit
+def matmul(a, b, c, M, N, K, Bi, Bj, Bk):
+    #pragma par_dim(:M:BM, :N:BN) seq_dim(:K:BK)
+    c[:M, :N] = a[:M, :K] @ b[:K, :N]
 ```
 
 When `k` dimension is relatively large, the following kernel reduces `k` in parallel:
@@ -103,6 +120,14 @@ def matmul(a, b, c, Bi, Bj, Bk):
 	    	    c[i:i+Bi, j:j+Bj] += a[i:i+Bi, k:k+Bk] @ b[k:k+Bk, j:j+Bj]
 ```
 
+Or
+
+```python
+@jit
+def matmul(a, b, c, M, N, K, Bi, Bj, Bk):
+    #pragma par_dim(:M:BM, :N:BN, :K:BK)
+    c[:M, :N] = a[:M, :K] @ b[:K, :N]
+```
 
 Batched matmul is as easy as adding one extra outer loop and some minor changes:
 
@@ -117,6 +142,18 @@ def batched_matmul(a, b, c, Bi, Bj, Bk):
                     c_block[:, :] += a[z, i:i+Bi, k:k+Bk] @ b[z, k:k+Bk, j:j+Bj]
                 c[z, i:i+Bi, j:j+Bj] = c_block
 ```
+
+Or
+
+```python
+@jit
+def matmul(a, b, c, Z, M, N, K, Bi, Bj, Bk):
+    #pragma par_dim(:Z, :M:BM, :N:BN) seq_dim(:K:BK)
+    c[:Z, :M, :N] = a[:Z, :M, :K] @ b[:Z, :K, :N]
+```
+
+
+
 
 # Sparse-Dense Matrix Multiplication
 ```python
