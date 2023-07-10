@@ -17,7 +17,7 @@ def compile(fn, args, dump_code=0, verbose=False):
     if verbose:
         print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
     src = inspect.getsource(fn)
-    src = preprocess(src)
+    #src = preprocess(src)
     src = constant_prop(src, get_arg_names(src), args)
     tree = ast.parse(src)
     

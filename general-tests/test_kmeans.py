@@ -1,16 +1,7 @@
 import numpy as np
 import torch
 from sklearn.cluster import KMeans
-
-import torch.utils.benchmark as torchbench
-
-def bench(fn):
-    t0 = torchbench.Timer(
-        stmt='fn()',
-        globals={'fn': fn},
-        num_threads=torch.get_num_threads()
-    )
-    return t0.timeit(10).mean * 1000
+from slap.utils import bench
 
 torch.set_default_device('cuda')
 

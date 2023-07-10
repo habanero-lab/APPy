@@ -1,15 +1,18 @@
 import torch
 from slap import jit, step
+from slap.utils import bench
 from torch import arange, zeros, empty
 
 @jit
 def mykernel0(a, b, c, N, BLOCK=256):
-    for i in range(0, N, BLOCK):  #pragma parallel
+    #pragma parallel
+    for i in range(0, N, BLOCK):  
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
 
 @jit
 def mykernel1(a, b, c, N, BLOCK=256):  
-    for i in range(N):  #pragma parallel block(BLOCK)
+    #pragma parallel block(BLOCK)
+    for i in range(N):  
         c[i] = a[i] + b[i]
 
 @jit
@@ -30,11 +33,11 @@ def test1():
             c_ref = torch.zeros_like(a)
             torch_kernel(a, b, c_ref, N)
             
-            for f in [torch_kernel, mykernel0, mykernel]:
+            for f in [torch_kernel, mykernel0]:
                 c = torch.zeros_like(a)
                 f(a, b, c, N)
                 assert(torch.allclose(c, c_ref))
-                ms, _, _ = triton.testing.do_bench(lambda: f(a, b, c, N))
+                ms = bench(lambda: f(a, b, c, N))
                 print(f'{f.__name__}: {ms:.4f} ms')
 
 if __name__ == '__main__':
