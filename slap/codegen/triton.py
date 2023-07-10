@@ -62,6 +62,9 @@ class TritonBackend(object):
         n = ast.parse(stmts).body
         parent.body += n
 
+    def append_node(self, parent, node):
+        parent.body += [node]
+
     def is_parallel_for(self, node):
         return type(node) is ast.For and type(node.body[0]) == ast.Comment and '#pragma parallel' in node.body[0].value
 
@@ -109,7 +112,15 @@ class TritonBackend(object):
             newargs.append(var)
         return newargs
 
+    def is_node_pragma(self, node):
+        return isinstance(node, ast.Comment) and re.match(r' *\#pragma', node.value)
+
+
     def gen_launcher_node(self, node):
+        if self.is_node_pragma(node):
+            dump(node)
+            exit(1)
+
         if self.is_parallel_for(node):
             pragma = node.body[0].value
             self.record_const_vars(pragma)
@@ -600,7 +611,7 @@ class TritonBackend(object):
                 self.lf_local_vars[var] = True
                 
 
-    def gen_parallel_for(self, node: ast.For):
+    def gen_parallel_for(self, node: ast.For, pragma):
         #dump(node)
         range_args = [x for x in node.iter.args]
         #print(range_args)
@@ -617,7 +628,6 @@ class TritonBackend(object):
 
         loop_index = node.target.id
         self.var_types[loop_index] = TensorType(torch.int32, 0)
-        pragma = node.body[0].value
 
 
         match = re.search(r' reduction\((.*?)\)', pragma)
@@ -662,6 +672,18 @@ class TritonBackend(object):
                 if not isinstance(newnode, ast.Comment):
                     self.kf.body.append(newnode)
         return ''
+
+    def create_new_kernel_function(self):
+        kernel_name = f'_kernel{self.kernel_count}'
+        self.kernel_count += 1
+        k_params = self.get_kernel_function_parameters()
+        kf = ast.parse(textwrap.dedent(f'''
+            @triton.jit
+            def {kernel_name}({', '.join(k_params)}):
+                pass
+        ''')).body[0]
+        self.kf = kf
+        return kf
         
     def codegen(self):
         # lf = ast.parse(textwrap.dedent(f'''
@@ -670,9 +692,36 @@ class TritonBackend(object):
         # ''')).body[0]
         lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
         self.lf = lf
-        
-        for node in self.func.body:
-            self.gen_launcher_node(node)
+
+        num_nodes = len(self.func.body)
+        i = 0
+        while i < num_nodes:
+            node = self.func.body[i]
+            if self.is_node_pragma(node):
+                pragma = node.value
+                i += 1
+                nextnode = self.func.body[i]
+                
+                kf = self.create_new_kernel_function()
+                self.module.body.append(kf)
+                self.allBlockDims = ['x', 'y', 'z']
+                self.usedBlockDims = []
+
+                if isinstance(nextnode, ast.For):
+                    self.gen_parallel_for(nextnode, pragma)
+                elif isinstance(nextnode, ast.Assign):
+                    print('Gen parallel operators')
+                    assert False, 'unsupported'
+
+                grid = f'({",".join(self.usedBlockDims)},)'
+                
+                k_args = self.get_kernel_function_arguments()
+                self.append_stmts(self.lf, f'fn = {kf.name}[{grid}]({",".join(k_args)})')
+                #self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
+                #self.append_stmts(self.lf, 'exit(1)')
+            else:
+                self.append_node(self.lf, node)
+            i += 1
             
         m = self.module
         #dump(self.kf)
