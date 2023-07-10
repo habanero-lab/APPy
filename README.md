@@ -58,6 +58,28 @@ def kernel(a, b, N, BLOCK=256):
     b[0] = torch.sum(a[:N])
 ```
 
+# Dividing by Sum
+```python
+@jit
+def sum(a, b, N, BLOCK=256):
+    b[0] = 0
+    for i in range(0, N, BLOCK):  #pragma parallel reduction(b)
+        b[0] += torch.sum(a[i:i+BLOCK])
+
+    for i in range(0, N, BLOCK):  #pragma parallel
+    	a[i:i+BLOCK] /= b[0]
+```
+
+or 
+```python
+@jit
+def kernel(a, b, N, BLOCK=256):
+    #pragma par_dim(0:N:BLOCK)
+    a[:N] = a[:N] / torch.sum(a[:N])
+```
+
+
+
 # Indirect Reduction
 
 ```python
