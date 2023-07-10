@@ -39,6 +39,24 @@ def compile(fn, args, dump_code=0, verbose=False):
     
     return compiled
 
+def move_pragmas_before_stmt(src):
+    lines = src.split('\n')
+    newsrc = ''
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
+        m = re.search(r' *\#pragma', line)
+        if m:
+            nextline = lines[i+1]
+            assert re.match(r' *for ', nextline)
+            newsrc += nextline + line + '\n'
+            i += 1
+        else:
+            newsrc += line + '\n'
+        i += 1
+    return newsrc
+
 def preprocess(src):
     lines = src.split('\n')
     newsrc = ''

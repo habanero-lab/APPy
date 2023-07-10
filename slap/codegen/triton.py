@@ -663,15 +663,23 @@ class TritonBackend(object):
 
         self.usedBlockDims.append(f'blockDim_{blockDim}')
 
+        pragma = ''
         for child in node.body:
-            if self.is_parallel_for(child):
-                self.gen_parallel_for(child)
+            if self.is_node_pragma(child):
+                pragma = child.value
+                continue
+
+            if pragma:
+                if isinstance(child, ast.For):
+                    self.gen_parallel_for(child, pragma)
+                else:
+                    assert False, 'unsupported'
             else:
                 newnode = self.gen_kernel_node(child)
                 assert not isinstance(newnode, str), newnode
-                if not isinstance(newnode, ast.Comment):
-                    self.kf.body.append(newnode)
-        return ''
+                self.kf.body.append(newnode)
+                #if not isinstance(newnode, ast.Comment):
+
 
     def create_new_kernel_function(self):
         kernel_name = f'_kernel{self.kernel_count}'
@@ -684,6 +692,8 @@ class TritonBackend(object):
         ''')).body[0]
         self.kf = kf
         return kf
+
+
         
     def codegen(self):
         # lf = ast.parse(textwrap.dedent(f'''

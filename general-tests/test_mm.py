@@ -4,11 +4,15 @@ import triton.language as tl
 import slap
 from torch import arange, zeros, empty, sum, float32
 
+torch.set_default_device('cuda')
+
 @slap.jit
-def slap_kernel0(a, b, c, M, N, K, BM=64, BN=64, BK=32):
-    for i in range(0, M, BM):  #pragma parallel
-        for j in range(0, N, BN):  #pragma parallel
-            acc = zeros([BM, BN], device=a.device, dtype=torch.float32)
+def slap_kernel0(a, b, c, M, N, K, BM=64, BN=64, BK=64):
+    #pragma parallel
+    for i in range(0, M, BM):  
+        #pragma parallel
+        for j in range(0, N, BN):  
+            acc = zeros([BM, BN], dtype=torch.float32)
             for k in range(0, K, BK):     
                 acc += a[i:i+BM, k:k+BK] @ b[k:k+BK, j:j+BN]
             c[i:i+BM, j:j+BN] = acc
