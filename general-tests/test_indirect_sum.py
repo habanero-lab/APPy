@@ -6,23 +6,28 @@ from torch import arange, zeros, empty, sum
 
 nclusters = 100
 
-@slap.jit(dump_code=0)
-def slap_kernel(x, labels, centers, M, N, Bj):
-    for i in range(M):  #pragma parallel reduction(centers) 
-        for j in range(0, N, Bj):  #pragma parallel
+@slap.jit
+def mykernel(x, labels, centers, M, N, Bj):
+    #pragma parallel reduction(centers) 
+    for i in range(M):
+        #pragma parallel
+        for j in range(0, N, Bj):  
             label = labels[i]
             centers[label,j:j+Bj] += x[i,j:j+Bj]
 
-@slap.jit(dump_code=0)
-def slap_kernel1(x, labels, centers, M, N, Bj):
-    for i in range(M):  #pragma parallel reduction(centers) 
-        for j in range(N):  #pragma parallel block(128)
+@slap.jit
+def mykernel1(x, labels, centers, M, N, Bj):
+    #pragma parallel reduction(centers) 
+    for i in range(M):
+        #pragma parallel block(128)
+        for j in range(N):  
             label = labels[i]
             centers[label,j] += x[i,j]
 
-@slap.jit(dump_code=0)
-def slap_kernel2(x, labels, centers, M, N, Bj):
-    for i in range(M):  #pragma parallel reduction(centers) 
+@slap.jit
+def mykernel2(x, labels, centers, M, N, Bj):
+    #pragma parallel reduction(centers) 
+    for i in range(M):  
         #pragma par_dim(:N:Bj)
         centers[labels[i], :N] += x[i, :N]
 
@@ -44,7 +49,7 @@ def test1():
         centers_ref = torch.zeros([nclusters, N], device='cuda', dtype=torch.float32)
         torch_kernel(X, labels, centers_ref, M, N)
 
-        for f in [torch_kernel1, slap_kernel1]:
+        for f in [torch_kernel1, mykernel1]:
             centers = torch.zeros([nclusters, N], device='cuda', dtype=torch.float32)
             BLOCK = 128 * 1
             f(X, labels, centers, M, N, BLOCK)

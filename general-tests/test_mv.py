@@ -9,10 +9,6 @@ def kernel_op(a, b):
     c = sum(t0, axis=1)
     return c
 
-def mykernel_ops(a, b, c, M, N, BM=16, BN=512):
-    #pragma par_dim(:M:BM, :N:BN)
-    c[:M] = sum(a[:M, :N] * b[None, :N], axis=1)
-
 def kernel_unfused(a, b, c, t0, M, N):
     for i in range(M):
         for j in range(N):
@@ -65,10 +61,25 @@ def slap_kernel1(a, b, c, M, N, BN=256):
 
 @slap.jit
 def slap_kernel2(a, b, c, M, N, BM=8, BN=256):
+    c.fill_(0)
     #pragma parallel
-    for i in range(0, M, BM):  
-        c[i:i+BM] = sum(a[i:i+BM,j:j+BN] * b[j:j+BN][None,:], axis=1)
+    for i in range(0, M, BM):
+        #pragma parallel reduction(c)
+        for j in range(0, N, BN):
+            c[i:i+BM] += sum(a[i:i+BM, j:j+BN] * b[j:j+BN][None,:], axis=1)
         
+def mykernel_ops(a, b, c, M, N, BM=8, BN=256):
+    #pragma par_dim(:M:BM, :N:BN)
+    c[:M] = sum(a[:M, :N] * b[None, :N], axis=1)
+
+def mykernel_ops_expanded(a, b, c, M, N, BM=8, BN=256):
+    c.fill_(0)
+    #pragma parallel
+    for i in range(0, M, BM):
+        #pragma parallel reduction(c)
+        for j in range(0, N, BN):
+            c[i:i+BM] += sum(a[i:i+BM, j:j+BN] * b[j:j+BN][None,:], axis=1)
+
 
 def torch_kernel(a, b, c, M, N):
     torch.mv(a, b, out=c)
