@@ -1,12 +1,12 @@
 import torch
 import triton
 import triton.language as tl
-import slap 
+from slap import jit
 from torch import arange, zeros, empty, sum
 
 nclusters = 100
 
-@slap.jit
+@jit
 def mykernel(x, labels, centers, M, N, Bj):
     #pragma parallel reduction(centers) 
     for i in range(M):
@@ -15,7 +15,7 @@ def mykernel(x, labels, centers, M, N, Bj):
             label = labels[i]
             centers[label,j:j+Bj] += x[i,j:j+Bj]
 
-@slap.jit
+@jit
 def mykernel1(x, labels, centers, M, N, Bj):
     #pragma parallel reduction(centers) 
     for i in range(M):
@@ -24,7 +24,7 @@ def mykernel1(x, labels, centers, M, N, Bj):
             label = labels[i]
             centers[label,j] += x[i,j]
 
-@slap.jit
+@jit
 def mykernel2(x, labels, centers, M, N, Bj):
     #pragma parallel reduction(centers) 
     for i in range(M):  
