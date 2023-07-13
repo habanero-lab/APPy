@@ -1,7 +1,6 @@
 import torch
-import triton
-import triton.language as tl
 from slap import jit
+from slap.utils import bench
 from torch import arange, zeros, empty, sum
 
 nclusters = 100
@@ -15,17 +14,8 @@ def mykernel(x, labels, centers, M, N, Bj):
             label = labels[i]
             centers[label,j:j+Bj] += x[i,j:j+Bj]
 
-@jit
+#@jit
 def mykernel1(x, labels, centers, M, N, Bj):
-    #pragma parallel reduction(centers) 
-    for i in range(M):
-        #pragma parallel block(128)
-        for j in range(N):  
-            label = labels[i]
-            centers[label,j] += x[i,j]
-
-@jit
-def mykernel2(x, labels, centers, M, N, Bj):
     #pragma parallel reduction(centers) 
     for i in range(M):  
         #pragma par_dim(:N:Bj)
@@ -49,12 +39,12 @@ def test1():
         centers_ref = torch.zeros([nclusters, N], device='cuda', dtype=torch.float32)
         torch_kernel(X, labels, centers_ref, M, N)
 
-        for f in [torch_kernel1, mykernel1]:
+        for f in [torch_kernel1, mykernel]:
             centers = torch.zeros([nclusters, N], device='cuda', dtype=torch.float32)
             BLOCK = 128 * 1
             f(X, labels, centers, M, N, BLOCK)
             assert(torch.allclose(centers_ref, centers, atol=1e-2))
-            ms, _, _ = triton.testing.do_bench(lambda: f(X, labels, centers, M, N, BLOCK))
+            ms = bench(lambda: f(X, labels, centers, M, N, BLOCK))
             print(f'{f.__name__}: {ms:.4f} ms')
             
 if __name__ == '__main__':
