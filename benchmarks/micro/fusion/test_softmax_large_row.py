@@ -19,21 +19,17 @@ def _mykernel(a, b, t0, t1, t2, M, N, BN=512):
     t0.fill_(float('-inf'))
     t2.fill_(0)
     #pragma parallel
-    for i in range(M):  
-        _t0 = 0-10000.0
+    for i in range(M):
         for j in range(0, N, BN):
-            _t0 = maximum(_t0, max(a[i,j:j+BN]))
-        t0[i] = _t0
+            t0[i] = maximum(t0[i], max(a[i,j:j+BN]))
 
-        _t2 = 0.0
         for j in range(0, N, BN): 
-            _t1 = exp(a[i,j:j+BN] - _t0)
+            _t1 = exp(a[i,j:j+BN] - t0[i])
             t1[i,j:j+BN] = _t1
-            _t2 += sum(_t1)
-        t2[i] = _t2
+            t2[i] += sum(_t1)
 
         for j in range(0, N, BN):
-            b[i,j:j+BN] = t1[i,j:j+BN] / _t2
+            b[i,j:j+BN] = t1[i,j:j+BN] / t2[i]
 
 #@jit
 def _mykernel1(a, b, t0, t1, t2, M, N):
@@ -66,7 +62,7 @@ def test1():
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, M, N, f)
                 b = ff()
-                assert(torch.allclose(b, b_ref, atol=0.5, rtol=0.1))
+                assert(torch.allclose(b, b_ref, atol=0.5, rtol=0.05))
                 ms, _, _ = triton.testing.do_bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
             

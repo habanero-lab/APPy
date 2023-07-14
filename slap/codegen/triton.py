@@ -726,7 +726,7 @@ class TritonBackend(object):
                 grid = f'({",".join(self.usedBlockDims)},)'
                 
                 k_args = self.get_kernel_function_arguments()
-                self.append_stmts(self.lf, f'fn = {kf.name}[{grid}]({",".join(k_args)})')
+                self.append_stmts(self.lf, f'fn = {kf.name}[{grid}]({",".join(k_args)}, num_warps=4)')
                 #self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
                 #self.append_stmts(self.lf, 'exit(1)')
             else:

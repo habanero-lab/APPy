@@ -56,7 +56,7 @@ def test1():
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, M, N, f)
                 b = ff()
-                assert(torch.allclose(b, b_ref, atol=0.5, rtol=0.1))
+                assert(torch.allclose(b, b_ref, atol=0.5, rtol=0.05))
                 ms, _, _ = triton.testing.do_bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
             
