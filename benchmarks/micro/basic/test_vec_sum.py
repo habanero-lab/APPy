@@ -4,20 +4,20 @@ from slap.utils import bench
 from torch import arange, zeros, empty, sum
 
 def mykernel(a, N):
-    b = torch.zeros(1, device=a.device, dtype=a.dtype)
+    b = torch.empty(1, device=a.device, dtype=a.dtype)
     _mykernel(a, b, N)
     return b
 
 @jit
 def _mykernel(a, b, N, BLOCK=512):
+    b.fill_(0)
     #pragma parallel reduction(b)
     for i in range(0, N, BLOCK):  
         b[0] += sum(a[i:i+BLOCK])
 
 def _mykernel1(a, b, N, BLOCK=512):
-    #pragma parallel reduction(b) block(BLOCK)
-    for i in range(N):  
-        b[0] += a[i]
+    #pragma :N=>parallel,block(BLOCK),reduce(+:b)
+    b[0] = sum(a[:N])
 
 def torch_kernel(a, N):
     b = sum(a)

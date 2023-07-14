@@ -17,7 +17,7 @@ def mykernel(a, b, c, M, N, K, BM=64, BN=64, BK=64):
             c[i:i+BM, j:j+BN] = acc
 
 def mykernel1(a, b, c, M, N, K, BM=64, BN=64, BK=64):
-    #pragma par_dim(:M:BM, :N:BN) seq_dim(:K:BK)
+    #pragma :M=>par,block(BM) :N=>par,block(BN) :K=>block(BK),reduce(+:c)
     c[:M, :N] = a[:M, :K] @ b[:K, :N]
 
 def torch_kernel(a, b, c, M, N, K):

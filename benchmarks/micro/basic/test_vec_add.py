@@ -11,7 +11,7 @@ def mykernel(a, b, c, N, BLOCK=256):
 
 @jit
 def mykernel1(a, b, c, N, BLOCK=256):  
-    #pragma par_dim(:N:BLOCK)
+    #pragma :N=>p,b(BLOCK)
     c[:N] = a[:N] + b[:N]
 
 def torch_kernel(a, b, c, N):

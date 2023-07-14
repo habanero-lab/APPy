@@ -45,7 +45,9 @@ def _slap_kernel(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN=128):
 
 #@slap.jit
 def mykernel_ops(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN=128):
-    for i in range(M):  #pragma parallel     
+    #pragma parallel 
+    for i in range(M):
+        #pragma pslice(:N:BN)  
         c[i,:N] = 0.0
         for ki in range(a_rowptrs[i], a_rowptrs[i+1]):
             a_ik = a_vals[ki]
