@@ -1,7 +1,6 @@
 import torch
-import triton
-import triton.language as tl
 from slap import jit, max
+from slap.utils import bench
 from torch import arange, zeros, empty, sum, maximum, add, exp
 
 torch.set_default_device('cuda')
@@ -63,7 +62,7 @@ def test1():
                     ff = lambda: mykernel(a, M, N, f)
                 b = ff()
                 assert(torch.allclose(b, b_ref, atol=0.5, rtol=0.05))
-                ms, _, _ = triton.testing.do_bench(ff)
+                ms = bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
             
 
