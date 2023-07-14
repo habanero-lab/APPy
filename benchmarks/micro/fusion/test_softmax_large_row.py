@@ -24,23 +24,23 @@ def _mykernel(a, b, t0, t1, t2, M, N, BN=512):
 
         for j in range(0, N, BN): 
             _t1 = exp(a[i,j:j+BN] - t0[i])
-            t1[i,j:j+BN] = _t1
+            #t1[i,j:j+BN] = _t1
             t2[i] += sum(_t1)
 
         for j in range(0, N, BN):
-            b[i,j:j+BN] = t1[i,j:j+BN] / t2[i]
+            b[i,j:j+BN] = (exp(a[i,j:j+BN] - t0[i])) / t2[i]
 
 #@jit
 def _mykernel1(a, b, t0, t1, t2, M, N):
     #pragma :M=>p :N=>b(512),r(max:t0,+:t2)
     t0[:M] = max(a[:M, :N], axis=1)
-    t1[:M, :N] = exp(a[:M, :N] - t0[:M, None])
-    t2[:M] = sum(t1[:M, :N], axis=1)
-    b[:M, :N] = t1[:M, :N] / t2[:M, None]
+    t2[:M] = sum(exp(a[:M, :N] - t0[:M, None]), axis=1)
+    b[:M, :N] = (exp(a[:M, :N] - t0[:M, None])) / t2[:M, None]
 
 def torch_kernel_native(a, M, N):
     return torch.softmax(a, dim=1)
 
+@torch.compile
 def torch_kernel(a, M, N):
     t0 = max(a, axis=1)
     t1 = exp(a - t0[:,None])
@@ -56,7 +56,7 @@ def test1():
             a = torch.randn(M, N, dtype=dtype)
             b_ref = torch_kernel(a, M, N)
 
-            for f in (torch_kernel, torch_kernel_native, _mykernel, _mykernel1):
+            for f in (torch_kernel, torch_kernel_native, _mykernel):
                 ff = lambda: f(a, M, N)
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, M, N, f)
