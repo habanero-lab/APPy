@@ -23,19 +23,28 @@ def _mykernel(a, b, t0, t1, t2, M, N, BN=512):
             t0[i] = maximum(t0[i], max(a[i,j:j+BN]))
 
         for j in range(0, N, BN): 
-            _t1 = exp(a[i,j:j+BN] - t0[i])
-            #t1[i,j:j+BN] = _t1
-            t2[i] += sum(_t1)
+            t2[i] += sum(exp(a[i,j:j+BN] - t0[i]))
 
         for j in range(0, N, BN):
             b[i,j:j+BN] = a[i,j:j+BN] - (t0[i] + log(t2[i]))
 
 #@jit
 def _mykernel1(a, b, t0, t1, t2, M, N):
-    #pragma :M=>p :N=>b(N)
+    #pragma :M=>p :N=>block(BN),reduce(max:m,+:s)
     t0[:M] = max(a[:M, :N], axis=1)
     t2[:M] = sum(exp(a[:M, :N] - t0[:M, None]), axis=1)
     b[:M, :N] = a[:M, :N] - (t0[:M] + log(t2[:M]))[:M, None]
+
+def _mykernel1_loop(a, b, t0, t1, t2, M, N, BN=512):
+    #pragma parallel loop :N=>block(BN),reduce(max:m,+:s)
+    for i in range(0, M, BM):
+        m = max(a[i, :N])
+        s = sum(exp(a[i, :N] - m))
+        b[i, :N] = a[i, :N] - (m + log(s))
+
+# Our version above is 5 lines of code
+# Typical CUDA version is about 170 lines of code: https://github.com/pytorch/pytorch/blob/d49cb6613eac9ad4d9dde60243b6c981d3952094/LogSoftMax.cu#L134
+
 
 def torch_kernel_native(a, M, N):
     return torch.log_softmax(a, dim=1)

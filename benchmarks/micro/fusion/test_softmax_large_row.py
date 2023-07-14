@@ -15,27 +15,32 @@ def mykernel(a, M, N, inner):
 
 @jit
 def _mykernel(a, b, t0, t1, t2, M, N, BN=512):
-    t0.fill_(float('-inf'))
-    t2.fill_(0)
     #pragma parallel
     for i in range(M):
+        m = 0-10000.0
         for j in range(0, N, BN):
-            t0[i] = maximum(t0[i], max(a[i,j:j+BN]))
+            m = maximum(m, max(a[i,j:j+BN]))
 
+        s = 0.0
         for j in range(0, N, BN): 
-            _t1 = exp(a[i,j:j+BN] - t0[i])
-            #t1[i,j:j+BN] = _t1
-            t2[i] += sum(_t1)
+            s += sum(exp(a[i,j:j+BN] - m))
 
         for j in range(0, N, BN):
-            b[i,j:j+BN] = (exp(a[i,j:j+BN] - t0[i])) / t2[i]
+            b[i,j:j+BN] = (exp(a[i,j:j+BN] - m)) / s
 
 #@jit
-def _mykernel1(a, b, t0, t1, t2, M, N):
-    #pragma :M=>p :N=>b(512),r(max:t0,+:t2)
+def _mykernel1(a, b, t0, t1, t2, M, N, BN=512):
+    #pragma :M=>p :N=>block(BN),reduce(max:t0,+:t2)
     t0[:M] = max(a[:M, :N], axis=1)
     t2[:M] = sum(exp(a[:M, :N] - t0[:M, None]), axis=1)
     b[:M, :N] = (exp(a[:M, :N] - t0[:M, None])) / t2[:M, None]
+
+def _mykernel1_loop(a, b, t0, t1, t2, M, N, BN=512):
+    #pragma parallel loop :N=>block(BN),reduce(max:m,+:s)
+    for i in range(0, M, BM):
+        m = max(a[i, :N])
+        s = sum(exp(a[i, :N] - m))
+        b[i, :N] = (exp(a[i, :N] - m)) / s
 
 def torch_kernel_native(a, M, N):
     return torch.softmax(a, dim=1)
