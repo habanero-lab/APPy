@@ -2,8 +2,7 @@ import torch
 from slap import jit, max
 import numpy as np
 import numba
-from torch import arange, zeros, empty, sum, maximum, add, exp, t, mm
-
+from torch import zeros, empty, sum, maximum, add, exp, t, mm
 from slap.utils import bench
 
 torch.set_default_device('cuda')
@@ -23,6 +22,8 @@ def _mykernel(a, b, u, M, N, BN=512):
         mean /= N
         a[i:N] -= mean
 
+    #pragma parallel :N=>block(BN)
+    for i in range(M):  
         for j in range(i):  
             b[i,j] = sum(a[i,:N] * a[j,:N])
             b[i,j] /= N - 1
@@ -56,17 +57,21 @@ def _numba_kernel(a, b, u, M, N):
         mean /= N
         a[i:N] -= mean
 
+    for i in numba.prange(M):  
         for j in range(i):  
             b[i,j] = np.sum(a[i,:N] * a[j,:N])
             b[i,j] /= N - 1
             b[j,i] = b[i,j]
 
 def _torch_kernel(a, b, u, M, N, BN=512):
+    #pragma parallel :N=>block(BN)
     for i in range(M):  
         mean = sum(a[i,:N])
         mean /= N
         a[i:N] -= mean
 
+    #pragma parallel :N=>block(BN)
+    for i in range(M):  
         for j in range(i):  
             b[i,j] = sum(a[i,:N] * a[j,:N])
             b[i,j] /= N - 1
