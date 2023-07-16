@@ -15,7 +15,7 @@ def mykernel(a, inner):
     return b
 
 def _torch_kernel(a, new_a, b, M, N):
-    #pragma parallel
+    #pragma parallel 
     for i in range(M):  
         mean = sum(a[i,:N])
         mean /= N
@@ -29,8 +29,8 @@ def _torch_kernel(a, new_a, b, M, N):
             b[j,i] = b[i,j]
 
 @jit
-def _mykernel(a, new_a, b, M, N, BN=512):
-    #pragma parallel
+def _mykernel(a, new_a, b, M, N, BN=256):
+    #pragma parallel 
     for i in range(M):  
         mean = sum(a[i,:N])
         mean /= N
@@ -38,11 +38,32 @@ def _mykernel(a, new_a, b, M, N, BN=512):
 
     #pragma parallel
     for i in range(M):  
-        for j in range(i, M):  
+        for j in range(i, M):
             b[i,j] = sum(new_a[i,:N] * new_a[j,:N])
             b[i,j] /= N - 1
             b[j,i] = b[i,j]
+
+@jit
+def _mykernel_BN(a, new_a, b, M, N, BN=256):
+    #pragma parallel
+    for i in range(M): 
+        mean = 0.0
+        for j in range(0, N, BN):
+            mean += sum(a[i,j:j+BN])
+        mean /= N
+        for j in range(0, N, BN):
+            new_a[i,j:j+BN] = a[i,j:j+BN] - mean
+
+    #pragma parallel
+    for i in range(M):  
+        for j in range(i, M):
+            b[i,j] = 0.0
+            for k in range(0, N, BN):
+                b[i,j] += sum(new_a[i,k:k+BN] * new_a[j,k:k+BN])
+            #b[i,j] = sum(new_a[i,:N] * new_a[j,:N])
             
+            b[i,j] /= N - 1
+            b[j,i] = b[i,j]      
 
 def numba_kernel(a):
     n_vars, n_obs = a.shape
@@ -69,14 +90,14 @@ def test1():
     for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
         #for M, N in [(1024, 1024), (1024*4, 1024*4), (1024*16, 1024*16)]:
-        for M, N in [(512, 512), (1024, 1024)]:
+        for M, N in [(1024, 1024), (1024*4, 1024), (1024*4, 1024*2), (1024*4, 1024*4)]:
         #for M, N in [(1024, 256*2), (4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (128, 4096*16), (256, 4096*16)]:
         #for M, N in [(8, 256)]:
             print(f'M: {M}, N: {N}')
             a = torch.randn(M, N, dtype=dtype).to('cuda')
-            b_ref = mykernel(a, _torch_kernel)
+            b_ref = mykernel(a, _mykernel)
 
-            for f in (_mykernel, numba_kernel, _torch_kernel):
+            for f in (_mykernel, _mykernel_BN, numba_kernel):
                 if f.__name__.startswith('numba'):
                     a_np = a.cpu().numpy()
                     ff = lambda: f(a_np)
