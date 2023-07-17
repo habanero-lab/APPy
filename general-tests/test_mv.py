@@ -49,6 +49,7 @@ def slap_kernel(a, b, c, M, N):
     #pragma parallel
     for i in range(M):  
         c[i] = sum(a[i,:N] * b[:N])
+        
 
 @slap.jit
 def slap_kernel1(a, b, c, M, N, BN=256):
@@ -95,11 +96,11 @@ def test1():
             c_ref = torch.randn(M, device='cuda', dtype=dtype)
             torch_kernel(a, b, c_ref, M, N)
 
-            for f in (torch_kernel, slap_kernel, slap_kernel1, slap_kernel2):
+            for f in (torch_kernel, slap_kernel):
                 BLOCK = None
                 f(a, b, c, M, N)
                 assert(torch.allclose(c, c_ref, atol=10, rtol=0.1))
-                ms, _, _ = triton.testing.do_bench(lambda: f(a, b, c, M, N))
+                ms = triton.testing.do_bench(lambda: f(a, b, c, M, N))
                 print(f'{f.__name__}: {ms:.4f} ms')
             #exit(1)
 

@@ -340,12 +340,10 @@ class TritonBackend(object):
                 if isinstance(node.value, ast.Call) and node.value.func.id in ['range', 'arange']:
                     self.range_vars.append(left.id)
 
-                newnode.value = newright
-            
+                newnode.value = newright        
 
             if hasattr(newright, 'type'):
-                self.var_types[left.id] = newright.type
-                
+                self.var_types[left.id] = newright.type              
                 #exit(1)
                 
         elif isinstance(left, ast.Subscript):
@@ -586,7 +584,7 @@ class TritonBackend(object):
             
             dtype = re.search(r'dtype=(.*)\)', node_s).groups()[0].replace('torch.', 'tl.')
             stmt = f'tl.{funcname}({shape_arg}, dtype={dtype})'
-        elif funcname in ['exp', 'log', 'maximum', 'sin', 'cos', 'where', 'trans', 'dot']:
+        elif funcname in ['exp', 'log', 'sqrt', 'maximum', 'sin', 'cos', 'where', 'trans', 'dot']:
             args = []
             for arg in node.args:
                 args.append(ast.unparse(self.gen_kernel_node(arg))) 

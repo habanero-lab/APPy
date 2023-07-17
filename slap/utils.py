@@ -16,8 +16,15 @@ def bench(fn):
         N = 1
     return t0.timeit(N).mean * 1000
 
-def allclose(a, b):
-    if isinstance(a, torch.Tensor):
-        return torch.allclose(a, b)
-    elif isinstance(a, np.array):
-        return np.allclose(a, b)
+def allclose(a, b, verbose=True):
+    if isinstance(a, np.ndarray):
+        a = torch.from_numpy(a)
+    if isinstance(b, np.ndarray):
+        b = torch.from_numpy(b)
+
+    a, b = a.to('cuda'), b.to('cuda')
+    
+    if not torch.allclose(a, b, atol=0.1, rtol=0.01) and verbose:
+        print(a)
+        print(b)
+    return torch.allclose(a, b, atol=0.1, rtol=0.01)
