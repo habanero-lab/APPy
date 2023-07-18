@@ -368,9 +368,9 @@ class TritonBackend(object):
                     assert False, "Supported reduction op: maximum, minimum and +"
 
             s = f'{store_func}({tensor}+{slice}, {unparse(store_value)})'        
-            tensor_dim = self.get_tensor_ndim(tensor)
-            if tensor_dim == 1 and store_func == 'tl.store':  # no atomic mask support
-                pass
+            # tensor_dim = self.get_tensor_ndim(tensor)
+            # if tensor_dim == 1 and store_func == 'tl.store':  # no atomic mask support
+            #     pass
                 #s = f'{store_func}({tensor}+{slice}, {unparse(store_value)}, mask=({slice})<{tensor}_shape_0)'
             newnode = to_ast_node(s)        
         else:
@@ -508,10 +508,10 @@ class TritonBackend(object):
             # self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
             # self.var_count += 1
             # return varname
-            tensor_dim = self.get_tensor_ndim(tensor)            
+            #tensor_dim = self.get_tensor_ndim(tensor)            
             s = f'tl.load({tensor}+{slice})'
-            if tensor_dim == 1:
-                pass
+            # if tensor_dim == 1:
+            #     pass
                 #s = f'tl.load({tensor}+{slice}, mask=({slice})<{tensor}_shape_0, other=0)'
             
         return to_ast_expr(s)
@@ -728,6 +728,17 @@ class TritonBackend(object):
                 #self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
                 #self.append_stmts(self.lf, 'exit(1)')
             else:
+                # if isinstance(node, ast.Assign):
+                #     rhs = unparse(node.value)
+                #     if rhs.startswith('torch.zeros(') or rhs.startswith('torch.empty('):
+                #         dump(node)
+                #         varname = node.targets[0].id
+                #         value = eval(rhs)
+                #         self.arg_names.append(varname)
+                #         self.arg_values.append(value)
+                #         print(self.arg_names)
+                #         print(self.arg_values)
+                #     #exit(1)
                 self.append_node(self.lf, node)
             i += 1
             
