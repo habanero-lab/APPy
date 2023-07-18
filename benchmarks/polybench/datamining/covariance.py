@@ -7,6 +7,28 @@ from appy.utils import bench
 
 torch.set_default_device('cuda')
 
+def torch_kernel(M, float_n, data):
+    mean = np.mean(data, axis=0)
+    data -= mean
+    cov = zeros((M, M), dtype=data.dtype)
+    for i in range(M):
+        cov[i:M, i] = cov[i, i:M] = data[:, i] @ data[:, i:M] / (float_n - 1.0)
+
+    return cov
+
+def mykernel(M, float_n, data):
+    mean = np.mean(data, axis=0)
+    data -= mean
+    cov = zeros((M, M), dtype=data.dtype)
+    #pragma parallel
+    for i in range(M):
+        for j in range(i, M):
+            cov[i, j] = np.sum(data[:float_n, i] * data[:float_n, j])
+            cov[i, j] /= float_n - 1.0
+            cov[j, i] = cov[i, j]
+    
+    return cov
+
 def mykernel(a, inner):
     n_vars, n_obs = a.shape
     new_a = torch.empty_like(a)
