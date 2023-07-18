@@ -1,17 +1,17 @@
 import torch
 import triton
 import triton.language as tl
-from slap import jit
+from appy import jit
 from torch import arange, zeros, empty
 
 @jit
-def slap_kernel0(a, b, c, N, BLOCK=256):
+def appy_kernel0(a, b, c, N, BLOCK=256):
     for i in range(0, N, BLOCK):  #pragma parallel
         i = arange(i, i+BLOCK)
         c[i] = a[i] + b[i]
 
 #@jit
-def slap_kernel(a, b, c, N, BLOCK=256):  
+def appy_kernel(a, b, c, N, BLOCK=256):  
     for i in range(N):  #pragma parallel block(BLOCK)
         c[i] = a[i] + b[i]
 
@@ -28,7 +28,7 @@ def test1():
             c_ref = torch.zeros_like(a)
             torch_kernel(a, b, c_ref, N)
             
-            for f in [torch_kernel, slap_kernel0]:
+            for f in [torch_kernel, appy_kernel0]:
                 c = torch.zeros_like(a)
                 f(a, b, c, N)
                 assert(torch.allclose(c, c_ref))

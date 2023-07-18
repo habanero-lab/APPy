@@ -1,11 +1,11 @@
 import torch
-from slap import jit
-from slap.utils import bench
+from appy import jit
+from appy.utils import bench
 from torch import arange, zeros, empty, sum
 
 nclusters = 100
 
-@jit
+@jit(auto_block_slice=False)
 def mykernel(x, labels, centers, M, N, Bj):
     #pragma parallel reduction(centers) 
     for i in range(M):

@@ -1,7 +1,7 @@
 import torch
 import triton
 import triton.language as tl
-import slap
+import appy
 from torch import arange, zeros, empty, sum
 
 def kernel_op(a, b):
@@ -44,15 +44,15 @@ def seq(a, b, c, M, N):
             acc += sum(a[i:i+BM,j:j+BN] * b[j:j+BN], axis=1)
         a[i] = acc
 
-@slap.jit
-def slap_kernel(a, b, c, M, N):
+@appy.jit
+def appy_kernel(a, b, c, M, N):
     #pragma parallel
     for i in range(M):  
         c[i] = sum(a[i,:N] * b[:N])
         
 
-@slap.jit
-def slap_kernel1(a, b, c, M, N, BN=256):
+@appy.jit
+def appy_kernel1(a, b, c, M, N, BN=256):
     #pragma parallel
     for i in range(M):  
         acc = zeros([BN], device=a.device, dtype=a.dtype)
@@ -60,8 +60,8 @@ def slap_kernel1(a, b, c, M, N, BN=256):
             acc += a[i,j:j+BN] * b[j:j+BN]
         c[i] = sum(acc)
 
-@slap.jit
-def slap_kernel2(a, b, c, M, N, BM=8, BN=256):
+@appy.jit
+def appy_kernel2(a, b, c, M, N, BM=8, BN=256):
     c.fill_(0)
     #pragma parallel
     for i in range(0, M, BM):
@@ -96,7 +96,7 @@ def test1():
             c_ref = torch.randn(M, device='cuda', dtype=dtype)
             torch_kernel(a, b, c_ref, M, N)
 
-            for f in (torch_kernel, slap_kernel):
+            for f in (torch_kernel, appy_kernel):
                 BLOCK = None
                 f(a, b, c, M, N)
                 assert(torch.allclose(c, c_ref, atol=10, rtol=0.1))

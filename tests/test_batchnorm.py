@@ -1,6 +1,6 @@
 import torch
-import slap
-from slap import Dx
+import appy
+from appy import Dx
 
 def kernel(a, b, M, N, Bi):
     mean = torch.empty(N, device=a.device, dtype=a.dtype)

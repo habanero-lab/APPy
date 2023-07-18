@@ -1,11 +1,11 @@
 import torch
 import triton
 import triton.language as tl
-import slap
+import appy
 from torch import arange, zeros, empty, sum
 
-@slap.jit
-def slap_kernel(a, b, d, c, M, N, K, BM=64, BN=64, BK=32):
+@appy.jit
+def appy_kernel(a, b, d, c, M, N, K, BM=64, BN=64, BK=32):
     for i in range(0, M, BM):  #pragma parallel
         for j in range(0, N, BN):  #pragma parallel
             acc = zeros([BM, BN], device=a.device, dtype=torch.float32)
@@ -35,7 +35,7 @@ def test1():
             c_ref = torch.randn(M, N, device='cuda', dtype=dtype)
             torch_kernel(a, b, d, c_ref, M, N, K)
 
-            for f in (torch_kernel, slap_kernel):
+            for f in (torch_kernel, appy_kernel):
                 f(a, b, d, c, M, N, K)
                 assert(torch.allclose(c, c_ref, atol=10, rtol=0.1))
                 ms, _, _ = triton.testing.do_bench(lambda: f(a, b, d, c, M, N, K))

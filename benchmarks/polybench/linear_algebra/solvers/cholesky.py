@@ -1,9 +1,9 @@
 import torch
-from slap import jit, max
+from appy import jit, max
 import numpy as np
 import numba
 from torch import zeros, empty, sum, maximum, add, exp, t, mm, sqrt, dot
-from slap.utils import bench
+from appy.utils import bench
 
 torch.set_default_device('cuda')
 

@@ -4,7 +4,7 @@ import triton
 import triton.language as tl
 from torch import arange, zeros, empty
 
-#@slap.jit
+#@appy.jit
 def kernel(a, b, c, N, BLOCK):  
     for i in range(0, N, BLOCK):  #pragma parallel
         ii = range(i, i+BLOCK)

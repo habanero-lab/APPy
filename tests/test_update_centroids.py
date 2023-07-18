@@ -1,5 +1,5 @@
 import torch
-import slap
+import appy
 
 def kernel(x, labels, centers):
     '''

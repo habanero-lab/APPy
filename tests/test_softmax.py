@@ -1,5 +1,5 @@
 import torch
-from slap import parallel
+from appy import parallel
 from torch import max, sum, exp
 
 def kernel_op(a):

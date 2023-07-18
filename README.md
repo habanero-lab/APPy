@@ -1,4 +1,4 @@
-Annotated Parallelism for Python Loops (APPyL) is parallel programming model that allows you to parallelize your sequential loops with annotations in the comments.
+Annotated Parallelism for Python (APPy) is parallel programming model that allows you to parallelize your sequential loops with annotations in the comments.
 
 
 # Install

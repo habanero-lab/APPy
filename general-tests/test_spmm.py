@@ -1,20 +1,20 @@
 import torch
 import triton
-import slap
+import appy
 from torch import arange, zeros, empty, sum
 
-def slap_kernel0(a, b):
+def appy_kernel0(a, b):
     M, K = a.shape
     K, N = b.shape
     c = torch.empty([M, N], device='cuda', dtype=a.dtype)
     acc_dtype = a.dtype
     if a.dtype == torch.float16:
         acc_dtype = torch.float32
-    _slap_kernel0(a.crow_indices(), a.col_indices(), a.values(), b, c, M, K, N, N, acc_dtype)
+    _appy_kernel0(a.crow_indices(), a.col_indices(), a.values(), b, c, M, K, N, N, acc_dtype)
     return c
 
-@slap.jit
-def _slap_kernel0(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN, acc_dtype):
+@appy.jit
+def _appy_kernel0(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN, acc_dtype):
     for i in range(M):  #pragma parallel 
         for j in range(0, N, BN):  #pragma parallel 
             acc = zeros(BN, device='cuda', dtype=acc_dtype)
@@ -25,15 +25,15 @@ def _slap_kernel0(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN, acc_dtype):
             c[i,j:j+BN] = acc
 
 
-def slap_kernel(a, b):
+def appy_kernel(a, b):
     M, K = a.shape
     K, N = b.shape
     c = torch.empty([M, N], device='cuda', dtype=a.dtype)
-    _slap_kernel(a.crow_indices(), a.col_indices(), a.values(), b, c, M, K, N)
+    _appy_kernel(a.crow_indices(), a.col_indices(), a.values(), b, c, M, K, N)
     return c
 
-#@slap.jit
-def _slap_kernel(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN=128):
+#@appy.jit
+def _appy_kernel(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN=128):
     for i in range(M):  #pragma parallel 
         for j in range(N):  #pragma parallel block(BN)
             acc = 0
@@ -43,7 +43,7 @@ def _slap_kernel(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN=128):
                 acc += a_ik * b[ks,j]
             c[i,j] = acc
 
-#@slap.jit
+#@appy.jit
 def mykernel_ops(a_rowptrs, a_cols, a_vals, b, c, M, K, N, BN=128):
     #pragma parallel 
     for i in range(M):
@@ -72,7 +72,7 @@ def test1():
             ms, _, _ = triton.testing.do_bench(lambda: a_dense @ b)
             print(f'dense mm: {ms:.4f} ms')
 
-            for f in [torch_kernel, slap_kernel0]:
+            for f in [torch_kernel, appy_kernel0]:
                 c = f(a, b)
                 if dtype == torch.float16:
                     assert(torch.allclose(c, c_ref, atol=5, rtol=0.1))

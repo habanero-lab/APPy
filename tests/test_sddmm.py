@@ -1,9 +1,9 @@
 import torch
-import slap
+import appy
 import triton
 import triton.language as tl
 
-#@slap.jit(tune=['BLOCK'])
+#@appy.jit(tune=['BLOCK'])
 def kernel(a_rowptrs, a_cols, a_vals, b, c, d_vals, BLOCK):
     for i in range(b.shape[0]):  #pragma parallel 
         for ji in range(a_rowptrs[i], a_rowptrs[i+1], BLOCK):

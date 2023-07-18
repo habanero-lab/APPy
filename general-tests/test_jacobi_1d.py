@@ -1,16 +1,16 @@
 import torch
 import triton
 import triton.language as tl
-import slap
+import appy
 from torch import arange, zeros, empty, sum
 
-def slap_kernel(a, N):
+def appy_kernel(a, N):
     b = torch.empty(N-2, device=a.device, dtype=a.dtype)
-    _slap_kernel(a, b, N)
+    _appy_kernel(a, b, N)
     return b
 
-@slap.jit
-def _slap_kernel(a, b, N, BLOCK=512):
+@appy.jit
+def _appy_kernel(a, b, N, BLOCK=512):
     for i in range(0, N-2):  #pragma parallel block(BLOCK)
         b[i] = (a[i] + a[i+1] + a[i+2]) / 3
 
@@ -25,7 +25,7 @@ def test1():
         a = torch.randn(N, device='cuda', dtype=torch.float32)
         b_ref = torch_kernel(a, N)
 
-        for f in (torch_kernel, slap_kernel):
+        for f in (torch_kernel, appy_kernel):
             b = f(a, N)
             assert(torch.allclose(b, b_ref, atol=1e-2))
             ms, _, _ = triton.testing.do_bench(lambda: f(a, N))

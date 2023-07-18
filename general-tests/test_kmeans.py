@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from sklearn.cluster import KMeans
-from slap.utils import bench
+from appy.utils import bench
 
 torch.set_default_device('cuda')
 

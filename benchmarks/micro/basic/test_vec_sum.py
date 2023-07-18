@@ -1,6 +1,6 @@
 import torch
-from slap import jit
-from slap.utils import bench
+from appy import jit
+from appy.utils import bench
 from torch import arange, zeros, empty, sum
 
 def mykernel(a, N):

@@ -1,5 +1,5 @@
 import torch
-from slap import jit, max
+from appy import jit, max
 from torch import arange, zeros, empty, sum, maximum, add, exp
 
 torch.set_default_device('cuda')

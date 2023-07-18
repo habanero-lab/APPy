@@ -1,13 +1,13 @@
 import torch
 import triton
 import triton.language as tl
-from slap import jit, max
+from appy import jit, max
 import numba
 from numba import prange
 import numpy as np
 from torch import arange, zeros, empty, sum, maximum, add, exp, t, mm
 
-from slap.utils import bench
+from appy.utils import bench
 
 torch.set_default_device('cuda')
 

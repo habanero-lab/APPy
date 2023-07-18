@@ -1,6 +1,6 @@
 import torch
-import slap
-from slap import parallel, shared
+import appy
+from appy import parallel, shared
 
 def kernel(a, b, c, Bi, Bj, Bk):
     for i in range(0, a.shape[0], Bi):  #pragma parallel
@@ -19,10 +19,10 @@ def kernel(a, b, c, Bi:parallel, Bj:parallel, Bk):
             b_block:shared = torch.zeros([Bk, Bj], device=a.device, dtype=a.dtype)
             for k in range(0, a.shape[-1], Bk):
                 # Load data to shared memory
-                slap.syncthreads()
+                appy.syncthreads()
                 a_block[:,:] = a[i:i+Bi, k:k+Bj]
                 b_block[:,:] = b[k:k+Bi, j:j+Bj]
-                slap.syncthreads()
+                appy.syncthreads()
 
                 for kk in range(k, k+Bk):
                     c_block[:, :] += a_block[:Bi, kk] * b_block[kk, :Bj]
@@ -30,7 +30,7 @@ def kernel(a, b, c, Bi:parallel, Bj:parallel, Bk):
             c[i:i+Bi, j:j+Bj] = c_block
 
 
-#@slap.jit(tune=['Bi', 'Bj', 'Bk'])
+#@appy.jit(tune=['Bi', 'Bj', 'Bk'])
 def kernel(a, b, c, Bi, Bj, Bk):
     for i in range(0, a.shape[0], Bi):  #pragma parallel
         for j in range(0, b.shape[-1], Bj):  #pragma parallel

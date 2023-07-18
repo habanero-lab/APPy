@@ -1,8 +1,8 @@
 import torch
 import numpy as np
 import numba
-from slap import jit
-from slap.utils import bench
+from appy import jit
+from appy.utils import bench
 from torch import arange, zeros, empty
 
 @jit(auto_block_slice=False)

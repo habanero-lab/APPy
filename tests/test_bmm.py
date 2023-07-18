@@ -1,7 +1,7 @@
 import torch
-import slap
+import appy
 
-#@slap.jit(tune=['Bi', 'Bj', 'Bk'])
+#@appy.jit(tune=['Bi', 'Bj', 'Bk'])
 def kernel(a, b, c, Bi, Bj, Bk):
     for z in range(a.shape[0]):  #pragma parallel
         for i in range(0, a.shape[1], Bi):  #pragma parallel

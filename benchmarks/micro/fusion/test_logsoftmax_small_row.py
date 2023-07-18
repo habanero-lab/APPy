@@ -1,6 +1,6 @@
 import torch
-from slap.utils import bench
-from slap import jit, max
+from appy.utils import bench
+from appy import jit, max
 from torch import arange, zeros, empty, sum, maximum, add, exp, log
 
 torch.set_default_device('cuda')

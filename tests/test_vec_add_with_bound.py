@@ -1,13 +1,13 @@
 import numpy as np
 import torch
 import triton
-from slap import parallel
+from appy import parallel
 import pycuda.autoprimaryctx
 from pycuda.compiler import SourceModule
 
 from torch import arange, zeros, empty
 
-#@slap.jit
+#@appy.jit
 def kernel(a, b, c, N, BLOCK: parallel):
     for i in range(0, N, BLOCK):  #pragma parallel
         ii = arange(i, i+BLOCK)

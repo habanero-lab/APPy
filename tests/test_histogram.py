@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from slap import parallel, shared, prange, syncthreads
+from appy import parallel, shared, prange, syncthreads
 import pycuda.autoprimaryctx
 from pycuda.compiler import SourceModule
 
