@@ -21,6 +21,11 @@ def mykernel1(x, labels, centers, M, N, Bj):
         #pragma :N=>p,b(Bj)
         centers[labels[i], :N] += x[i, :N]
 
+def mykernel2(x, labels, centers, M, N, Bj):
+    #pragma parallel reduction(centers) 
+    for i in range(M):
+        centers[labels[i], :] += x[i, :]
+
 def torch_kernel(x, labels, centers, M, N, Bj=None):
     for i in range(M):
         label = labels[i]

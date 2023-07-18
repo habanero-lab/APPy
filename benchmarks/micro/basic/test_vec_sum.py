@@ -8,7 +8,7 @@ def mykernel(a, N):
     _mykernel(a, b, N)
     return b
 
-@jit
+@jit(auto_block_slice=False)
 def _mykernel(a, b, N, BLOCK=512):
     b.fill_(0)
     #pragma parallel reduction(b)

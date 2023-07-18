@@ -5,7 +5,7 @@ from slap import jit
 from slap.utils import bench
 from torch import arange, zeros, empty
 
-@jit
+@jit(auto_block_slice=False)
 def mykernel(a, b, c, N, BLOCK=256):
     #pragma parallel
     for i in range(0, N, BLOCK):  

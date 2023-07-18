@@ -35,12 +35,12 @@ def _mykernel1(a, b, t0, t1, t2, M, N, BN=512):
     t2[:M] = sum(exp(a[:M, :N] - t0[:M, None]), axis=1)
     b[:M, :N] = (exp(a[:M, :N] - t0[:M, None])) / t2[:M, None]
 
-def _mykernel1_loop(a, b, t0, t1, t2, M, N, BN=512):
-    #pragma parallel loop :N=>block(BN),reduce(max:m,+:s)
-    for i in range(0, M, BM):
-        m = max(a[i, :N])
-        s = sum(exp(a[i, :N] - m))
-        b[i, :N] = (exp(a[i, :N] - m)) / s
+def _mykernel2(a, b, t0, t1, t2, M, N, BN=512):
+    #pragma parallel
+    for i in range(M):
+        m = max(a[i,:])
+        s = sum(exp(a[i,:] - m))
+        b[i,:] = (exp(a[i,:] - m)) / s
 
 def torch_kernel_native(a, M, N):
     return torch.softmax(a, dim=1)

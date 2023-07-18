@@ -29,7 +29,13 @@ def mykernel1_expanded(a, b, c, M, N, K, BM=64, BN=64, BK=64):
             for i2 in range(0, K, BK):
                 c[i0:i0+BM, i1:i1+BN] += a[i0:i0+BM, i2:i2+BK] @ b[i2:i2+BK, i1:i1+BN]  # use += due to sum reduce
 
-
+def mykernel2(a, b, c, M, N, K, BM=64, BN=64, BK=64):
+    #pragma parallel
+    for i in range(0, M, BM):  
+        #pragma parallel
+        for j in range(0, N, BN): 
+            c[i:i+BM, j:j+BN] = a[i:i+BM,:] @ b[:,j:j+BN]
+    
 
 def torch_kernel(a, b, c, M, N, K):
     torch.mm(a, b, out=c)
