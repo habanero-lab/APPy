@@ -37,7 +37,7 @@ class TritonBackend(object):
         self.var_count = 0
         self.reduction_vars = []
         self.lf_local_vars = {}
-        self.range_vars = []
+        self.range_vars = {}
         self.range_var_mask = {}
         self.index_block_sizes = {}
         self.index_bounds = {}
@@ -338,9 +338,10 @@ class TritonBackend(object):
                     newright = newright.value
 
                 if isinstance(node.value, ast.Call) and node.value.func.id in ['range', 'arange']:
-                    self.range_vars.append(left.id)
+                    self.range_vars[left.id] = node.value
+                    print(self.range_vars)
 
-                newnode.value = newright        
+                newnode.value = newright 
 
             if hasattr(newright, 'type'):
                 self.var_types[left.id] = newright.type              
@@ -548,20 +549,21 @@ class TritonBackend(object):
         elif funcname == 'mm':
             funcname = 'dot'
 
-        if funcname in ['range', 'arange']:
+        if funcname in ['range', 'arange', 'slice']:
             start_s = node.args[0].id
             if isinstance(node.args[1], ast.BinOp):
+                # Example: range(i, i+BLOCK)
                 step_arg = node.args[1].right
                 step_s = ast.unparse(self.gen_kernel_node(step_arg))
                 stmt = f'{start_s} + tl.arange(0, {step_s})'
-                if isinstance(step_arg, ast.Constant):
-                    node_type = TensorType(torch.int32, 1, shape=[int(step_s)])
-                elif isinstance(step_arg, ast.Name):
-                    node_type = TensorType(torch.int32, 1, shape=[self.get_arg_value(step_s)])
-                else:
-                    assert False
+                # if isinstance(step_arg, ast.Constant):
+                #     node_type = TensorType(torch.int32, 1, shape=[int(step_s)])
+                # elif isinstance(step_arg, ast.Name):
+                #     node_type = TensorType(torch.int32, 1, shape=[self.get_arg_value(step_s)])
+                # else:
+                #     assert False
             else:
-                assert False, 'range must be in the form `range(i,i+BLOCK)`'
+                assert False, 'range must be in the form `range(i,i+BLOCK)`, but got ' + unparse(node)
         elif funcname in ['sum', 'max', 'min']: 
             args = []
             for arg in node.args:
