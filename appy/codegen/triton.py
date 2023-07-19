@@ -2,6 +2,7 @@ import os
 import re
 import torch
 import textwrap
+import numpy as np
 from copy import deepcopy
 import ast_comments as ast
 from ast import unparse
@@ -306,76 +307,44 @@ class TritonBackend(object):
         elif isinstance(node, ast.AnnAssign):
             left = node.target
         right = node.value
-    
-        if isinstance(left, ast.Name):
-            newnode = ast.Assign(targets=[left], lineno=node.lineno)
-            # In our programming model, storing to a global array must be a subscript 
-            # expression, even if the array has only one element.
-            
-            
-            if isinstance(node.value, ast.Subscript) and node.value.value.id in self.range_vars:
-                # Mask pattern
-                name = node.value.value.id
-                dump(node)
-                print(self.range_var_mask[name])
-                exit(1)
-                # what about statements like   a[i[i<N]]
-            else:
-                newright = self.gen_kernel_node(right)
-                if isinstance(node.value, ast.Constant):
-                    assert isinstance(self.arg_types[0], TensorType)
-                    dtype = self.arg_types[0].get_tl_dtype()
-                
-                    if isinstance(node, ast.AnnAssign):
-                        dtype = get_tl_dtype_from_str(node.annotation.id)
-                
-                    blocksizes = self.index_block_sizes.values()
-                    if len(blocksizes) > 0:
-                        e = f'tl.zeros([{",".join(blocksizes)}], dtype={dtype}) + {node.value.value}'
-                        newright = to_ast_expr(e)
 
-                if isinstance(newright, ast.Expr):
-                    newright = newright.value
-
-                if isinstance(node.value, ast.Call) and node.value.func.id in ['range', 'arange']:
-                    self.range_vars[left.id] = node.value
-                    print(self.range_vars)
-
-                newnode.value = newright 
-
-            if hasattr(newright, 'type'):
-                self.var_types[left.id] = newright.type              
-                #exit(1)
-                
-        elif isinstance(left, ast.Subscript):
-            # A normal store or an atomic store
-            tensor = left.value.id
-            slice = unparse(self.gen_subscript_slice(left))
-            store_func = 'tl.store'
-            store_value = self.gen_kernel_node(right)
-            if tensor in self.reduction_vars:
-                if isinstance(right, ast.BinOp) and isinstance(right.op, ast.Add):
-                    # Example: s[0] = s[0] + a[i]  =>  s = sum(a[i])
-                    assert unparse(left) == unparse(right.left), "Example: s[0] = s[0] + a[i:i+BLOCK]"
-                    store_func = 'tl.atomic_add'
-                    store_value = self.gen_kernel_node(right.right)
-                    
-                elif isinstance(right, ast.Call) and right.func.id in ['maximum', 'minimum']:
-                    # Example: s[0] = maximum(s[0] + a[i:i+BLOCK])  =>  s = maximum(a[i:i+BLOCK])
-                    assert unparse(left) == unparse(right.args[0]), "Example: s[0] = maximum(s[0] + a[i:i+BLOCK])"
-                    store_func = 'tl.atomic_max' if right.func.id == 'maximum' else 'tl.atomic_min'
-                    store_value = self.gen_kernel_node(right.args[1])
-                else:
-                    assert False, "Supported reduction op: maximum, minimum and +"
-
-            s = f'{store_func}({tensor}+{slice}, {unparse(store_value)})'        
-            # tensor_dim = self.get_tensor_ndim(tensor)
-            # if tensor_dim == 1 and store_func == 'tl.store':  # no atomic mask support
-            #     pass
-                #s = f'{store_func}({tensor}+{slice}, {unparse(store_value)}, mask=({slice})<{tensor}_shape_0)'
-            newnode = to_ast_node(s)        
+        if isinstance(node.value, ast.Call) and node.value.func.id in ['range', 'arange']:
+            # range nodes will be inlined, so return a pass
+            self.range_vars[left.id] = node.value
+            print(self.range_vars)
+            newnode = ast.Pass()
         else:
-            assert False
+            if isinstance(left, ast.Name):
+                newnode = ast.Assign(targets=[left], value=self.gen_kernel_node(node.value), lineno=node.lineno)
+            elif isinstance(left, ast.Subscript):
+                # A normal store or an atomic store
+                tensor = left.value.id
+                slice = unparse(self.gen_subscript_slice(left))
+                store_func = 'tl.store'
+                store_value = self.gen_kernel_node(right)
+                if tensor in self.reduction_vars:
+                    if isinstance(right, ast.BinOp) and isinstance(right.op, ast.Add):
+                        # Example: s[0] = s[0] + a[i]  =>  s = sum(a[i])
+                        assert unparse(left) == unparse(right.left), "Example: s[0] = s[0] + a[i:i+BLOCK]"
+                        store_func = 'tl.atomic_add'
+                        store_value = self.gen_kernel_node(right.right)
+                        
+                    elif isinstance(right, ast.Call) and right.func.id in ['maximum', 'minimum']:
+                        # Example: s[0] = maximum(s[0] + a[i:i+BLOCK])  =>  s = maximum(a[i:i+BLOCK])
+                        assert unparse(left) == unparse(right.args[0]), "Example: s[0] = maximum(s[0] + a[i:i+BLOCK])"
+                        store_func = 'tl.atomic_max' if right.func.id == 'maximum' else 'tl.atomic_min'
+                        store_value = self.gen_kernel_node(right.args[1])
+                    else:
+                        assert False, "Supported reduction op: maximum, minimum and +"
+
+                s = f'{store_func}({tensor}+{slice}, {unparse(store_value)})'        
+                # tensor_dim = self.get_tensor_ndim(tensor)
+                # if tensor_dim == 1 and store_func == 'tl.store':  # no atomic mask support
+                #     pass
+                    #s = f'{store_func}({tensor}+{slice}, {unparse(store_value)}, mask=({slice})<{tensor}_shape_0)'
+                newnode = to_ast_node(s)        
+            else:
+                assert False
         
         return newnode
 
@@ -441,6 +410,41 @@ class TritonBackend(object):
         return to_ast_node(s)
 
     def gen_subscript_slice(self, subscript: ast.Subscript):
+        assert isinstance(subscript, ast.Subscript)
+        slice = subscript.slice
+        tensor = subscript.value.id
+        
+        #assert slice.__class__.__name__ in ('Tuple', 'Slice', 'Name', 'Constant')
+        #if isinstance(slice, ast.Tuple):  # Strangely this does not work
+        
+        if slice.__class__.__name__ == 'Tuple':
+            mask = []
+            is_elt_slice = np.zeros(len(slice.elts))
+            terms = []
+            for i,e in enumerate(slice.elts):
+                assert type(e) in [ast.Name, ast.Slice, ast.Constant]
+                if isinstance(e, ast.Slice):
+                    is_elt_slice[i] = 1
+                
+                term_str = ast.unparse(self.gen_kernel_node(e))
+                if i != len(slice.elts) - 1:
+                    term_str = f'({term_str}) * {tensor}_stride_{i}'
+                terms.append(term_str)
+                    
+            # If there are more than 1 slice in elements, broadcast is needed
+            assert np.sum(is_elt_slice) in [0, 1, 2]
+            if np.sum(is_elt_slice) == 2:
+                bcasts = ('[:,None]', '[None,:]')
+                for i, bcast in zip(np.nonzero(is_elt_slice)[0], bcasts):
+                    terms[i] = f'({terms[i]})' + bcast
+            slice = ' + '.join(terms)
+            print(terms)
+            return to_ast_expr(slice)
+        else:
+            return self.gen_kernel_node(slice)
+
+
+    def gen_subscript_slice_old(self, subscript: ast.Subscript):
         assert isinstance(subscript, ast.Subscript)
         slice = subscript.slice
         tensor = subscript.value.id
