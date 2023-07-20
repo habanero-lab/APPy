@@ -13,7 +13,7 @@ from appy.codegen.triton import TritonBackend
 compiled = {}
 
 def compile(fn, args, dump_code=0, verbose=False, **options):
-    print('options:', options)
+    #print('options:', options)
     os.makedirs('./.appyl_kernels', exist_ok=True)
     if verbose:
         print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')

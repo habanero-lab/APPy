@@ -310,7 +310,6 @@ class TritonBackend(object):
 
         if is_call(node.value, 'step'):
             # range nodes will be inlined, so return a pass
-            dump(node.value)
             start = get_arg_str(node.value, 0)
             stepsize = get_arg_str(node.value, 1)
             if len(node.value.args) == 3:
@@ -321,7 +320,7 @@ class TritonBackend(object):
                 if 'bound' in keywords:
                     bound = keywords['bound']
             self.range_vars[left.id] = (start, stepsize, bound)
-            print(self.range_vars)
+            #print(self.range_vars)
             
             newnode = ast.Pass()
         else:
@@ -451,7 +450,7 @@ class TritonBackend(object):
             
             offset, mask = None, None
             if is_range_var:
-                start, step, bound = self.range_vars[slice.id]
+                start, step, bound = self.range_vars[e.id]
                 offset = f'({start} + tl.arange(0, {step}))'
                 if bound:
                     mask = f'{offset} < {bound}'
@@ -477,7 +476,8 @@ class TritonBackend(object):
         elif len(masks) == 1:
             mask = masks[0]
         elif len(masks) == 2:
-            assert False, 'to add bcast'
+            mask = f'({masks[0]})[:,None] & ({masks[1]})[None,:]'
+            
         else:
             assert False
         
@@ -766,7 +766,7 @@ class TritonBackend(object):
                 grid = f'({",".join(self.usedBlockDims)},)'
                 
                 k_args = self.get_kernel_function_arguments()
-                self.append_stmts(self.lf, f'fn = {kf.name}[{grid}]({",".join(k_args)}, num_warps=4)')
+                self.append_stmts(self.lf, f'fn = {kf.name}[{grid}]({",".join(k_args)}, num_warps=4, num_stages=3)')
                 #self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
                 #self.append_stmts(self.lf, 'exit(1)')
             else:
