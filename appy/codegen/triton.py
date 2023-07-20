@@ -330,7 +330,7 @@ class TritonBackend(object):
             elif isinstance(left, ast.Subscript):
                 # A normal store or an atomic store
                 tensor = left.value.id
-                offset, mask = self.gen_subscript_slice(left)
+                offset, mask = self.gen_subscript_offset(left)
            
                 store_func = 'tl.store'
                 store_value = self.gen_kernel_node(right)
@@ -380,7 +380,7 @@ class TritonBackend(object):
         # elif isinstance(left, ast.Subscript):
         #     # A normal store or an atomic store
         #     tensor = left.value.id
-        #     slice = unparse(self.gen_subscript_slice(left))
+        #     slice = unparse(self.gen_subscript_offset(left))
         #     store_func = 'tl.store'
         #     store_value = self.gen_kernel_node(right)
         #     if tensor in self.reduction_vars:
@@ -424,55 +424,60 @@ class TritonBackend(object):
 
         return to_ast_node(s)
 
-    def gen_subscript_slice(self, subscript: ast.Subscript):
+    def gen_subscript_offset(self, subscript: ast.Subscript):
         assert isinstance(subscript, ast.Subscript)
         slice = subscript.slice
         tensor = subscript.value.id
         
         #assert slice.__class__.__name__ in ('Tuple', 'Slice', 'Name', 'Constant')
         #if isinstance(slice, ast.Tuple):  # Strangely this does not work
+        elts = []
+        if slice.__class__.__name__ == 'Tuple':
+            elts = slice.elts
+        else:
+            elts = [slice]
         
-        if slice.__class__.__name__ == 'Tuple':            
-            is_elt_slice = np.zeros(len(slice.elts))
-            terms = []
-            masks = []
-            for i,e in enumerate(slice.elts):
-                assert type(e) in [ast.Name, ast.Slice, ast.Constant]
-                if isinstance(e, ast.Slice):
-                    is_elt_slice[i] = 1
-                
-                offset, mask = self.gen_subscript_slice(e)
-                term_str = ast.unparse(offset)
-                if i != len(slice.elts) - 1:
-                    term_str = f'({term_str}) * {tensor}_stride_{i}'
-                terms.append(term_str)
-                masks.append(mask)
-                    
-            # If there are more than 1 slice in elements, broadcast is needed
-            assert np.sum(is_elt_slice) in [0, 1, 2]
-            if np.sum(is_elt_slice) == 2:
-                bcasts = ('[:,None]', '[None,:]')
-                for i, bcast in zip(np.nonzero(is_elt_slice)[0], bcasts):
-                    terms[i] = f'({terms[i]})' + bcast
-                    if mask[i]:
-                        masks[i] = f'({mask[i]})' + bcast
-            offset = ' + '.join(terms)
-            mask = ' + '.join([x != None for x in masks])
-            return to_ast_expr(offset), mask
-        elif slice.__class__.__name__ == 'Name':
-            if slice.id in self.range_vars:
+        is_elt_slice = np.zeros(len(elts))
+        terms = []
+        masks = []
+        for i,e in enumerate(elts):
+            assert type(e) in [ast.Name, ast.Slice, ast.Constant]
+            is_range_var = False
+            if isinstance(e, ast.Name) and e.id in self.range_vars:
+                is_range_var = True
+
+            if isinstance(e, ast.Slice) or is_range_var:
+                is_elt_slice[i] = 1
+            
+            offset, mask = None, None
+            if is_range_var:
                 start, step, bound = self.range_vars[slice.id]
                 offset = f'({start} + tl.arange(0, {step}))'
                 if bound:
                     mask = f'{offset} < {bound}'
-                return to_ast_expr(offset), mask
             else:
-                return self.gen_kernel_node(slice), None
-        else:
-            return self.gen_kernel_node(slice), None
+                offset = self.gen_kernel_node(e)
+
+            term_str = ast.unparse(offset)
+            if i != len(elts) - 1:
+                term_str = f'({term_str}) * {tensor}_stride_{i}'
+            terms.append(term_str)
+            masks.append(mask)
+                
+        # If there are more than 1 slice in elements, broadcast is needed
+        assert np.sum(is_elt_slice) in [0, 1, 2]
+        if np.sum(is_elt_slice) == 2:
+            bcasts = ('[:,None]', '[None,:]')
+            for i, bcast in zip(np.nonzero(is_elt_slice)[0], bcasts):
+                terms[i] = f'({terms[i]})' + bcast
+                if mask[i]:
+                    masks[i] = f'({mask[i]})' + bcast
+        offset = ' + '.join(terms)
+        mask = ' + '.join(filter(lambda x: x!=None, masks))
+        return to_ast_expr(offset), mask
 
 
-    def gen_subscript_slice_old(self, subscript: ast.Subscript):
+    def gen_subscript_offset_old(self, subscript: ast.Subscript):
         assert isinstance(subscript, ast.Subscript)
         slice = subscript.slice
         tensor = subscript.value.id
@@ -533,7 +538,7 @@ class TritonBackend(object):
             return ast.Subscript(value=self.gen_kernel_node(node.value), slice=node.slice)
 
         tensor = node.value.id
-        offset, mask = self.gen_subscript_slice(node)
+        offset, mask = self.gen_subscript_offset(node)
         assert isinstance(node.ctx, ast.Load)
 
         if isinstance(node.ctx, ast.Load):
