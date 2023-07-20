@@ -319,7 +319,8 @@ class TritonBackend(object):
             elif isinstance(left, ast.Subscript):
                 # A normal store or an atomic store
                 tensor = left.value.id
-                slice = unparse(self.gen_subscript_slice(left))
+                offset, mask = self.gen_subscript_slice(left)
+           
                 store_func = 'tl.store'
                 store_value = self.gen_kernel_node(right)
                 if tensor in self.reduction_vars:
@@ -337,7 +338,7 @@ class TritonBackend(object):
                     else:
                         assert False, "Supported reduction op: maximum, minimum and +"
 
-                s = f'{store_func}({tensor}+{slice}, {unparse(store_value)})'        
+                s = f'{store_func}({tensor}+{unparse(offset)}, {unparse(store_value)})'        
                 # tensor_dim = self.get_tensor_ndim(tensor)
                 # if tensor_dim == 1 and store_func == 'tl.store':  # no atomic mask support
                 #     pass
@@ -438,10 +439,9 @@ class TritonBackend(object):
                 for i, bcast in zip(np.nonzero(is_elt_slice)[0], bcasts):
                     terms[i] = f'({terms[i]})' + bcast
             slice = ' + '.join(terms)
-            print(terms)
-            return to_ast_expr(slice)
+            return to_ast_expr(slice), None
         else:
-            return self.gen_kernel_node(slice)
+            return self.gen_kernel_node(slice), None
 
 
     def gen_subscript_slice_old(self, subscript: ast.Subscript):
@@ -505,7 +505,7 @@ class TritonBackend(object):
             return ast.Subscript(value=self.gen_kernel_node(node.value), slice=node.slice)
 
         tensor = node.value.id
-        slice = unparse(self.gen_subscript_slice(node))
+        offset, mask = self.gen_subscript_slice(node)
         assert isinstance(node.ctx, ast.Load)
 
         if isinstance(node.ctx, ast.Load):    
@@ -514,7 +514,7 @@ class TritonBackend(object):
             # self.var_count += 1
             # return varname
             #tensor_dim = self.get_tensor_ndim(tensor)            
-            s = f'tl.load({tensor}+{slice})'
+            s = f'tl.load({tensor}+{unparse(offset)})'
             # if tensor_dim == 1:
             #     pass
                 #s = f'tl.load({tensor}+{slice}, mask=({slice})<{tensor}_shape_0, other=0)'
