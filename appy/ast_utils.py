@@ -13,6 +13,21 @@ def get_arg_names(func):
     args = [x.arg for x in func.args.args]
     return args
 
+def get_keyword_args(func):
+    d = {}
+    for keyword in func.keywords:
+        d[keyword.arg] = keyword.value.id
+    return d
+
+def get_arg_str(func, idx):
+    return ast.unparse(func.args[idx])
+
+def is_call(node, name=None):
+    if name == None:
+        return isinstance(node, ast.Call)
+    else:
+        return isinstance(node, ast.Call) and node.func.id == name
+
 def get_first_noncomment_child(node):
     for c in node.body:
         if type(c) == ast.Comment:

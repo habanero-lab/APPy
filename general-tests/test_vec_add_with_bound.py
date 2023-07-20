@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import numba
-from appy import jit
+from appy import jit, step
 from appy.utils import bench
 from torch import arange, zeros, empty
 

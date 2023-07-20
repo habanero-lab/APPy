@@ -9,7 +9,7 @@ from ast import unparse
 from .typesys import build_type_from_value, get_tl_dtype_from_str
 from .typesys import Tensor as TensorType
 from .typesys import Constant as ConstantType
-from ..ast_utils import dump, dump_code, get_arg_names, new_call_node, to_ast_node, to_ast_expr
+from ..ast_utils import *
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values):
@@ -308,10 +308,21 @@ class TritonBackend(object):
             left = node.target
         right = node.value
 
-        if isinstance(node.value, ast.Call) and node.value.func.id in ['range', 'arange']:
+        if is_call(node.value, 'step'):
             # range nodes will be inlined, so return a pass
-            self.range_vars[left.id] = node.value
+            dump(node.value)
+            start = get_arg_str(node.value, 0)
+            stepsize = get_arg_str(node.value, 1)
+            if len(node.value.args) == 3:
+                bound = get_arg_str(node.value, 2)
+            else:
+                bound = None
+                keywords = get_keyword_args(node.value)
+                if 'bound' in keywords:
+                    bound = keywords['bound']
+            self.range_vars[left.id] = (start, stepsize, bound)
             print(self.range_vars)
+            
             newnode = ast.Pass()
         else:
             if isinstance(left, ast.Name):
@@ -338,7 +349,10 @@ class TritonBackend(object):
                     else:
                         assert False, "Supported reduction op: maximum, minimum and +"
 
-                s = f'{store_func}({tensor}+{unparse(offset)}, {unparse(store_value)})'        
+                if mask:
+                    s = f'{store_func}({tensor}+{unparse(offset)}, {unparse(store_value)}, mask={mask})'        
+                else:
+                    s = f'{store_func}({tensor}+{unparse(offset)}, {unparse(store_value)})'
                 # tensor_dim = self.get_tensor_ndim(tensor)
                 # if tensor_dim == 1 and store_func == 'tl.store':  # no atomic mask support
                 #     pass
@@ -418,19 +432,21 @@ class TritonBackend(object):
         #assert slice.__class__.__name__ in ('Tuple', 'Slice', 'Name', 'Constant')
         #if isinstance(slice, ast.Tuple):  # Strangely this does not work
         
-        if slice.__class__.__name__ == 'Tuple':
-            mask = []
+        if slice.__class__.__name__ == 'Tuple':            
             is_elt_slice = np.zeros(len(slice.elts))
             terms = []
+            masks = []
             for i,e in enumerate(slice.elts):
                 assert type(e) in [ast.Name, ast.Slice, ast.Constant]
                 if isinstance(e, ast.Slice):
                     is_elt_slice[i] = 1
                 
-                term_str = ast.unparse(self.gen_kernel_node(e))
+                offset, mask = self.gen_subscript_slice(e)
+                term_str = ast.unparse(offset)
                 if i != len(slice.elts) - 1:
                     term_str = f'({term_str}) * {tensor}_stride_{i}'
                 terms.append(term_str)
+                masks.append(mask)
                     
             # If there are more than 1 slice in elements, broadcast is needed
             assert np.sum(is_elt_slice) in [0, 1, 2]
@@ -438,8 +454,20 @@ class TritonBackend(object):
                 bcasts = ('[:,None]', '[None,:]')
                 for i, bcast in zip(np.nonzero(is_elt_slice)[0], bcasts):
                     terms[i] = f'({terms[i]})' + bcast
-            slice = ' + '.join(terms)
-            return to_ast_expr(slice), None
+                    if mask[i]:
+                        masks[i] = f'({mask[i]})' + bcast
+            offset = ' + '.join(terms)
+            mask = ' + '.join([x != None for x in masks])
+            return to_ast_expr(offset), mask
+        elif slice.__class__.__name__ == 'Name':
+            if slice.id in self.range_vars:
+                start, step, bound = self.range_vars[slice.id]
+                offset = f'({start} + tl.arange(0, {step}))'
+                if bound:
+                    mask = f'{offset} < {bound}'
+                return to_ast_expr(offset), mask
+            else:
+                return self.gen_kernel_node(slice), None
         else:
             return self.gen_kernel_node(slice), None
 
@@ -508,17 +536,12 @@ class TritonBackend(object):
         offset, mask = self.gen_subscript_slice(node)
         assert isinstance(node.ctx, ast.Load)
 
-        if isinstance(node.ctx, ast.Load):    
-            # varname = f'_t{self.var_count}'
-            # self.append_stmts(self.kf, f'{varname} = tl.load({tensor}+{slice})')
-            # self.var_count += 1
-            # return varname
-            #tensor_dim = self.get_tensor_ndim(tensor)            
-            s = f'tl.load({tensor}+{unparse(offset)})'
-            # if tensor_dim == 1:
-            #     pass
-                #s = f'tl.load({tensor}+{slice}, mask=({slice})<{tensor}_shape_0, other=0)'
-            
+        if isinstance(node.ctx, ast.Load):
+            if mask:
+                s = f'tl.load({tensor}+{unparse(offset)}, mask={mask}, other=0)'
+            else:
+                s = f'tl.load({tensor}+{unparse(offset)})'
+                        
         return to_ast_expr(s)
         # elif isinstance(node.ctx, ast.Store):
         #     if tensor in self.reduction_vars:
