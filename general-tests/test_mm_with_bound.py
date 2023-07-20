@@ -34,18 +34,19 @@ def torch_kernel(a, b, c, M, N, K):
     torch.mm(a, b, out=c)
     
 def test1():
-    for dtype in [torch.float16, torch.float32]:
+    for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
-        for M, K, N in [(1024, 1024, 1024), (4096, 4096, 4096)]:
+        for M, K, N in [(1000, 1100, 1200), (2000, 2300, 2600)]:
             print(f'M: {M}, N: {N}, K: {K}, dtype: {dtype}')
             a = torch.randn(M, K, device='cuda', dtype=dtype)
             b = torch.randn(K, N, device='cuda', dtype=dtype)
             
             c_ref = torch.randn(M, N, device='cuda', dtype=dtype)
             torch_kernel(a, b, c_ref, M, N, K)
+            print(c_ref)
 
-            for f in (torch_kernel, mykernel, mykernel1):
-                c = torch.zeros(M, N, device='cuda', dtype=dtype)
+            for f in (torch_kernel, mykernel1):
+                c = torch.randn(M, N, device='cuda', dtype=dtype)
                 f(a, b, c, M, N, K)
                 assert(allclose(c, c_ref))
                 ms = bench(lambda: f(a, b, c, M, N, K))

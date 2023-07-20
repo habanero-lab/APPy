@@ -438,6 +438,7 @@ class TritonBackend(object):
         
         is_elt_slice = np.zeros(len(elts))
         terms = []
+        strides = []
         masks = []
         for i,e in enumerate(elts):
             assert type(e) in [ast.Name, ast.Slice, ast.Constant]
@@ -458,9 +459,11 @@ class TritonBackend(object):
                 offset = ast.unparse(self.gen_kernel_node(e))
 
             term_str = offset
-            if i != len(elts) - 1:
-                term_str = f'({term_str}) * {tensor}_stride_{i}'
+            stride_str = f'{tensor}_stride_{i}'
+            if i == len(elts) - 1:
+                stride_str = '1'
             terms.append(term_str)
+            strides.append(stride_str)
             masks.append(mask)
                 
         # If there are more than 1 slice in elements, broadcast is needed
@@ -481,7 +484,10 @@ class TritonBackend(object):
         else:
             assert False
         
-        offset = ' + '.join(terms)
+        strided_terms = []
+        for term, stride in zip(terms, strides):
+            strided_terms.append(f'{term} * {stride}')
+        offset = ' + '.join(strided_terms)
         return to_ast_expr(offset), mask
 
 
