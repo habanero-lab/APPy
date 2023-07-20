@@ -6,17 +6,6 @@ from torch import arange, zeros, empty, sum, float32
 torch.set_default_device('cuda')
 
 @jit
-def mykernel(a, b, c, M, N, K, BM=64, BN=128, BK=32):
-    #pragma parallel
-    for i in range(0, M, BM):  
-        #pragma parallel
-        for j in range(0, N, BN):  
-            acc = zeros([BM, BN], dtype=torch.float32)
-            for k in range(0, K, BK):     
-                acc += a[i:i+BM, k:k+BK] @ b[k:k+BK, j:j+BN]
-            c[i:i+BM, j:j+BN] = acc
-
-@jit
 def mykernel1(a, b, c, M, N, K, BM=64, BN=128, BK=32):
     #pragma parallel
     for i in range(0, M, BM):  

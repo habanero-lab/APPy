@@ -1,5 +1,5 @@
 import torch
-from appy import jit, max
+from appy import jit, max, step
 import numpy as np
 import numba
 from torch import zeros, empty, sum, maximum, add, exp, t, mm, sqrt, dot
@@ -20,17 +20,24 @@ def torch_kernel(A, N):
         A[i,i] = sqrt(A[i,i])
 
 @jit
-def mykernel(A, N, UB):
+def mykernel(A, N, BLOCK=128):
     #pragma parallel
     for i in range(N):
         # j < i
         for j in range(0, i):
-            s = sum( A[i,0:j] * A[j,0:j] )
+            s = 0.0
+            for k in range(0, j, BLOCK):
+                kk = step(k, BLOCK, bound=j)
+                s += sum( A[i,kk] * A[j,kk] )
+            
             A[i,j] -= s
             A[i,j] /= A[j,j]
 
         # i == j case
-        s = sum( A[i,0:i] * A[i,0:i] )
+        s = 0.0
+        for k in range(0, i, BLOCK):
+            kk = step(k, BLOCK, bound=i)
+            s += sum( A[i,kk] * A[i,kk] )
         A[i,i] -= s
         A[i,i] = sqrt(A[i,i])
 
