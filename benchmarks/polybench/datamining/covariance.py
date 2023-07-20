@@ -3,7 +3,7 @@ from appy import jit, max
 import numpy as np
 import numba as nb
 from torch import zeros, empty, sum, maximum, add, exp, t, mm
-from appy.utils import bench
+from appy.utils import bench, allclose
 
 torch.set_default_device('cuda')
 
@@ -74,7 +74,7 @@ def test1():
             a = torch.randn(N, M, dtype=dtype).to('cuda')
             b_ref = torch_kernel(M, N, a.clone())
 
-            for f in (numpy_kernel, torch_kernel, _mykernel_BN, numba_kernel):
+            for f in (numpy_kernel, numba_kernel, torch_kernel, _mykernel_BN):
                 if f.__name__.startswith('num'):
                     a_np = a.cpu().numpy()
                     ff = lambda: f(M, N, a_np)
@@ -89,10 +89,7 @@ def test1():
                 if isinstance(b, np.ndarray):
                     b = torch.from_numpy(b).to('cuda')
 
-                if not torch.allclose(b, b_ref, atol=0.1, rtol=0.05):
-                    print(b)
-                    print(b_ref)
-                assert(torch.allclose(b, b_ref, atol=0.1, rtol=0.05))
+                assert(allclose(b, b_ref))
                 #ms, _, _ = triton.testing.do_bench(ff)
                 ms = bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
