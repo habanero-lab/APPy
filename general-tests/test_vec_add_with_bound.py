@@ -9,7 +9,7 @@ from torch import arange, zeros, empty
 def mykernel(a, b, c, N, BLOCK=256):
     #pragma parallel
     for i in range(0, N, BLOCK):  
-        i_BLOCK = range(i, min(i+BLOCK, N))
+        i_BLOCK = step(i, BLOCK, bound=N)
         c[i_BLOCK] = a[i_BLOCK] + b[i_BLOCK]
 
 def torch_kernel(a, b, c, N):

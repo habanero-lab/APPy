@@ -456,9 +456,9 @@ class TritonBackend(object):
                 if bound:
                     mask = f'{offset} < {bound}'
             else:
-                offset = self.gen_kernel_node(e)
+                offset = ast.unparse(self.gen_kernel_node(e))
 
-            term_str = ast.unparse(offset)
+            term_str = offset
             if i != len(elts) - 1:
                 term_str = f'({term_str}) * {tensor}_stride_{i}'
             terms.append(term_str)
@@ -470,10 +470,18 @@ class TritonBackend(object):
             bcasts = ('[:,None]', '[None,:]')
             for i, bcast in zip(np.nonzero(is_elt_slice)[0], bcasts):
                 terms[i] = f'({terms[i]})' + bcast
-                if mask[i]:
-                    masks[i] = f'({mask[i]})' + bcast
+
+        masks = list(filter(lambda x: x!=None, masks))
+        if len(masks) == 0:
+            mask = None
+        elif len(masks) == 1:
+            mask = masks[0]
+        elif len(masks) == 2:
+            assert False, 'to add bcast'
+        else:
+            assert False
+        
         offset = ' + '.join(terms)
-        mask = ' + '.join(filter(lambda x: x!=None, masks))
         return to_ast_expr(offset), mask
 
 
