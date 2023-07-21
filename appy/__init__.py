@@ -1,6 +1,7 @@
 import torch
 from torch import arange
 from .jit import jit
+
 #from .config import configs
 
 parallel = None
@@ -24,3 +25,6 @@ def step(start, stepsize, bound=None):
     else:
         r = torch.arange(start, start+stepsize)
     return r
+
+def debug_barrier():
+    pass

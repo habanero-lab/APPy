@@ -26,6 +26,7 @@ class TritonBackend(object):
             import torch
             import triton
             import triton.language as tl
+            from triton.language import debug_barrier
         '''
         ))
         self.arg_names = get_arg_names(self.func)
@@ -181,6 +182,8 @@ class TritonBackend(object):
             newnode = node
         elif isinstance(node, ast.Name):
             newnode = node
+        elif isinstance(node, ast.Expr):
+            newnode = node
         elif isinstance(node, ast.AugAssign):
             newnode = self.gen_aug_assign(node)
         elif isinstance(node, ast.AnnAssign):
@@ -195,7 +198,7 @@ class TritonBackend(object):
             newnode = self.gen_compare(node)
         else:
             if not isinstance(node, ast.Comment):
-                assert False, ast.dump(node)
+                assert False, 'unsupported:' + ast.dump(node)
         return newnode
 
     def gen_compare(self, node: ast.Compare):
