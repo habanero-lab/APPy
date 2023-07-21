@@ -16,7 +16,7 @@ def bench(fn):
         N = 1
     return t0.timeit(N).mean * 1000
 
-def allclose(a, b, verbose=True):
+def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):
     if isinstance(a, np.ndarray):
         a = torch.from_numpy(a)
     if isinstance(b, np.ndarray):
@@ -24,7 +24,10 @@ def allclose(a, b, verbose=True):
 
     a, b = a.to('cuda'), b.to('cuda')
     
-    if not torch.allclose(a, b, atol=0.1, rtol=0.01) and verbose:
-        print(a)
-        print(b)
-    return torch.allclose(a, b, atol=0.1, rtol=0.01)
+    if not torch.allclose(a, b, rtol, atol) and verbose:
+        #print(a)
+        #print(b)
+        diff = a - b
+        print(torch.nonzero(diff != 0))
+        print(diff[diff != 0])
+    return torch.allclose(a, b, rtol, atol)

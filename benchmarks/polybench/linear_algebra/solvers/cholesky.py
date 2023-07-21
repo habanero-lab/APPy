@@ -35,9 +35,10 @@ def numpy_kernel(A, N):
         A[i,i] = np.sqrt(A[i,i])
     return A
 
-@nb.jit(nopython=True, parallel=True, fastmath=True)
+#@nb.jit(nopython=True, parallel=True, fastmath=True)
+@nb.njit
 def numba_kernel(A, N):
-    for i in nb.prange(N):
+    for i in range(N):
         # j < i
         for j in range(0, i):
             A[i,j] -= np.dot( A[i,0:j], A[j, 0:j] )
@@ -89,9 +90,9 @@ def mykernel(A, N, BLOCK=128):
 
 @jit
 def mykernel1(A, N, BLOCK=128):
-    
-        #for z in range(1):
-        #pragma parallel
+    #pragma parallel
+    for z in range(1):
+        
         for i in range(N):
             # j < i
             for j in range(0, i):
@@ -99,22 +100,22 @@ def mykernel1(A, N, BLOCK=128):
                 s = sum(A[i, offset] * A[j, offset])
                 A[i,j] -= s
                 A[i,j] /= A[j,j]
-                debug_barrier()
+                #debug_barrier()
             
             # i == j case
-            debug_barrier()
+            #debug_barrier()
             offset = step(0, N, bound=i)
             
             #s = sum(A[i, offset] * A[i, offset])
             #A[i,i] -= s
             A[i,i] = sqrt(A[i,i])
-        return A
+    return A
 
 def test1():
     for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
         
-        for N in [128, 256, 512]:
+        for N in [128, 256, 512, 1024]:
         
         #for M, N in [(8, 256)]:
             print(f'N: {N}')
@@ -134,9 +135,9 @@ def test1():
                 else:
                     
                     ff = lambda: f(a.clone(), N)
-                
                 b = ff()
-                assert(allclose(b, b_ref))
+               
+                assert allclose(b, b_ref), f.__name__
                 
                 ms = bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')

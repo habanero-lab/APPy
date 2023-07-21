@@ -47,7 +47,7 @@ def _mykernel_BN(M, float_n, data, corr, BN=256):
             corr[j, i] = corr[i, j]
 
 @nb.jit(nopython=True, parallel=True, fastmath=True)
-def numba_kernel(M, float_n, data):
+def numba_nopy_par_kernel(M, float_n, data):
     # mean = np.mean(data, axis=0)
     mean = np.sum(data, axis=0) / float_n
     # stddev = np.std(data, axis=0)
@@ -86,25 +86,20 @@ def test1():
             print(f'M: {M}, N: {N}')
             # M vars and N observations. Each row has M vars
             a = torch.randn(N, M, dtype=dtype).to('cuda')
+            a_np = a.cpu().numpy()
             b_ref = torch_kernel(M, N, a.clone())
 
-            for f in (numpy_kernel, numba_kernel, torch_kernel, _mykernel_BN):
-                if f.__name__.startswith('num'):
-                    a_np = a.cpu().numpy().astype(np.float32)
-                    ff = lambda: f(M, N, a_np)
+            for f in (numpy_kernel, numba_nopy_par_kernel, torch_kernel, _mykernel_BN):
+                if f.__name__.startswith('num'):                    
+                    ff = lambda: f(M, N, a_np.copy())
                 else:
                     if f.__name__.startswith('_'):
-                        ff = lambda: mykernel(M, N, a, f)
+                        ff = lambda: mykernel(M, N, a.clone(), f)
                     else:
-                        a_copy = a.clone()
-                        ff = lambda: f(M, N, a_copy)
+                        ff = lambda: f(M, N, a.clone())
                     
                 b = ff()
-                if isinstance(b, np.ndarray):
-                    b = torch.from_numpy(b).to('cuda')
-
-                assert(allclose(b, b_ref))
-                #ms, _, _ = triton.testing.do_bench(ff)
+                assert(allclose(b, b_ref, atol=1e-3))
                 ms = bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
             

@@ -43,8 +43,18 @@ def _mykernel_BN(M, float_n, data, cov, BN=256):
             cov[i, j] /= float_n - 1.0
             cov[j, i] = cov[i, j]
 
+@nb.jit(nopython=True, fastmath=True)
+def numba_nopy_kernel(M, float_n, data):
+    mean = np.sum(data, axis=0) / float_n
+    data = data - mean
+    cov = np.zeros((M, M), dtype=data.dtype)
+    for i in range(M):
+        cov[i:M, i] = cov[i, i:M] = data[:, i] @ data[:, i:M] / (float_n - 1.0)
+
+    return cov
+
 @nb.jit(nopython=True, parallel=True, fastmath=True)
-def numba_kernel(M, float_n, data):
+def numba_nopy_par_kernel(M, float_n, data):
     mean = np.sum(data, axis=0) / float_n
     data = data - mean
     cov = np.zeros((M, M), dtype=data.dtype)
@@ -72,25 +82,20 @@ def test1():
             print(f'M: {M}, N: {N}')
             # M vars and N observations. Each row has M vars
             a = torch.randn(N, M, dtype=dtype).to('cuda')
+            a_np = a.cpu().numpy()
             b_ref = torch_kernel(M, N, a.clone())
 
-            for f in (numpy_kernel, numba_kernel, torch_kernel, _mykernel_BN):
-                if f.__name__.startswith('num'):
-                    a_np = a.cpu().numpy()
-                    ff = lambda: f(M, N, a_np)
+            for f in (numpy_kernel, numba_nopy_kernel, numba_nopy_par_kernel, torch_kernel, _mykernel_BN):
+                if f.__name__.startswith('num'):                    
+                    ff = lambda: f(M, N, a_np.copy())
                 else:
                     if f.__name__.startswith('_'):
-                        ff = lambda: mykernel(M, N, a, f)
+                        ff = lambda: mykernel(M, N, a.clone(), f)
                     else:
-                        a_copy = a.clone()
-                        ff = lambda: f(M, N, a_copy)
+                        ff = lambda: f(M, N, a.clone())
                     
                 b = ff()
-                if isinstance(b, np.ndarray):
-                    b = torch.from_numpy(b).to('cuda')
-
                 assert(allclose(b, b_ref))
-                #ms, _, _ = triton.testing.do_bench(ff)
                 ms = bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
             
