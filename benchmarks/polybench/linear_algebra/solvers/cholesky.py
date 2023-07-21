@@ -31,7 +31,7 @@ def numpy_kernel(A, N):
             A[i,j] /= A[j,j]
 
         # i == j case
-        #A[i,i] -= np.dot( A[i,0:i], A[i,0:i] )
+        A[i,i] -= np.dot( A[i,0:i], A[i,0:i] )
         A[i,i] = np.sqrt(A[i,i])
     return A
 
@@ -45,7 +45,7 @@ def numba_kernel(A, N):
             A[i,j] /= A[j,j]
 
         # i == j case
-        #A[i,i] -= np.dot( A[i,0:i], A[i,0:i] )
+        A[i,i] -= np.dot( A[i,0:i], A[i,0:i] )
         A[i,i] = np.sqrt(A[i,i])
     return A
 
@@ -57,12 +57,12 @@ def torch_kernel(A, N):
             A[i,j] /= A[j,j]
 
         # i == j case
-        #A[i,i] -= dot( A[i,0:i], A[i,0:i] )
+        A[i,i] -= dot( A[i,0:i], A[i,0:i] )
         A[i,i] = sqrt(A[i,i])
     return A
 
 @jit
-def mykernel(A, N, BLOCK=128):
+def mykernel(A, N, BLOCK=256):
     #pragma parallel
     for z in range(1):
         for i in range(N):
@@ -76,39 +76,41 @@ def mykernel(A, N, BLOCK=128):
                 A[i,j] -= s
                 A[i,j] /= A[j,j]
 
-            debug_barrier()
+                debug_barrier()
 
             # i == j case
-            s = 0.0
-            for k in range(0, i, BLOCK):
-                kk = step(k, BLOCK, bound=i)
-                s += sum( A[i,kk] * A[j,kk] )
+            s1 = 0.0
+            for k1 in range(0, i, BLOCK):
+                kk1 = step(k1, BLOCK, bound=i)
+                s1 += sum( A[i,kk1] * A[i,kk1] )
         
-            A[i,i] -= s
+            A[i,i] -= s1
             A[i,i] = sqrt(A[i,i])
+            debug_barrier()
+            
     return A
 
 @jit
 def mykernel1(A, N, BLOCK=128):
-    #pragma parallel
-    for z in range(1):
-        
-        for i in range(N):
-            # j < i
-            for j in range(0, i):
-                offset = step(0, N, bound=j)
-                s = sum(A[i, offset] * A[j, offset])
-                A[i,j] -= s
-                A[i,j] /= A[j,j]
-                #debug_barrier()
-            
-            # i == j case
+    
+    #for z in range(1):
+    #pragma parallel    
+    for i in range(N):
+        # j < i
+        for j in range(0, i):
+            offset = step(0, N, bound=j)
+            s = sum(A[i, offset] * A[j, offset])
+            A[i,j] -= s
+            A[i,j] /= A[j,j]
             #debug_barrier()
-            offset = step(0, N, bound=i)
-            
-            #s = sum(A[i, offset] * A[i, offset])
-            #A[i,i] -= s
-            A[i,i] = sqrt(A[i,i])
+        
+        # i == j case
+        #debug_barrier()
+        offset = step(0, N, bound=i)
+        
+        #s = sum(A[i, offset] * A[i, offset])
+        #A[i,i] -= s
+        A[i,i] = sqrt(A[i,i])
     return A
 
 def test1():
@@ -120,24 +122,26 @@ def test1():
         #for M, N in [(8, 256)]:
             print(f'N: {N}')
             a = torch.randn(N, N, dtype=dtype).to('cuda')
-            a = a @ a.T / N
+            a = a @ a.T / N * 2
             a_np = a.cpu().numpy()
             b_ref = torch_kernel(a.clone(), N)
+            b_np_ref = numpy_kernel(a_np.copy(), N)
 
             for f in (
                 numpy_kernel, 
                 numba_kernel,
-                mykernel1, 
+                mykernel,
+                #mykernel1 
                 #torch_kernel
                 ):
                 if f.__name__.startswith('num'):
                     ff = lambda: f(a_np.copy(), N)
-                else:
-                    
+                    ref = b_np_ref
+                else:                    
                     ff = lambda: f(a.clone(), N)
+                    ref = b_ref
                 b = ff()
-               
-                assert allclose(b, b_ref), f.__name__
+                assert allclose(b, ref, atol=1e-4), f.__name__
                 
                 ms = bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
