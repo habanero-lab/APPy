@@ -32,7 +32,7 @@ def numpy_kernel(A, N):
 
         # i == j case
         A[i,i] -= np.dot( A[i,0:i], A[i,0:i] )
-        A[i,i] = np.sqrt(A[i,i])
+        #A[i,i] = np.sqrt(A[i,i])
     return A
 
 #@nb.jit(nopython=True, parallel=True, fastmath=True)
@@ -46,7 +46,7 @@ def numba_kernel(A, N):
 
         # i == j case
         A[i,i] -= np.dot( A[i,0:i], A[i,0:i] )
-        A[i,i] = np.sqrt(A[i,i])
+        #A[i,i] = np.sqrt(A[i,i])
     return A
 
 def torch_kernel(A, N):
@@ -58,7 +58,7 @@ def torch_kernel(A, N):
 
         # i == j case
         A[i,i] -= dot( A[i,0:i], A[i,0:i] )
-        A[i,i] = sqrt(A[i,i])
+        #A[i,i] = sqrt(A[i,i])
     return A
 
 @jit
@@ -85,7 +85,7 @@ def mykernel(A, N, BLOCK=256):
                 s1 += sum( A[i,kk1] * A[i,kk1] )
         
             A[i,i] -= s1
-            A[i,i] = sqrt(A[i,i])
+            #A[i,i] = sqrt(A[i,i])
             debug_barrier()
             
     return A
@@ -141,7 +141,7 @@ def test1():
                     ff = lambda: f(a.clone(), N)
                     ref = b_ref
                 b = ff()
-                assert allclose(b, ref, atol=1e-4), f.__name__
+                assert allclose(b, ref, atol=1e-6), f.__name__
                 
                 ms = bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')

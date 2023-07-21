@@ -28,6 +28,6 @@ def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):
         #print(a)
         #print(b)
         diff = a - b
-        print(torch.nonzero(diff != 0))
-        print(diff[diff != 0])
+        #print(torch.nonzero(diff != 0))
+        print(torch.sort(diff[diff != 0]))
     return torch.allclose(a, b, rtol, atol)
