@@ -128,11 +128,12 @@ def test1():
             b_np_ref = numpy_kernel(a_np.copy(), N)
 
             for f in (
+                torch_kernel,
                 numpy_kernel, 
                 numba_kernel,
                 mykernel,
                 #mykernel1 
-                #torch_kernel
+                
                 ):
                 if f.__name__.startswith('num'):
                     ff = lambda: f(a_np.copy(), N)
