@@ -89,7 +89,7 @@ def test1():
             a_np = a.cpu().numpy()
             b_ref = torch_kernel(M, N, a.clone())
 
-            for f in (numpy_kernel, numba_nopy_par_kernel, torch_kernel, _mykernel_BN):
+            for f in (_mykernel, numpy_kernel, numba_nopy_par_kernel, torch_kernel, _mykernel_BN):
                 if f.__name__.startswith('num'):                    
                     ff = lambda: f(M, N, a_np.copy())
                 else:

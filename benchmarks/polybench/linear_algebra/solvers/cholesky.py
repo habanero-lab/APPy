@@ -64,6 +64,26 @@ def torch_kernel(A, N):
 @jit
 def mykernel(A, N, BLOCK=256):
     #pragma parallel
+    for _ in range(1):
+        for i in range(N):
+            # j < i
+            for j in range(0, i):
+                s = sum( A[i,:j] * A[j,:j] )
+                A[i,j] -= s
+                A[i,j] /= A[j,j]
+                debug_barrier()
+
+            # i == j case
+            s1 = sum( A[i,:i] * A[i,:i] )
+            A[i,i] -= s1
+            #A[i,i] = sqrt(A[i,i])
+            debug_barrier()
+            
+    return A
+
+@jit
+def mykernel_Bj(A, N, BLOCK=256):
+    #pragma parallel
     for z in range(1):
         for i in range(N):
             # j < i
@@ -128,10 +148,11 @@ def test1():
             b_np_ref = numpy_kernel(a_np.copy(), N)
 
             for f in (
+                mykernel,
                 torch_kernel,
                 numpy_kernel, 
                 numba_kernel,
-                mykernel,
+                
                 #mykernel1 
                 
                 ):

@@ -775,32 +775,39 @@ class TritonBackend(object):
                 if len(slices) > 0:
                     slice = slices[0]
                     assert hasattr(slice, 'upper')
-                    upper = slice.upper
-                    if not hasattr(slice, 'lower'):
-                        lower = ast.Constant(value=0)
+                    assert hasattr(slice, 'lower')
+                    if slice.upper != None:
+                        upper = slice.upper
                     else:
+                        assert False, 'unsupported'
+
+                    if slice.lower != None:
                         lower = slice.lower
+                    else:
+                        lower = ast.Constant(value=0)                    
                     
                     blocksize = 256
                     iter = new_call_node('range', [lower, upper, ast.Constant(value=blocksize)])  
                     loop_idx = f'_t{self_outer.var_count}'
                     loop = ast.For(target=ast.Name(id=loop_idx, ctx=ast.Store()), iter=iter, body=[], \
                         lineno=node.lineno, orelse=[], type_ignores=[])
+                    
                     self_outer.var_count += 1
                     step_var = f'_t{self_outer.var_count}'
             
                     step_stmt = f'{step_var} = step({loop_idx}, {blocksize}, bound={unparse(upper)})'
                     loop.body.append(to_ast_node(step_stmt))
                     # Rewrite the assignment to replace slice with the `step_var`
-                    loop.body.append(RewriteSlice(step_var).visit(node))
+                    new_node = RewriteSlice(step_var).visit(node)
+                    loop.body.append(new_node)
                     
-                    if is_call(node.value, 'sum'):
+                    if is_call(new_node.value, 'sum'):
                         init_reduction = ast.Assign(targets=node.targets, \
                                 value=ast.Constant(value=0.0), lineno=node.lineno)
                         # Update `x = sum(y)` to `x = x + sum(y)`
-                        target_copy = deepcopy(node.targets[0])
+                        target_copy = deepcopy(new_node.targets[0])
                         target_copy.ctx = ast.Load()
-                        node.value = ast.BinOp(left=target_copy, op=ast.Add(), right=node.value)
+                        new_node.value = ast.BinOp(left=target_copy, op=ast.Add(), right=node.value)
                         return [init_reduction, loop]
                     else:
                         return loop
@@ -812,8 +819,10 @@ class TritonBackend(object):
         
     def codegen(self):
         self.preprocess_slicings()
+        
+        
         print(unparse(self.func))
-        #exit(1)
+        #
         # lf = ast.parse(textwrap.dedent(f'''
         #     def kernel({', '.join(self.arg_names)}):
         #         pass
