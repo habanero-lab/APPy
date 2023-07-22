@@ -32,16 +32,6 @@ def _mykernel(M, float_n, data, cov):
             cov[i, j] /= float_n - 1.0
             cov[j, i] = cov[i, j]
 
-@jit
-def _mykernel_BN(M, float_n, data, cov, BN=256):
-    #pragma parallel
-    for i in range(M):
-        for j in range(i, M):
-            cov[i, j] = 0.0
-            for k in range(0, float_n, BN):
-                cov[i, j] += sum(data[k:k+BN, i] * data[k:k+BN, j])
-            cov[i, j] /= float_n - 1.0
-            cov[j, i] = cov[i, j]
 
 @nb.jit(nopython=True, fastmath=True)
 def numba_nopy_kernel(M, float_n, data):
@@ -85,7 +75,7 @@ def test1():
             a_np = a.cpu().numpy()
             b_ref = torch_kernel(M, N, a.clone())
 
-            for f in (_mykernel, numpy_kernel, numba_nopy_kernel, numba_nopy_par_kernel, torch_kernel, _mykernel_BN):
+            for f in (numpy_kernel, numba_nopy_kernel, numba_nopy_par_kernel, torch_kernel, _mykernel):
                 if f.__name__.startswith('num'):                    
                     ff = lambda: f(M, N, a_np.copy())
                 else:

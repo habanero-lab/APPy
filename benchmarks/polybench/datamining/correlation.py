@@ -36,15 +36,6 @@ def _mykernel(M, float_n, data, corr):
             corr[i, j] = sum(data[:float_n, i] * data[:float_n, j])
             corr[j, i] = corr[i, j]
 
-@jit
-def _mykernel_BN(M, float_n, data, corr, BN=256):
-    #pragma parallel
-    for i in range(M - 1):
-        for j in range(i+1, M):
-            corr[i, j] = 0.0
-            for k in range(0, float_n, BN):
-                corr[i, j] += sum(data[k:k+BN, i] * data[k:k+BN, j])
-            corr[j, i] = corr[i, j]
 
 @nb.jit(nopython=True, parallel=True, fastmath=True)
 def numba_nopy_par_kernel(M, float_n, data):
@@ -80,7 +71,7 @@ def test1():
     for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
         #for M, N in [(1024, 1024), (1024*4, 1024*4), (1024*16, 1024*16)]:
-        for M, N in [(512, 512), (1024, 1024), (1200, 1280)]:
+        for M, N in [(512, 512), (1024, 1024), (1200, 1400)]:
         #for M, N in [(1024, 256*2), (4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (128, 4096*16), (256, 4096*16)]:
         #for M, N in [(8, 256)]:
             print(f'M: {M}, N: {N}')
@@ -89,7 +80,7 @@ def test1():
             a_np = a.cpu().numpy()
             b_ref = torch_kernel(M, N, a.clone())
 
-            for f in (_mykernel, numpy_kernel, numba_nopy_par_kernel, torch_kernel, _mykernel_BN):
+            for f in (numpy_kernel, numba_nopy_par_kernel, torch_kernel, _mykernel):
                 if f.__name__.startswith('num'):                    
                     ff = lambda: f(M, N, a_np.copy())
                 else:
