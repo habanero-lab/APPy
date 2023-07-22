@@ -22,11 +22,13 @@ def get_keyword_args(func):
 def get_arg_str(func, idx):
     return ast.unparse(func.args[idx])
 
-def is_call(node, name=None):
-    if name == None:
+def is_call(node, names=None):
+    if names == None:
         return isinstance(node, ast.Call)
     else:
-        return isinstance(node, ast.Call) and node.func.id == name
+        if type(names) not in [list, tuple]:
+            names = [names]
+        return isinstance(node, ast.Call) and node.func.id in names
 
 def get_first_noncomment_child(node):
     for c in node.body:
@@ -46,5 +48,5 @@ def to_ast_expr(s):
     return n.value
 
 def new_call_node(func_name, args):
-    node = ast.Call(func=ast.Name(func_name), args=args, keywords=[])
+    node = ast.Call(func=ast.Name(func_name, ctx=ast.Load()), args=args, keywords=[])
     return node

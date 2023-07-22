@@ -28,7 +28,7 @@ def _mykernel(M, float_n, data, cov):
     #pragma parallel
     for i in range(M):
         for j in range(i, M):
-            cov[i, j] = sum(data[:float_n, i] * data[:float_n, j])
+            cov[i, j] = sum(data[0:float_n, i] * data[0:float_n, j])
             cov[i, j] /= float_n - 1.0
             cov[j, i] = cov[i, j]
 
@@ -76,7 +76,7 @@ def test1():
     for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
         #for M, N in [(1024, 1024), (1024*4, 1024*4), (1024*16, 1024*16)]:
-        for M, N in [(512, 512), (1024, 1024), (1200, 1280)]:
+        for M, N in [(512, 512), (1024, 1024), (1200, 1400)]:
         #for M, N in [(1024, 256*2), (4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (128, 4096*16), (256, 4096*16)]:
         #for M, N in [(8, 256)]:
             print(f'M: {M}, N: {N}')
@@ -85,7 +85,7 @@ def test1():
             a_np = a.cpu().numpy()
             b_ref = torch_kernel(M, N, a.clone())
 
-            for f in (numpy_kernel, numba_nopy_kernel, numba_nopy_par_kernel, torch_kernel, _mykernel_BN):
+            for f in (_mykernel, numpy_kernel, numba_nopy_kernel, numba_nopy_par_kernel, torch_kernel, _mykernel_BN):
                 if f.__name__.startswith('num'):                    
                     ff = lambda: f(M, N, a_np.copy())
                 else:

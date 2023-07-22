@@ -742,9 +742,78 @@ class TritonBackend(object):
         self.kf = kf
         return kf
 
+    def get_init_val_for_reduction(r):
+        if r == 'sum':
+            return 0
+        elif r == 'max':
+            return float('-inf')
+        elif r == 'min':
+            return float('inf')
+        assert False
 
+
+    def preprocess_slicings(self_outer):
+        class VisitSlice(ast.NodeTransformer):
+            def __init__(self, slices):
+                self.slices = slices
+
+            def visit_Slice(self, node):
+                self.slices.append(node)
+                return node
+
+        class RewriteSlice(ast.NodeTransformer):
+            def __init__(self, varname):
+                self.varname = varname
+
+            def visit_Slice(self, node):
+                return ast.Name(id=self.varname, ctx=ast.Load())
+
+        class RewriteAssignWithSlice(ast.NodeTransformer):
+            def visit_Assign(self, node):
+                slices = []
+                VisitSlice(slices).visit(node)
+                if len(slices) > 0:
+                    slice = slices[0]
+                    assert hasattr(slice, 'upper')
+                    upper = slice.upper
+                    if not hasattr(slice, 'lower'):
+                        lower = ast.Constant(value=0)
+                    else:
+                        lower = slice.lower
+                    
+                    blocksize = 256
+                    iter = new_call_node('range', [lower, upper, ast.Constant(value=blocksize)])  
+                    loop_idx = f'_t{self_outer.var_count}'
+                    loop = ast.For(target=ast.Name(id=loop_idx, ctx=ast.Store()), iter=iter, body=[], \
+                        lineno=node.lineno, orelse=[], type_ignores=[])
+                    self_outer.var_count += 1
+                    step_var = f'_t{self_outer.var_count}'
+            
+                    step_stmt = f'{step_var} = step({loop_idx}, {blocksize}, bound={unparse(upper)})'
+                    loop.body.append(to_ast_node(step_stmt))
+                    # Rewrite the assignment to replace slice with the `step_var`
+                    loop.body.append(RewriteSlice(step_var).visit(node))
+                    
+                    if is_call(node.value, 'sum'):
+                        init_reduction = ast.Assign(targets=node.targets, \
+                                value=ast.Constant(value=0.0), lineno=node.lineno)
+                        # Update `x = sum(y)` to `x = x + sum(y)`
+                        target_copy = deepcopy(node.targets[0])
+                        target_copy.ctx = ast.Load()
+                        node.value = ast.BinOp(left=target_copy, op=ast.Add(), right=node.value)
+                        return [init_reduction, loop]
+                    else:
+                        return loop
+                    
+                else:
+                    return node
+
+        self_outer.func = RewriteAssignWithSlice().visit(self_outer.func)
         
     def codegen(self):
+        self.preprocess_slicings()
+        print(unparse(self.func))
+        #exit(1)
         # lf = ast.parse(textwrap.dedent(f'''
         #     def kernel({', '.join(self.arg_names)}):
         #         pass
