@@ -789,12 +789,13 @@ class TritonBackend(object):
                     blocksize = 256
                     iter = new_call_node('range', [lower, upper, ast.Constant(value=blocksize)])  
                     loop_idx = f'_t{self_outer.var_count}'
+                    self_outer.var_count += 1
                     loop = ast.For(target=ast.Name(id=loop_idx, ctx=ast.Store()), iter=iter, body=[], \
                         lineno=node.lineno, orelse=[], type_ignores=[])
                     
-                    self_outer.var_count += 1
+                    
                     step_var = f'_t{self_outer.var_count}'
-            
+                    self_outer.var_count += 1
                     step_stmt = f'{step_var} = step({loop_idx}, {blocksize}, bound={unparse(upper)})'
                     loop.body.append(to_ast_node(step_stmt))
                     # Rewrite the assignment to replace slice with the `step_var`
