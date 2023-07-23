@@ -313,12 +313,11 @@ class TritonBackend(object):
 
         if is_call(node.value, 'step'):
             # range nodes will be inlined, so return a pass
-            start = get_arg_str(node.value, 0)
-            stepsize = get_arg_str(node.value, 1)
+            start, stepsize = node.value.args[0:2]            
+            bound = None
             if len(node.value.args) == 3:
-                bound = get_arg_str(node.value, 2)
-            else:
-                bound = None
+                bound = node.value.args[2]
+            else:                
                 keywords = get_keyword_args(node.value)
                 if 'bound' in keywords:
                     bound = keywords['bound']
@@ -464,6 +463,7 @@ class TritonBackend(object):
             offset, mask = None, None
             if is_range_var:
                 start, step, bound = self.range_vars[e.id]
+                start, step, bound = unparse(start), unparse(step), unparse(bound)
                 offset = f'({start} + tl.arange(0, {step}))'
                 if bound:
                     mask = f'{offset} < {bound}'
@@ -810,7 +810,7 @@ class TritonBackend(object):
                     
                     step_var = f'_t{self_outer.var_count}'
                     self_outer.var_count += 1
-                    step_stmt = f'{step_var} = step({loop_idx}, {blocksize}, bound={unparse(upper)})'
+                    step_stmt = f'{step_var} = step({loop_idx}, {blocksize}, bound={unparse(new_sub_node(upper, lower))})'
                     loop.body.append(to_ast_node(step_stmt))
                     # Rewrite the assignment to replace slice with the `step_var`
                     new_node = RewriteSlice(step_var).visit(node)
@@ -833,7 +833,8 @@ class TritonBackend(object):
         self_outer.func = RewriteAssignWithSlice().visit(self_outer.func)
         
     def codegen(self):
-        self.preprocess_slicings()    
+        self.preprocess_slicings() 
+        #dump(self.func)   
         print(unparse(self.func))
     
         lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
@@ -843,8 +844,10 @@ class TritonBackend(object):
         i = 0
         while i < num_nodes:
             node = self.func.body[i]
+            
             if self.is_node_pragma(node):
                 pragma = node.value
+                
                 i += 1
                 nextnode = self.func.body[i]
                 

@@ -16,7 +16,7 @@ def get_arg_names(func):
 def get_keyword_args(func):
     d = {}
     for keyword in func.keywords:
-        d[keyword.arg] = keyword.value.id
+        d[keyword.arg] = keyword.value
     return d
 
 def get_arg_str(func, idx):
