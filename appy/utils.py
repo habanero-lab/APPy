@@ -17,17 +17,19 @@ def bench(fn):
     return t0.timeit(N).mean * 1000
 
 def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):
-    if isinstance(a, np.ndarray):
-        a = torch.from_numpy(a)
-    if isinstance(b, np.ndarray):
-        b = torch.from_numpy(b)
-
-    a, b = a.to('cuda'), b.to('cuda')
+    assert type(a) == type(b)
     
-    if not torch.allclose(a, b, rtol, atol) and verbose:
-        #print(a)
-        #print(b)
+    if isinstance(a, np.ndarray):
+        f = np.allclose
+        max = np.max
+    elif isinstance(b, torch.Tensor):
+        f = torch.allclose
+        max = torch.max
+    else:
+        assert False
+
+    if not f(a, b, rtol, atol) and verbose:
         diff = a - b
         #print(torch.nonzero(diff != 0))
-        print(torch.sort(diff[diff != 0]))
-    return torch.allclose(a, b, rtol, atol)
+        print(max(diff))
+    return f(a, b, rtol, atol)

@@ -85,9 +85,8 @@ def test1():
     for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
         
-        for N in [256, 512, 1024]:
-        
-        #for M, N in [(8, 256)]:
+        #for N in [256, 512, 1024, 2000]:
+        for N in [2000]:        
             print(f'N: {N}')
             a = torch.randn(N, N, dtype=dtype).to('cuda')
             a = a @ a.T / N * 2
@@ -98,7 +97,8 @@ def test1():
             for f in (
                 numpy_kernel, 
                 numba_kernel,
-                mykernel
+                    mykernel,
+                    torch_kernel,
                 ):
                 if f.__name__.startswith('num'):
                     ff = lambda: f(a_np.copy(), N)

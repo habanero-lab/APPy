@@ -444,10 +444,19 @@ class TritonBackend(object):
         strides = []
         masks = []
         for i,e in enumerate(elts):
-            assert type(e) in [ast.Name, ast.Slice, ast.Constant]
+            assert type(e) in [ast.Name, ast.Slice, ast.Constant, ast.BinOp], 'unsupported slicing type: ' + unparse(e)
+            
+            # A bit hacky, to make indexings like `A[i, 1 + _t1]` work
+            additional_offset = '0'
+            if isinstance(e, ast.BinOp):
+                assert isinstance(e.left, ast.Constant) and isinstance(e.right, ast.Name), 'unsupported slicing type: ' + unparse(e)                
+                additional_offset = str(e.left.value)
+                e = e.right
+
             is_range_var = False
             if isinstance(e, ast.Name) and e.id in self.range_vars:
                 is_range_var = True
+            
 
             if isinstance(e, ast.Slice) or is_range_var:
                 is_elt_slice[i] = 1
@@ -462,6 +471,8 @@ class TritonBackend(object):
                 offset = ast.unparse(self.gen_kernel_node(e))
 
             term_str = offset
+            if additional_offset != '0':
+                term_str = f'{additional_offset} + {term_str}'
             stride_str = f'{tensor}_stride_{i}'
             if i == len(elts) - 1:
                 stride_str = '1'
@@ -751,6 +762,19 @@ class TritonBackend(object):
             return float('inf')
         assert False
 
+    def get_low_up_from_slice(self, slice):
+        assert hasattr(slice, 'upper')
+        assert hasattr(slice, 'lower')
+        if slice.upper != None:
+            upper = slice.upper
+        else:
+            assert False, 'unsupported'
+
+        if slice.lower != None:
+            lower = slice.lower
+        else:
+            lower = ast.Constant(value=0)         
+        return lower, upper
 
     def preprocess_slicings(self_outer):
         class VisitSlice(ast.NodeTransformer):
@@ -766,33 +790,23 @@ class TritonBackend(object):
                 self.varname = varname
 
             def visit_Slice(self, node):
-                return ast.Name(id=self.varname, ctx=ast.Load())
+                lower, upper = self_outer.get_low_up_from_slice(node)
+                return new_add_node(lower, new_name_node(self.varname))    
 
         class RewriteAssignWithSlice(ast.NodeTransformer):
             def visit_Assign(self, node):
                 slices = []
                 VisitSlice(slices).visit(node)
                 if len(slices) > 0:
-                    slice = slices[0]
-                    assert hasattr(slice, 'upper')
-                    assert hasattr(slice, 'lower')
-                    if slice.upper != None:
-                        upper = slice.upper
-                    else:
-                        assert False, 'unsupported'
-
-                    if slice.lower != None:
-                        lower = slice.lower
-                    else:
-                        lower = ast.Constant(value=0)                    
                     
+                    lower, upper = self_outer.get_low_up_from_slice(slices[0])
                     blocksize = 256
-                    iter = new_call_node('range', [lower, upper, ast.Constant(value=blocksize)])  
+                    #iter = new_call_node('range', [lower, upper, ast.Constant(value=blocksize)])  
+                    iter = new_call_node('range', [ast.Constant(value=0), new_sub_node(upper, lower), ast.Constant(value=blocksize)])  
                     loop_idx = f'_t{self_outer.var_count}'
                     self_outer.var_count += 1
                     loop = ast.For(target=ast.Name(id=loop_idx, ctx=ast.Store()), iter=iter, body=[], \
                         lineno=node.lineno, orelse=[], type_ignores=[])
-                    
                     
                     step_var = f'_t{self_outer.var_count}'
                     self_outer.var_count += 1
@@ -819,15 +833,9 @@ class TritonBackend(object):
         self_outer.func = RewriteAssignWithSlice().visit(self_outer.func)
         
     def codegen(self):
-        self.preprocess_slicings()
-        
-        
+        self.preprocess_slicings()    
         print(unparse(self.func))
-        #
-        # lf = ast.parse(textwrap.dedent(f'''
-        #     def kernel({', '.join(self.arg_names)}):
-        #         pass
-        # ''')).body[0]
+    
         lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
         self.lf = lf
 

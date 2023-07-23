@@ -50,3 +50,13 @@ def to_ast_expr(s):
 def new_call_node(func_name, args):
     node = ast.Call(func=ast.Name(func_name, ctx=ast.Load()), args=args, keywords=[])
     return node
+
+def new_name_node(name, ctx=None):
+    ctx = ast.Load() if ctx == None else ctx
+    return ast.Name(id=name, ctx=ctx)
+
+def new_add_node(a, b):
+    return ast.BinOp(left=a, op=ast.Add(), right=b)
+
+def new_sub_node(a, b):
+    return ast.BinOp(left=a, op=ast.Sub(), right=b)

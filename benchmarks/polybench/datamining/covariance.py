@@ -74,18 +74,21 @@ def test1():
             a = torch.randn(N, M, dtype=dtype).to('cuda')
             a_np = a.cpu().numpy()
             b_ref = torch_kernel(M, N, a.clone())
+            b_np_ref = numpy_kernel(M, N, a_np.copy())
 
             for f in (numpy_kernel, numba_nopy_kernel, numba_nopy_par_kernel, torch_kernel, _mykernel):
                 if f.__name__.startswith('num'):                    
                     ff = lambda: f(M, N, a_np.copy())
+                    ref = b_np_ref
                 else:
+                    ref = b_ref
                     if f.__name__.startswith('_'):
                         ff = lambda: mykernel(M, N, a.clone(), f)
                     else:
                         ff = lambda: f(M, N, a.clone())
                     
                 b = ff()
-                assert(allclose(b, b_ref))
+                assert(allclose(b, ref))
                 ms = bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
             
