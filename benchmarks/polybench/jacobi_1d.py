@@ -43,7 +43,7 @@ def test1():
     #for dtype in [torch.float64]:
         
         #for (M, N) in [(800, 3200), (4000, 32000)]:        
-        for (M, N) in [(4000, 32000)]:
+        for (M, N) in [(4000, 32000), (4000, 320000), (4000, 3200000)]:
             print(f'M: {M}, N: {N}, dtype: {dtype}')
             a_np = np.random.randn(N).astype(dtype)
             b_np = np.random.randn(N).astype(dtype)

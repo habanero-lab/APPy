@@ -22,7 +22,7 @@ def compile(fn, args, dump_code=0, verbose=False, **options):
     src = constant_prop(src, get_arg_names(src), args)
     tree = ast.parse(src)
     
-    backend = TritonBackend(tree, args)
+    backend = TritonBackend(tree, args, **options)
     module = backend.codegen()
     if dump_code:
         print(module)

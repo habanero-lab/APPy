@@ -68,11 +68,10 @@ def numpy_kernel(M, float_n, data):
     return corr
 
 def test1():
-    for dtype in [torch.float32]:
+    for dtype in [torch.float32, torch.float64]:
     #for dtype in [torch.float64]:
         #for M, N in [(1024, 1024), (1024*4, 1024*4), (1024*16, 1024*16)]:
-        for M, N in [(512, 512), (1024, 1024), (1200, 1400)]:
-        #for M, N in [(1024, 256*2), (4096, 4096), (4096*4, 4096*4), (4096, 4096*8), (4096, 4096*16), (128, 4096*16), (256, 4096*16)]:
+        for M, N in [(1200, 1400)]:
         #for M, N in [(8, 256)]:
             print(f'M: {M}, N: {N}')
             # M vars and N observations. Each row has M vars

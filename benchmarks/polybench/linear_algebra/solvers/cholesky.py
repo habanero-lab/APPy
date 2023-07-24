@@ -81,23 +81,47 @@ def mykernel(A, N, BLOCK=256):
             
     return A
 
+@jit
+def mykernel_one_block(A, N, BLOCK=4096):
+    #pragma parallel num_warps(16)
+    for _ in range(1):
+        for i in range(N):
+            # j < i
+            for j in range(0, i):
+                jj = step(0, BLOCK, j)
+                s = sum( A[i,jj] * A[j,jj] )
+                A[i,j] -= s
+                A[i,j] /= A[j,j]
+                debug_barrier()
+
+            # i == j case
+            ii = step(0, BLOCK, i)
+            s1 = sum( A[i,ii] * A[i,ii] )
+            A[i,i] -= s1
+            #A[i,i] = sqrt(A[i,i])
+            debug_barrier()
+            
+    return A
+
 def test1():
     for dtype in [torch.float32]:
     #for dtype in [torch.float64]:
         
         #for N in [256, 512, 1024, 2000]:
-        for N in [2000]:        
+        for N in [4000]:        
             print(f'N: {N}')
             a = torch.randn(N, N, dtype=dtype).to('cuda')
             a = a @ a.T / N * 2
             a_np = a.cpu().numpy()
-            b_ref = torch_kernel(a.clone(), N)
+            b_ref = mykernel_one_block(a.clone(), N)
             b_np_ref = numpy_kernel(a_np.copy(), N)
 
             for f in (
+                mykernel_one_block,
                 numpy_kernel, 
                 numba_kernel,
                     mykernel,
+                    
                     torch_kernel,
                 ):
                 if f.__name__.startswith('num'):

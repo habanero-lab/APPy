@@ -12,7 +12,8 @@ from .typesys import Constant as ConstantType
 from ..ast_utils import *
 
 class TritonBackend(object):
-    def __init__(self, ast_tree, arg_values):
+    def __init__(self, ast_tree, arg_values, **options):
+        self.options = options
         for node in ast_tree.body:
             if isinstance(node, ast.FunctionDef):
                 self.func = node
@@ -144,7 +145,8 @@ class TritonBackend(object):
 
             grid = f'({",".join(self.usedBlockDims)},)'
             self.append_stmts(self.lf, f'fn = {kernel_name}[{grid}]({",".join(k_args)})')
-            #self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
+            if self.options['print_ptx']:
+                self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
             #self.append_stmts(self.lf, 'exit(1)')
             self.module.body.append(kf)
         else:
@@ -831,11 +833,19 @@ class TritonBackend(object):
                     return node
 
         self_outer.func = RewriteAssignWithSlice().visit(self_outer.func)
+
+    def get_pragma_property(self, pragma, property_name):
+        match = re.search(r' ' + property_name + r'\((.*?)\)', pragma)
+        if match:
+            p = match.groups()[0]
+            return p
+        else:
+            return None
         
     def codegen(self):
         self.preprocess_slicings() 
-        #dump(self.func)   
-        print(unparse(self.func))
+        if 'dump_final_appy' in self.options and self.options['dump_final_appy']:
+            dump(self.func)   
     
         lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
         self.lf = lf
@@ -847,6 +857,10 @@ class TritonBackend(object):
             
             if self.is_node_pragma(node):
                 pragma = node.value
+                p = self.get_pragma_property(pragma, 'num_warps')
+                num_warps = 4
+                if p:
+                    num_warps = int(p)
                 
                 i += 1
                 nextnode = self.func.body[i]
@@ -865,8 +879,10 @@ class TritonBackend(object):
                 grid = f'({",".join(self.usedBlockDims)},)'
                 
                 k_args = self.get_kernel_function_arguments()
-                self.append_stmts(self.lf, f'fn = {kf.name}[{grid}]({",".join(k_args)}, num_warps=4, num_stages=3)')
-                #self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
+                self.append_stmts(self.lf, f'fn = {kf.name}[{grid}]({",".join(k_args)}, num_warps={num_warps}, num_stages=3)')
+                if 'print_ptx' in self.options and self.options['print_ptx']:
+                    self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
+            
                 #self.append_stmts(self.lf, 'exit(1)')
             else:
                 # if isinstance(node, ast.Assign):
