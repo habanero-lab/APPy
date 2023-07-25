@@ -35,7 +35,7 @@ def _mykernel(M, float_n, data, cov):
 @jit(print_ptx=0)
 def _mykernel_one_block(M, float_n, data, cov):
     #pragma parallel num_warps(8)
-    for i in range(M):
+    for i in range(M):        
         for j in range(i, M):
             rg = step(0, 2048, bound=float_n)
             cov[i, j] = sum(data[rg, i] * data[rg, j])
@@ -86,7 +86,7 @@ def test1():
             b_ref = torch_kernel(M, N, a.clone())
             b_np_ref = numpy_kernel(M, N, a_np.copy())
 
-            for f in (numpy_kernel,  torch_kernel, _mykernel_one_block, _mykernel, ):
+            for f in (numpy_kernel,  torch_kernel, _mykernel, _mykernel_one_block):
                 if f.__name__.startswith('num'):                    
                     ff = lambda: f(M, N, a_np.copy())
                     ref = b_np_ref
@@ -98,7 +98,7 @@ def test1():
                         ff = lambda: f(M, N, a.clone())
                 try:
                     b = ff()
-                    assert(allclose(b, ref, atol=1e-5))
+                    assert allclose(b, ref, atol=1e-5),  f.__name__ + ' : validation error'
                     ms = bench(ff)
                     print(f'{f.__name__}: {ms:.4f} ms')
                 except Exception as e:

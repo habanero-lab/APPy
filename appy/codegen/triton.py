@@ -450,10 +450,15 @@ class TritonBackend(object):
             # A bit hacky, to make indexings like `A[i, 1 + _t1]` work
             additional_offset = '0'
             if isinstance(e, ast.BinOp):
-                assert isinstance(e.left, ast.Constant) and isinstance(e.right, ast.Name), 'unsupported slicing type: ' + unparse(e)                
-                additional_offset = str(e.left.value)
-                e = e.right
-
+                if isinstance(e.left, ast.Constant):
+                    additional_offset = str(e.left.value)
+                    e = e.right
+                elif isinstance(e.right, ast.Constant):
+                    additional_offset = str(e.right.value)
+                    e = e.left
+                else:
+                    assert False, 'unsupported slicing type: ' + unparse(e)   
+                
             is_range_var = False
             if isinstance(e, ast.Name) and e.id in self.range_vars:
                 is_range_var = True
