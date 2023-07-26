@@ -100,8 +100,8 @@ def constant_prop(src, arg_names, arg_values):
 
         src = src.replace(f'{arg}.dtype', str(value.dtype))
 
-        # for dim in range(len(value.shape)):
-        #     src = src.replace(f'{arg}.shape[{dim}]', str(value.shape[dim]))
+        for dim in range(len(value.shape)):
+            src = src.replace(f'{arg}.shape[{dim}]', f'{arg}_shape_{dim}')
     return src
 
 def get_type_sig(*args):

@@ -28,3 +28,6 @@ def step(start, stepsize, bound=None):
 
 def debug_barrier():
     pass
+
+vindex = step
+vidx = step

@@ -77,7 +77,7 @@ class TritonBackend(object):
     def get_kernel_function_parameters(self):
         newargs = []
         for name, val in zip(self.arg_names, self.arg_values):
-            if type(val) in (int, torch.dtype):
+            if type(val) in (int, float, torch.dtype):
                 newargs.append(name+': tl.constexpr')
             elif type(val) == torch.Tensor:
                 if val.layout != torch.strided:
@@ -313,7 +313,7 @@ class TritonBackend(object):
             left = node.target
         right = node.value
 
-        if is_call(node.value, 'step'):
+        if is_call(node.value, ['step', 'vidx', 'vindex']):
             # range nodes will be inlined, so return a pass
             start, stepsize = node.value.args[0:2]            
             bound = None
@@ -450,14 +450,22 @@ class TritonBackend(object):
             # A bit hacky, to make indexings like `A[i, 1 + _t1]` work
             additional_offset = '0'
             if isinstance(e, ast.BinOp):
-                if isinstance(e.left, ast.Constant):
-                    additional_offset = str(e.left.value)
-                    e = e.right
-                elif isinstance(e.right, ast.Constant):
-                    additional_offset = str(e.right.value)
+                if isinstance(e.left, ast.Name) and e.left.id in self.range_vars:                    
+                    additional_offset = unparse(self.gen_kernel_node(e.right))
                     e = e.left
-                else:
-                    assert False, 'unsupported slicing type: ' + unparse(e)   
+
+                if isinstance(e.right, ast.Name) and e.right.id in self.range_vars:                
+                    additional_offset = unparse(self.gen_kernel_node(e.left))
+                    e = e.right        
+
+                # if isinstance(e.left, ast.Constant):
+                #     additional_offset = str(e.left.value)
+                #     e = e.right
+                # elif isinstance(e.right, ast.Constant):
+                #     additional_offset = str(e.right.value)
+                #     e = e.left
+                # else:
+                #     assert False, 'unsupported slicing type: ' + unparse(e)   
                 
             is_range_var = False
             if isinstance(e, ast.Name) and e.id in self.range_vars:
@@ -817,7 +825,7 @@ class TritonBackend(object):
                     
                     step_var = f'_t{self_outer.var_count}'
                     self_outer.var_count += 1
-                    step_stmt = f'{step_var} = step({loop_idx}, {blocksize}, bound={unparse(new_sub_node(upper, lower))})'
+                    step_stmt = f'{step_var} = vidx({loop_idx}, {blocksize}, bound={unparse(new_sub_node(upper, lower))})'
                     loop.body.append(to_ast_node(step_stmt))
                     # Rewrite the assignment to replace slice with the `step_var`
                     new_node = RewriteSlice(step_var).visit(node)
@@ -850,7 +858,8 @@ class TritonBackend(object):
     def codegen(self):
         self.preprocess_slicings() 
         if 'dump_final_appy' in self.options and self.options['dump_final_appy']:
-            dump(self.func)   
+            #dump(self.func)   
+            print(unparse(self.func))
     
         lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
         self.lf = lf
