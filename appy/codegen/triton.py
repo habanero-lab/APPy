@@ -1,6 +1,7 @@
 import os
 import re
 import torch
+import triton
 import textwrap
 import numpy as np
 from copy import deepcopy
@@ -732,7 +733,7 @@ class TritonBackend(object):
         if step != '1':
             self.append_stmts(self.lf, f'blockDim_{blockDim} = ({end}-{start}+{step}-1) // {step}')
         else:
-            self.append_stmts(self.lf, f'blockDim_{blockDim} = {end}')
+            self.append_stmts(self.lf, f'blockDim_{blockDim} = ({end}-({start}))')
     
         self.append_stmts(self.kf, f'{loop_index} = {start} + tl.program_id({len(self.usedBlockDims)}) * {step}')
 
@@ -791,6 +792,21 @@ class TritonBackend(object):
             lower = ast.Constant(value=0)         
         return lower, upper
 
+    def rewrite_aug_assign(self_outer):
+        class RewriteAugAssign(ast.NodeTransformer):
+             def visit_AugAssign(self, node):
+                
+                left = node.target
+                right = node.value
+                newnode = ast.Assign(targets=[left], lineno=node.lineno)
+                leftcopy = deepcopy(left)
+                if isinstance(leftcopy, ast.Subscript):
+                    leftcopy.ctx = ast.Load()
+                newnode.value = ast.BinOp(left=leftcopy, op=node.op, right=node.value)
+                return newnode
+                
+        self_outer.func = RewriteAugAssign().visit(self_outer.func)
+
     def preprocess_slicings(self_outer):
         class VisitSlice(ast.NodeTransformer):
             def __init__(self, slices):
@@ -806,15 +822,26 @@ class TritonBackend(object):
 
             def visit_Slice(self, node):
                 lower, upper = self_outer.get_low_up_from_slice(node)
-                return new_add_node(lower, new_name_node(self.varname))    
+                return new_add_node(lower, new_name_node(self.varname))   
 
+        
         class RewriteAssignWithSlice(ast.NodeTransformer):
             def visit_Assign(self, node):
                 slices = []
                 VisitSlice(slices).visit(node)
-                if len(slices) > 0:
-                    
+                if len(slices) > 0:                    
                     lower, upper = self_outer.get_low_up_from_slice(slices[0])
+
+                    if unparse(lower) == '0' and unparse(upper) in self_outer.arg_names:
+                        arg_val = self_outer.get_arg_value(unparse(upper))
+                        arg_val_next_p2 = triton.next_power_of_2(arg_val)
+                        step_var = f'_t{self_outer.var_count}'
+                        self_outer.var_count += 1
+                        step_stmt = f'{step_var} = vidx(0, {arg_val_next_p2}, bound={unparse(upper)})'
+                        new_node = RewriteSlice(step_var).visit(node)
+                        return [to_ast_node(step_stmt), new_node]
+
+
                     blocksize = 256
                     #iter = new_call_node('range', [lower, upper, ast.Constant(value=blocksize)])  
                     iter = new_call_node('range', [ast.Constant(value=0), new_sub_node(upper, lower), ast.Constant(value=blocksize)])  
@@ -856,6 +883,7 @@ class TritonBackend(object):
             return None
         
     def codegen(self):
+        self.rewrite_aug_assign()
         self.preprocess_slicings() 
         if 'dump_final_appy' in self.options and self.options['dump_final_appy']:
             #dump(self.func)   
