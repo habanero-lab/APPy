@@ -832,14 +832,17 @@ class TritonBackend(object):
                 if len(slices) > 0:                    
                     lower, upper = self_outer.get_low_up_from_slice(slices[0])
 
+                    print('upper:', unparse(upper))
+
                     if unparse(lower) == '0' and unparse(upper) in self_outer.arg_names:
                         arg_val = self_outer.get_arg_value(unparse(upper))
                         arg_val_next_p2 = triton.next_power_of_2(arg_val)
-                        step_var = f'_t{self_outer.var_count}'
-                        self_outer.var_count += 1
-                        step_stmt = f'{step_var} = vidx(0, {arg_val_next_p2}, bound={unparse(upper)})'
-                        new_node = RewriteSlice(step_var).visit(node)
-                        return [to_ast_node(step_stmt), new_node]
+                        if arg_val_next_p2 <= 2048:
+                            step_var = f'_t{self_outer.var_count}'
+                            self_outer.var_count += 1
+                            step_stmt = f'{step_var} = vidx(0, {arg_val_next_p2}, bound={unparse(upper)})'
+                            new_node = RewriteSlice(step_var).visit(node)
+                            return [to_ast_node(step_stmt), new_node]
 
 
                     blocksize = 256
