@@ -65,7 +65,9 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 print(slice_map)
 
             for slice,properties in slice_map.items():
-                # Generate a loop for each slice. Nested loop will be generated if multiple slices
+                # Generate a loop for each slice. Nested loop will be 
+                # generated if multiple slices. `parent=loop` controls this 
+                # recursive logic
                 low, up = slice
                 step = properties['block']
                 index_var = self.new_variable_name()
@@ -77,6 +79,8 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 )
 
                 slice_to_var[(low,up)] = index_var
+                # Make index vectorized if step size is > 1
+                # `index_var` is reused
                 if step != 1:
                     loop.body.append(
                         new_assign_node(
@@ -96,9 +100,8 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 parent.body.append(loop)
                 parent = loop
                 
-            # Add statement to innermost loop
-            parent.body.append(RewriteSlice(slice_to_var).visit(node))
-            
+            # Add statement to innermost loop (now `parent` points to)
+            parent.body.append(RewriteSlice(slice_to_var).visit(node))            
             return module.body
         else:
             return node

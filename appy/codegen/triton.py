@@ -878,11 +878,13 @@ class TritonBackend(object):
             return None
         
     def codegen(self):
+        from .high_level_transforms.range_rewriter import RewriteRange
         from .high_level_transforms.link_pragma import PragmaLinker
         from .high_level_transforms.aug_assign_rewriter import RewriteAugAssign
         from .high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
 
         func = self.func
+        func = RewriteRange().visit(func)
         func = PragmaLinker().visit(func)
         func = RewriteAugAssign().visit(func)
         func = RewriteTensorOperation().visit(func)
@@ -911,7 +913,13 @@ class TritonBackend(object):
                 self.allBlockDims = ['x', 'y', 'z']
                 self.usedBlockDims = []
 
-                self.gen_parallel_for(node, pragma)
+                #self.gen_parallel_for(node, pragma)
+                from .triton_transformer import TritonKernelTransformer
+                grid = []
+                kernel_code = TritonKernelTransformer(grid).visit(node)
+                ast.fix_missing_locations(kernel_code)
+                print(unparse(kernel_code))
+                exit(2)
                 
                 grid = f'({",".join(self.usedBlockDims)},)'
                 
