@@ -792,20 +792,6 @@ class TritonBackend(object):
             lower = ast.Constant(value=0)         
         return lower, upper
 
-    def rewrite_aug_assign(self_outer):
-        class RewriteAugAssign(ast.NodeTransformer):
-             def visit_AugAssign(self, node):
-                
-                left = node.target
-                right = node.value
-                newnode = ast.Assign(targets=[left], lineno=node.lineno)
-                leftcopy = deepcopy(left)
-                if isinstance(leftcopy, ast.Subscript):
-                    leftcopy.ctx = ast.Load()
-                newnode.value = ast.BinOp(left=leftcopy, op=node.op, right=node.value)
-                return newnode
-                
-        self_outer.func = RewriteAugAssign().visit(self_outer.func)
 
     def preprocess_slicings(self_outer):
         class VisitSlice(ast.NodeTransformer):
@@ -890,8 +876,14 @@ class TritonBackend(object):
             return None
         
     def codegen(self):
-        self.rewrite_aug_assign()
-        self.preprocess_slicings() 
+        from .high_level_transforms.link_pragma import PragmaLinker
+        from .high_level_transforms.aug_assign_rewriter import RewriteAugAssign
+
+        func = self.func
+        PragmaLinker().visit(func)
+        func = RewriteAugAssign().visit(func)
+        self.func = func
+
         if 'dump_final_appy' in self.options and self.options['dump_final_appy']:
             #dump(self.func)   
             print(unparse(self.func))
@@ -899,32 +891,21 @@ class TritonBackend(object):
         lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
         self.lf = lf
 
-        num_nodes = len(self.func.body)
-        i = 0
-        while i < num_nodes:
-            node = self.func.body[i]
-            
-            if self.is_node_pragma(node):
-                pragma = node.value
+        for node in self.func.body:
+            if isinstance(node, ast.For) and hasattr(node, 'pragma'):
+                pragma = node.pragma
                 p = self.get_pragma_property(pragma, 'num_warps')
                 num_warps = 4
                 if p:
                     num_warps = int(p)
-                
-                i += 1
-                nextnode = self.func.body[i]
                 
                 kf = self.create_new_kernel_function()
                 self.module.body.append(kf)
                 self.allBlockDims = ['x', 'y', 'z']
                 self.usedBlockDims = []
 
-                if isinstance(nextnode, ast.For):
-                    self.gen_parallel_for(nextnode, pragma)
-                elif isinstance(nextnode, ast.Assign):
-                    print('Gen parallel operators')
-                    assert False, 'unsupported'
-
+                self.gen_parallel_for(node, pragma)
+                
                 grid = f'({",".join(self.usedBlockDims)},)'
                 
                 k_args = self.get_kernel_function_arguments()
@@ -934,19 +915,8 @@ class TritonBackend(object):
             
                 #self.append_stmts(self.lf, 'exit(1)')
             else:
-                # if isinstance(node, ast.Assign):
-                #     rhs = unparse(node.value)
-                #     if rhs.startswith('torch.zeros(') or rhs.startswith('torch.empty('):
-                #         dump(node)
-                #         varname = node.targets[0].id
-                #         value = eval(rhs)
-                #         self.arg_names.append(varname)
-                #         self.arg_values.append(value)
-                #         print(self.arg_names)
-                #         print(self.arg_values)
-                #     #exit(1)
                 self.append_node(self.lf, node)
-            i += 1
+            
             
         m = self.module
         #dump(self.kf)

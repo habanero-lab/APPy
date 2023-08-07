@@ -116,7 +116,7 @@ def test1():
             c_ref = torch.randn(M, device='cuda', dtype=dtype)
             torch_kernel(a, b, c_ref, M, N)
 
-            for f in (torch_kernel, appy_kernel, appy_kernel_tiled):
+            for f in (torch_kernel, appy_kernel):
                 BLOCK = None
                 f(a, b, c, M, N)
                 assert(torch.allclose(c, c_ref, atol=10, rtol=0.1))

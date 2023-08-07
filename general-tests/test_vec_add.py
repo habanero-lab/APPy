@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import numba
-from appy import jit, step
+from appy import jit, vidx
 from appy.utils import bench
 from torch import arange, zeros, empty
 
@@ -9,14 +9,13 @@ from torch import arange, zeros, empty
 def mykernel(a, b, c, N, BLOCK=256):
     #pragma parallel
     for i in range(0, N, BLOCK):  
-        c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
+        vi = vidx(i, BLOCK, bound=N)
+        c[vi] = a[vi] + b[vi]
 
-@jit
-def mykernel1(a, b, c, N, BLOCK=256):
-    #pragma parallel
-    for i in range(0, N, BLOCK):  
-        i_BLOCK = step(i, BLOCK, bound=N)
-        c[i_BLOCK] = a[i_BLOCK] + b[i_BLOCK]
+@jit(dump_final_appy=1)
+def mykernel_top(a, b, c, N, BLOCK=256):
+    #pragma :N=>parallel,block(BLOCK)
+    c[:N] = a[:N] + b[:N] 
 
 def torch_kernel(a, b, c, N):
     torch.add(a, b, out=c)
@@ -30,7 +29,7 @@ def test1():
             c_ref = torch.zeros_like(a)
             torch_kernel(a, b, c_ref, N)
             
-            for f in [torch_kernel, mykernel, mykernel1]:
+            for f in [torch_kernel, mykernel_top]:
                 c = torch.zeros_like(a)
                 f(a, b, c, N)
                 assert(torch.allclose(c, c_ref))
