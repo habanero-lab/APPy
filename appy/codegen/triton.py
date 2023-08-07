@@ -917,14 +917,13 @@ class TritonBackend(object):
                 from .triton_transformer import TritonKernelTransformer
                 grid = []
                 kernel_code = TritonKernelTransformer(grid).visit(node)
-                ast.fix_missing_locations(kernel_code)
+                #ast.fix_missing_locations(kernel_code)
                 print(unparse(kernel_code))
-                exit(2)
-                
-                grid = f'({",".join(self.usedBlockDims)},)'
+                kf.body += kernel_code
+                #exit(2)                
                 
                 k_args = self.get_kernel_function_arguments()
-                self.append_stmts(self.lf, f'fn = {kf.name}[{grid}]({",".join(k_args)}, num_warps={num_warps}, num_stages=3)')
+                self.append_stmts(self.lf, f'fn = {kf.name}[{",".join(grid)},]({",".join(k_args)}, num_warps={num_warps}, num_stages=3)')
                 if 'print_ptx' in self.options and self.options['print_ptx']:
                     self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
             

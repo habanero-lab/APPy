@@ -16,19 +16,26 @@ class TritonKernelTransformer(ast.NodeTransformer):
         return target, low, up, step
 
     def visit_For(self, node):
-        if hasattr(node, 'pragma'):            
+        if hasattr(node, 'pragma'):
             index_var = node.target
             low, up, step = node.iter.args
+            self.grid.append(f'(({unparse(up)} - {unparse(low)} + {unparse(step)} - 1) // {unparse(step)})')
+            pid_call = new_attr_call_node('tl.program_id', [new_const_node(self.block_dim)])
             pid_stmt = new_assign_node(
                 index_var, 
                 new_add_node(
                     low,
-                    new_attr_call_node('tl.program_id', [new_const_node(self.block_dim)])
+                    new_mul_node(pid_call, step)
                 )
             )
+            
             self.block_dim += 1
             # If loop is parallel, return only its body (no explicit loop)
             self.generic_visit(node)
+            node.body.insert(0, pid_stmt)
+            ast.fix_missing_locations(node)
+            print(unparse(node))
+
             return node.body
         else:
             self.generic_visit(node)
@@ -137,38 +144,16 @@ class TritonKernelTransformer(ast.NodeTransformer):
             * A[offset + name (scalar index)]
             * A[offset + name (vector index)]
         Or a tuple of the above.
-        '''
-        dump(node)
-        print('in subscript')
-
-        node, mask = self.gen_subscript_offset(node)
-        print(unparse(node))
-        print(mask)
-
-        # base = node.value
-        # idx = node.slice
-        # total_offset = None
-
-        # indices = []
-        # if isinstance(idx, ast.Tuple):
-        #     indices = idx.elts
-        # else:
-        #     indices = [idx]
-
-        # offset = new_const_node(0)
-        # for i in range(indices):
-        #     idx = indices[i]
-        #     stride = new_name_node(f'{base.id}_stride_{i}')
-        #     if isinstance(idx, ast.Constant):
-        #         offset = 
-        #         return new_attr_call_node(
-        #             'tl.load', 
-        #             new_add_node(base, idx)
-        #             )
-        #     elif isinstance(idx, ast.Name):
-
-
-        exit(1)
+        '''    
+        offset, mask = self.gen_subscript_offset(node)
+        
+        base = node.value
+        if isinstance(node.ctx, ast.Load):
+            return to_ast_expr(f'tl.load({base.id} + {unparse(offset)}, mask={mask})')
+        elif isinstance(node.ctx, ast.Store):
+            return to_ast_expr(f'tl.store({base.id} + {unparse(offset)}, mask={mask})')
+        else:
+            assert False
 
     def visit_Assign(self, node: ast.Assign):
         #ast.NodeTransformer.generic_visit(self, node)
@@ -187,7 +172,15 @@ class TritonKernelTransformer(ast.NodeTransformer):
 
             return None
 
+        # This will modify `node`
         self.generic_visit(node)
-        print('in assign')
-        dump(node)
-        exit(1)
+        lhs = node.targets[0]
+        if unparse(lhs).startswith('tl.store'):            
+            lhs.args.insert(1, node.value)
+            newnode = ast.Expr(value=lhs)
+            print(unparse(newnode))
+            return newnode
+        else:
+            print(unparse(node))
+            return node
+        

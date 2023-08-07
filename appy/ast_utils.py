@@ -61,7 +61,8 @@ def new_attr_call_node(func_name, args, keywords=None):
     if keywords:
         for k, v in keywords.items():
             kws.append(ast.keyword(arg=k, value=v))
-    node = ast.Attribute(value=ast.Name(id=m, ctx=ast.Load()), attr=f, ctx=ast.Load(), args=args, keywords=kws)
+    node = ast.Call(func=ast.Attribute(value=ast.Name(id=m, ctx=ast.Load()), attr=f, ctx=ast.Load()), \
+        args=args, keywords=kws)
     return node
 
 def new_name_node(name, ctx=None):
@@ -76,6 +77,9 @@ def new_assign_node(target, value):
 
 def new_add_node(a, b):
     return ast.BinOp(left=a, op=ast.Add(), right=b)
+
+def new_mul_node(a, b):
+    return ast.BinOp(left=a, op=ast.Mult(), right=b)
 
 def new_sub_node(a, b):
     return ast.BinOp(left=a, op=ast.Sub(), right=b)
