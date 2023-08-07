@@ -2,6 +2,7 @@ import torch
 import triton
 import triton.language as tl
 import appy
+from appy import vidx
 from torch import arange, zeros, empty, sum
 
 def kernel_op(a, b):
@@ -45,11 +46,30 @@ def seq(a, b, c, M, N):
         a[i] = acc
 
 @appy.jit
-def appy_kernel(a, b, c, M, N):
+def appy_kernel(a, b, c, M, N, BN=256):
     #pragma parallel
-    for i in range(M):  
-        c[i] = sum(a[i,:N] * b[:N])
-        
+    for i in range(M): 
+        s = 0.0
+        for j in range(0, N, BN):
+            vj = vidx(j, BN, N)
+            s += sum(a[i,vj] * b[vj])
+        c[i] = s
+
+@appy.jit
+def appy_kernel_new(a, b, c, M, N, BN=256):
+    #pragma :M=>p :N=>b(BN)
+    c[:M] = sum(a[:M, :N] * b[None, :N], axis=1)
+
+@appy.jit
+def appy_kernel_tiled(a, b, c, M, N, BN=256, BM=2):
+    #pragma parallel
+    for i in range(0, M, BM): 
+        vi = vidx(i, BM, M)
+        s = zeros([BM], device=a.device, dtype=a.dtype)
+        for j in range(0, N, BN):
+            vj = vidx(j, BN, N)
+            s += sum(a[vi,vj] * b[vj][None,:], axis=1)
+        c[vi] = s  
 
 @appy.jit
 def appy_kernel1(a, b, c, M, N, BN=256):
@@ -88,15 +108,15 @@ def torch_kernel(a, b, c, M, N):
 def test1():
     for dtype in [torch.float16, torch.float32]:
     #for dtype in [torch.float64]:
-        for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4)]:
-            print(f'M: {M}, N: {N}')
+        for M, N in [(1024, 1024), (4096, 4096), (4096*4, 4096*4), (4096*4, 4096*8), (4096*4, 4096*16)]:
+            print(f'M: {M}, N: {N}, dtype: {dtype}')
             a = torch.randn(M, N, device='cuda', dtype=dtype)
             b = torch.randn(N, device='cuda', dtype=dtype)
             c = torch.randn(M, device='cuda', dtype=dtype)
             c_ref = torch.randn(M, device='cuda', dtype=dtype)
             torch_kernel(a, b, c_ref, M, N)
 
-            for f in (torch_kernel, appy_kernel):
+            for f in (torch_kernel, appy_kernel, appy_kernel_tiled):
                 BLOCK = None
                 f(a, b, c, M, N)
                 assert(torch.allclose(c, c_ref, atol=10, rtol=0.1))

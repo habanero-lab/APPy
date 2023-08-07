@@ -816,6 +816,10 @@ class TritonBackend(object):
                 self.slices.append(node)
                 return node
 
+            def visit_Subscript(self, node):
+                dump(node)
+                return node
+
         class RewriteSlice(ast.NodeTransformer):
             def __init__(self, varname):
                 self.varname = varname
