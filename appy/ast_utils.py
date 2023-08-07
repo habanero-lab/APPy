@@ -47,13 +47,21 @@ def to_ast_expr(s):
     assert isinstance(n, ast.Expr)
     return n.value
 
-def new_call_node(func_name, args):
-    node = ast.Call(func=ast.Name(func_name, ctx=ast.Load()), args=args, keywords=[])
+def new_call_node(func_name, args, keywords=None):
+    kws = []
+    if keywords:
+        for k, v in keywords.items():
+            kws.append(ast.keyword(arg=k, value=v))
+    node = ast.Call(func=ast.Name(func_name, ctx=ast.Load()), args=args, keywords=kws)
     return node
 
-def new_attr_call_node(func_name, args):
+def new_attr_call_node(func_name, args, keywords=None):
     m, f = func_name.split('.')
-    node = ast.Attribute(value=ast.Name(id=m, ctx=ast.Load()), attr=f, ctx=ast.Load(), args=args, keywords=[])
+    kws = []
+    if keywords:
+        for k, v in keywords.items():
+            kws.append(ast.keyword(arg=k, value=v))
+    node = ast.Attribute(value=ast.Name(id=m, ctx=ast.Load()), attr=f, ctx=ast.Load(), args=args, keywords=kws)
     return node
 
 def new_name_node(name, ctx=None):

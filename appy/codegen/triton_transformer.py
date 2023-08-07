@@ -8,6 +8,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
     def __init__(self, grid):
         self.grid = grid
         self.block_dim = 0
+        self.vindices = {}
 
     def get_params_from_loop(node: ast.For):
         target = node.target
@@ -33,14 +34,160 @@ class TritonKernelTransformer(ast.NodeTransformer):
             self.generic_visit(node)
             return node
 
+    def gen_subscript_offset(self, subscript: ast.Subscript):
+        assert isinstance(subscript, ast.Subscript)
+        slice = subscript.slice
+        tensor = subscript.value.id
+        
+        #assert slice.__class__.__name__ in ('Tuple', 'Slice', 'Name', 'Constant')
+        #if isinstance(slice, ast.Tuple):  # Strangely this does not work
+        elts = []
+        if slice.__class__.__name__ == 'Tuple':
+            elts = slice.elts
+        else:
+            elts = [slice]
+        import numpy as np
+        is_elt_slice = np.zeros(len(elts))
+        terms = []
+        strides = []
+        masks = []
+        for i,e in enumerate(elts):
+            assert type(e) in [ast.Name, ast.Slice, ast.Constant, ast.BinOp], 'unsupported slicing type: ' + unparse(e)
+            
+            # A bit hacky, to make indexings like `A[i, 1 + _t1]` work
+            additional_offset = '0'
+            if isinstance(e, ast.BinOp):
+                if isinstance(e.left, ast.Name) and e.left.id in self.vindices:                    
+                    additional_offset = unparse(self.gen_kernel_node(e.right))
+                    e = e.left
+
+                if isinstance(e.right, ast.Name) and e.right.id in self.vindices:                
+                    additional_offset = unparse(self.gen_kernel_node(e.left))
+                    e = e.right        
+
+                # if isinstance(e.left, ast.Constant):
+                #     additional_offset = str(e.left.value)
+                #     e = e.right
+                # elif isinstance(e.right, ast.Constant):
+                #     additional_offset = str(e.right.value)
+                #     e = e.left
+                # else:
+                #     assert False, 'unsupported slicing type: ' + unparse(e)   
+                
+            is_range_var = False
+            if isinstance(e, ast.Name) and e.id in self.vindices:
+                is_range_var = True
+            
+
+            if isinstance(e, ast.Slice) or is_range_var:
+                is_elt_slice[i] = 1
+            
+            offset, mask = None, None
+            if is_range_var:
+                start, step, bound = self.vindices[e.id]
+                start, step, bound = unparse(start), unparse(step), unparse(bound)
+                offset = f'({start} + tl.arange(0, {step}))'
+                if bound:
+                    mask = f'{offset} < {bound}'
+            else:
+                offset = ast.unparse(self.gen_kernel_node(e))
+
+            term_str = offset
+            if additional_offset != '0':
+                term_str = f'{additional_offset} + {term_str}'
+            stride_str = f'{tensor}_stride_{i}'
+            if i == len(elts) - 1:
+                stride_str = '1'
+            terms.append(term_str)
+            strides.append(stride_str)
+            masks.append(mask)
+                
+        # If there are more than 1 slice in elements, broadcast is needed
+        assert np.sum(is_elt_slice) in [0, 1, 2]
+        if np.sum(is_elt_slice) == 2:
+            bcasts = ('[:,None]', '[None,:]')
+            for i, bcast in zip(np.nonzero(is_elt_slice)[0], bcasts):
+                terms[i] = f'({terms[i]})' + bcast
+
+        masks = list(filter(lambda x: x!=None, masks))
+        if len(masks) == 0:
+            mask = None
+        elif len(masks) == 1:
+            mask = masks[0]
+        elif len(masks) == 2:
+            mask = f'({masks[0]})[:,None] & ({masks[1]})[None,:]'            
+        else:
+            assert False
+        
+        strided_terms = []
+        for term, stride in zip(terms, strides):
+            strided_terms.append(f'({term}) * {stride}')
+        offset = ' + '.join(strided_terms)
+        return to_ast_expr(offset), mask
+
+
     def visit_Subscript(self, node: ast.Subscript):
+        '''
+        Visit a subscript and return a `tl.load` or `tl.store` depending on the ctx.
+
+        Currently support the following array addressing (`offset` can be either a name of constant):
+            * A[constant int]
+            * A[name (scalar index)]
+            * A[name (vector index)]
+            * A[offset + name (scalar index)]
+            * A[offset + name (vector index)]
+        Or a tuple of the above.
+        '''
         dump(node)
         print('in subscript')
+
+        node, mask = self.gen_subscript_offset(node)
+        print(unparse(node))
+        print(mask)
+
+        # base = node.value
+        # idx = node.slice
+        # total_offset = None
+
+        # indices = []
+        # if isinstance(idx, ast.Tuple):
+        #     indices = idx.elts
+        # else:
+        #     indices = [idx]
+
+        # offset = new_const_node(0)
+        # for i in range(indices):
+        #     idx = indices[i]
+        #     stride = new_name_node(f'{base.id}_stride_{i}')
+        #     if isinstance(idx, ast.Constant):
+        #         offset = 
+        #         return new_attr_call_node(
+        #             'tl.load', 
+        #             new_add_node(base, idx)
+        #             )
+        #     elif isinstance(idx, ast.Name):
+
+
         exit(1)
 
     def visit_Assign(self, node: ast.Assign):
-        ast.NodeTransformer.generic_visit(self, node)
-        #self.generic_visit(node)
+        #ast.NodeTransformer.generic_visit(self, node)
+        lhs = node.targets[0]
+        if is_call(node.value, ['vidx', 'vindex']):
+            assert isinstance(lhs, ast.Name)
+            start, stepsize = node.value.args[0:2]            
+            bound = None
+            if len(node.value.args) == 3:
+                bound = node.value.args[2]
+            else:                
+                keywords = get_keyword_args(node.value)
+                if 'bound' in keywords:
+                    bound = keywords['bound']
+            self.vindices[lhs.id] = (start, stepsize, bound)
+
+            return None
+
+        self.generic_visit(node)
         print('in assign')
         dump(node)
         exit(1)
