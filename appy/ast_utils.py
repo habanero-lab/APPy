@@ -55,8 +55,19 @@ def new_name_node(name, ctx=None):
     ctx = ast.Load() if ctx == None else ctx
     return ast.Name(id=name, ctx=ctx)
 
+def new_const_node(val):
+    return ast.Constant(value=val)
+
+def new_assign_node(target, value):
+    return ast.Assign(targets=[target], value=value)
+
 def new_add_node(a, b):
     return ast.BinOp(left=a, op=ast.Add(), right=b)
 
 def new_sub_node(a, b):
     return ast.BinOp(left=a, op=ast.Sub(), right=b)
+
+def new_for_loop(target, low, up, step):
+    loop = ast.For(target=target, iter=new_call_node('range', [low, up, step]), body=[], \
+        orelse=[], type_ignores=[])
+    return loop

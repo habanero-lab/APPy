@@ -29,6 +29,8 @@ class TritonBackend(object):
             import triton
             import triton.language as tl
             from triton.language import debug_barrier
+
+            from appy import vidx, vindex
         '''
         ))
         self.arg_names = get_arg_names(self.func)
@@ -878,15 +880,20 @@ class TritonBackend(object):
     def codegen(self):
         from .high_level_transforms.link_pragma import PragmaLinker
         from .high_level_transforms.aug_assign_rewriter import RewriteAugAssign
+        from .high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
 
         func = self.func
-        PragmaLinker().visit(func)
+        func = PragmaLinker().visit(func)
         func = RewriteAugAssign().visit(func)
-        self.func = func
-
+        func = RewriteTensorOperation().visit(func)
+        self.func = ast.fix_missing_locations(func)
+        func = PragmaLinker().visit(func)
+        
         if 'dump_final_appy' in self.options and self.options['dump_final_appy']:
             #dump(self.func)   
             print(unparse(self.func))
+
+        #exit(1)
     
         lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
         self.lf = lf
