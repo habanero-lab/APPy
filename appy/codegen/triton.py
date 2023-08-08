@@ -884,13 +884,14 @@ class TritonBackend(object):
         from .high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
 
         func = self.func
+        func = RewriteAugAssign().visit(func)
         func = RewriteRange().visit(func)
         func = PragmaLinker().visit(func)
-        func = RewriteAugAssign().visit(func)
+        
         func = RewriteTensorOperation().visit(func)
         self.func = ast.fix_missing_locations(func)
         func = PragmaLinker().visit(func)
-        exit(1)
+        
         if 'dump_final_appy' in self.options and self.options['dump_final_appy']:
             
             print(unparse(self.func))

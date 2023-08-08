@@ -66,42 +66,56 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 print(slice_map)
 
             for slice,properties in slice_map.items():
-                if properties['noloop']:
-                    assert False
-                # Generate a loop for each slice. Nested loop will be 
-                # generated if multiple slices. `parent=loop` controls this 
-                # recursive logic
                 low, up = slice
                 step = properties['block']
-                index_var = self.new_variable_name()
-                loop = new_for_loop(
-                    new_name_node(index_var),
-                    new_name_node(low) if isinstance(low, str) else new_const_node(low), 
-                    new_name_node(up),
-                    new_name_node(step) if isinstance(step, str) else new_const_node(step),
-                )
-
-                slice_to_var[(low,up)] = index_var
-                # Make index vectorized if step size is > 1
-                # `index_var` is reused
-                if step != 1:
-                    loop.body.append(
-                        new_assign_node(
-                            new_name_node(index_var),
-                            new_call_node(
-                                'vidx', [
-                                    new_name_node(index_var),
-                                    new_name_node(step),
-                                    new_name_node(up)
-                                ]
-                            )
-                        )
-                    )
+                index_var = self.new_variable_name()                
                 
-                if properties['parallel']:
-                    parent.body.append(ast.Comment(value='#pragma parallel'))
-                parent.body.append(loop)
-                parent = loop
+                slice_to_var[(low,up)] = index_var
+
+                if properties['noloop']:
+                    vidx_stmt = new_assign_node(
+                                new_name_node(index_var),
+                                new_call_node(
+                                    'vidx', [
+                                        new_name_node(low) if isinstance(low, str) else new_const_node(low),
+                                        new_name_node(step),
+                                        new_name_node(up)
+                                    ]
+                                )
+                            )
+                    parent.body.append(vidx_stmt)
+                else:
+                    # Generate a loop for each slice. Nested loop will be 
+                    # generated if multiple slices. `parent=loop` controls this 
+                    # recursive logic                    
+                    loop = new_for_loop(
+                        new_name_node(index_var),
+                        new_name_node(low) if isinstance(low, str) else new_const_node(low), 
+                        new_name_node(up),
+                        new_name_node(step) if isinstance(step, str) else new_const_node(step),
+                    )
+                    
+                    # Make index vectorized if step size is > 1
+                    # `index_var` is reused
+                    if step != 1:
+                        vidx_stmt = new_assign_node(
+                                new_name_node(index_var),
+                                new_call_node(
+                                    'vidx', [
+                                        new_name_node(index_var),
+                                        new_name_node(step),
+                                        new_name_node(up)
+                                    ]
+                                )
+                            )
+                        loop.body.append(
+                            vidx_stmt
+                        )
+                    
+                    if properties['parallel']:
+                        parent.body.append(ast.Comment(value='#pragma parallel'))
+                    parent.body.append(loop)
+                    parent = loop
                 
             # Add statement to innermost loop (now `parent` points to)
             parent.body.append(RewriteSlice(slice_to_var).visit(node))            
