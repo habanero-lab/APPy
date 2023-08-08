@@ -9,19 +9,22 @@ class PragmaLinker(ast.NodeTransformer):
         self.cur_top_pragma = None
         self.verbose = True
 
-    def visit_Comment(self, node):
+    def visit_Comment(self, node):        
         if node.value.startswith('#pragma parallel'):
             self.cur_loop_pragma = node.value
+            
             return None
         elif node.value.startswith('#pragma '):
             assert '=' in node.value
             self.cur_top_pragma = node.value
+            
             return None
         else:
             return node
 
     def visit_Assign(self, node):        
         pragma = self.cur_top_pragma
+        
         if pragma:
             node.pragma = pragma
             self.cur_top_pragma = None
@@ -36,4 +39,5 @@ class PragmaLinker(ast.NodeTransformer):
             self.cur_loop_pragma = None
             if self.verbose:
                 print(f'associated `{unparse(node)}` with pragma `{node.pragma}`')
+        self.generic_visit(node)
         return node

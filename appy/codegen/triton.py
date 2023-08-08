@@ -890,9 +890,9 @@ class TritonBackend(object):
         func = RewriteTensorOperation().visit(func)
         self.func = ast.fix_missing_locations(func)
         func = PragmaLinker().visit(func)
-        
+        exit(1)
         if 'dump_final_appy' in self.options and self.options['dump_final_appy']:
-            #dump(self.func)   
+            
             print(unparse(self.func))
 
         #exit(1)
@@ -916,9 +916,7 @@ class TritonBackend(object):
                 #self.gen_parallel_for(node, pragma)
                 from .triton_transformer import TritonKernelTransformer
                 grid = []
-                kernel_code = TritonKernelTransformer(grid).visit(node)
-                #ast.fix_missing_locations(kernel_code)
-                print(unparse(kernel_code))
+                kernel_code = TritonKernelTransformer(grid).visit(node)                 
                 kf.body += kernel_code
                 #exit(2)                
                 

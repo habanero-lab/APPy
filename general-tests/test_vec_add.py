@@ -12,9 +12,9 @@ def mykernel(a, b, c, N, BLOCK=256):
         vi = vidx(i, BLOCK, bound=N)
         c[vi] = a[vi] + b[vi]
 
-@jit(dump_final_appy=1)
+@jit
 def mykernel_top(a, b, c, N, BLOCK=256):
-    #pragma :N=parallel,block(BLOCK)
+    #pragma :N=>parallel,block(BLOCK)
     c[:N] = a[:N] + b[:N] 
 
 def torch_kernel(a, b, c, N):

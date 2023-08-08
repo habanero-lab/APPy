@@ -33,8 +33,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
             # If loop is parallel, return only its body (no explicit loop)
             self.generic_visit(node)
             node.body.insert(0, pid_stmt)
-            ast.fix_missing_locations(node)
-            print(unparse(node))
+            ast.fix_missing_locations(node)            
 
             return node.body
         else:
@@ -97,7 +96,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
                 if bound:
                     mask = f'{offset} < {bound}'
             else:
-                offset = ast.unparse(self.gen_kernel_node(e))
+                offset = ast.unparse(e)
 
             term_str = offset
             if additional_offset != '0':
@@ -130,6 +129,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
         for term, stride in zip(terms, strides):
             strided_terms.append(f'({term}) * {stride}')
         offset = ' + '.join(strided_terms)
+        print(offset)
         return to_ast_expr(offset), mask
 
 
@@ -176,11 +176,10 @@ class TritonKernelTransformer(ast.NodeTransformer):
         self.generic_visit(node)
         lhs = node.targets[0]
         if unparse(lhs).startswith('tl.store'):            
+            # Insert the value to be stored into arguments
             lhs.args.insert(1, node.value)
-            newnode = ast.Expr(value=lhs)
-            print(unparse(newnode))
+            newnode = ast.Expr(value=lhs)            
             return newnode
-        else:
-            print(unparse(node))
+        else:            
             return node
         

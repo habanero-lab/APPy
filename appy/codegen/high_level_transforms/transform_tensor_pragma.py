@@ -37,8 +37,8 @@ class RewriteTensorOperation(ast.NodeTransformer):
             if item == '':
                 continue
             
-            key, value = item.split('=')            
-            props = {'parallel': False, 'block': 1}
+            key, value = item.split('=>')            
+            props = {'parallel': False, 'block': 1, 'noloop': False}
             for prop in value.split(','):
                 
                 match = re.search(r'\((.*?)\)', prop)
@@ -54,6 +54,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
         return d
 
     def visit_Assign(self, node):
+        print(hasattr(node, 'pragma'))
         if hasattr(node, 'pragma'):
             module = ast.Module(body=[])
             parent = module
@@ -65,6 +66,8 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 print(slice_map)
 
             for slice,properties in slice_map.items():
+                if properties['noloop']:
+                    assert False
                 # Generate a loop for each slice. Nested loop will be 
                 # generated if multiple slices. `parent=loop` controls this 
                 # recursive logic
