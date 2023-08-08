@@ -19,7 +19,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
         if hasattr(node, 'pragma'):
             index_var = node.target
             low, up, step = node.iter.args
-            self.grid.append(f'(({unparse(up)} - {unparse(low)} + {unparse(step)} - 1) // {unparse(step)})')
+            self.grid.append(f'(({unparse(up)} - ({unparse(low)}) + {unparse(step)} - 1) // ({unparse(step)}))')
             pid_call = new_attr_call_node('tl.program_id', [new_const_node(self.block_dim)])
             pid_stmt = new_assign_node(
                 index_var, 
@@ -129,7 +129,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
         for term, stride in zip(terms, strides):
             strided_terms.append(f'({term}) * {stride}')
         offset = ' + '.join(strided_terms)
-        print(offset)
+        #print(offset)
         return to_ast_expr(offset), mask
 
 

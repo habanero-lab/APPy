@@ -4,8 +4,8 @@ from appy.ast_utils import *
 from copy import deepcopy
 
 class RewriteRange(ast.NodeTransformer):
-    def visit_Call(self, node):        
-        if node.func.id == 'range':
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Name) and node.func.id == 'range':
             if len(node.args) == 1:
                 up = node.args[0]
                 node.args = [

@@ -879,6 +879,7 @@ class TritonBackend(object):
         
     def codegen(self):
         from .high_level_transforms.range_rewriter import RewriteRange
+        from .high_level_transforms.rewrite_call import RewriteTopCall
         from .high_level_transforms.link_pragma import PragmaLinker
         from .high_level_transforms.aug_assign_rewriter import RewriteAugAssign
         from .high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
@@ -886,6 +887,7 @@ class TritonBackend(object):
         func = self.func
         func = RewriteAugAssign().visit(func)
         func = RewriteRange().visit(func)
+        func = RewriteTopCall().visit(func)
         func = PragmaLinker().visit(func)
         
         func = RewriteTensorOperation().visit(func)

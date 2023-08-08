@@ -28,7 +28,7 @@ def is_call(node, names=None):
     else:
         if type(names) not in [list, tuple]:
             names = [names]
-        return isinstance(node, ast.Call) and node.func.id in names
+        return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in names
 
 def get_first_noncomment_child(node):
     for c in node.body:

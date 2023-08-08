@@ -53,8 +53,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
         
         return d
 
-    def visit_Assign(self, node):
-        print(hasattr(node, 'pragma'))
+    def visit_Assign(self, node):        
         if hasattr(node, 'pragma'):
             module = ast.Module(body=[])
             parent = module

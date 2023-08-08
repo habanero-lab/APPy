@@ -17,13 +17,13 @@ class PragmaLinker(ast.NodeTransformer):
         elif node.value.startswith('#pragma '):
             assert '=' in node.value
             self.cur_top_pragma = node.value
-            print(self.cur_top_pragma)
+            #print(self.cur_top_pragma)
             return None
         else:
             return node
 
     def visit_Assign(self, node): 
-        dump(node)       
+        #dump(node)       
         pragma = self.cur_top_pragma
         
         if pragma:
