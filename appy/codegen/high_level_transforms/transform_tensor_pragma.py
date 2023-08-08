@@ -7,7 +7,7 @@ import re
 random.seed(0)
 
 def slice_to_tuple(s):
-    low, up = s.split(':')
+    low, up = s.replace(' ', '').split(':')
     if low == '':
         low = 0
     if up == '':
