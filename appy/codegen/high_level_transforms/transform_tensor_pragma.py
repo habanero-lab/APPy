@@ -38,7 +38,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 continue
             
             key, value = item.split('=>')            
-            props = {'parallel': False, 'block': 1, 'noloop': False}
+            props = {'parallel': False, 'block': 1, 'in_reg': False}
             for prop in value.split(','):
                 
                 match = re.search(r'\((.*?)\)', prop)
@@ -71,7 +71,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 
                 slice_to_var[(low,up)] = index_var
 
-                if properties['noloop']:
+                if properties['in_reg']:
                     vidx_stmt = new_assign_node(
                                 new_name_node(index_var),
                                 new_call_node(
