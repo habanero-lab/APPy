@@ -29,7 +29,7 @@ class TritonBackend(object):
             import triton
             import triton.language as tl
             from triton.language import debug_barrier
-
+            import appy
             from appy import vidx, vindex
         '''
         ))

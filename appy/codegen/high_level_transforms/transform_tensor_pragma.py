@@ -3,6 +3,7 @@ from ast import unparse
 from appy.ast_utils import *
 import random
 import re
+import copy
 
 random.seed(0)
 
@@ -38,7 +39,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 continue
             
             key, value = item.split('=>')            
-            props = {'parallel': False, 'block': 1, 'in_reg': False}
+            props = {'parallel': False, 'block': 1, 'in_reg': False, 'reduce': None}
             for prop in value.split(','):
                 
                 match = re.search(r'\((.*?)\)', prop)
@@ -115,6 +116,23 @@ class RewriteTensorOperation(ast.NodeTransformer):
                         parent.body.append(ast.Comment(value='#pragma parallel'))
                     parent.body.append(loop)
                     parent = loop
+
+                    # Rewrite the statement to do reduction
+                    if properties['reduce']:
+                        reduce_op = properties['reduce']
+                        if reduce_op == '+':
+                            target_load = copy.deepcopy(node.targets[0])
+                            target_load.ctx = ast.Load()
+                            node = new_assign_node(                                
+                                node.targets[0],
+                                new_add_node(target_load, node.value),
+                                node.lineno
+                            )
+                            dump(node)
+                            #print(unparse(node))
+                            #exit(1)
+                        else:
+                            assert False, 'unsupported'
                 
             # Add statement to innermost loop (now `parent` points to)
             parent.body.append(RewriteSlice(slice_to_var).visit(node))            

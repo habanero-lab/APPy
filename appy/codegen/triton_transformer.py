@@ -63,13 +63,16 @@ class TritonKernelTransformer(ast.NodeTransformer):
             # A bit hacky, to make indexings like `A[i, 1 + _t1]` work
             additional_offset = '0'
             if isinstance(e, ast.BinOp):
-                if isinstance(e.left, ast.Name) and e.left.id in self.vindices:                    
-                    additional_offset = unparse(self.gen_kernel_node(e.right))
-                    e = e.left
-
-                if isinstance(e.right, ast.Name) and e.right.id in self.vindices:                
-                    additional_offset = unparse(self.gen_kernel_node(e.left))
-                    e = e.right        
+                assert isinstance(e.op, ast.Add)
+                dump(e)
+                assert isinstance(e.right, ast.Name) and (
+                                            isinstance(e.left, (ast.Constant, ast.Name)) or \
+                                            isinstance(e.left, (ast.UnaryOp)) and isinstance(e.left.operand, (ast.Constant, ast.Name))
+                                            )
+                
+                if isinstance(e.right, ast.Name):                
+                    additional_offset = unparse(e.left)
+                    e = e.right
 
                 # if isinstance(e.left, ast.Constant):
                 #     additional_offset = str(e.left.value)
@@ -158,7 +161,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
     def visit_Assign(self, node: ast.Assign):
         #ast.NodeTransformer.generic_visit(self, node)
         lhs = node.targets[0]
-        if is_call(node.value, ['vidx', 'vindex']):
+        if is_call(node.value, ['vidx', 'vindex']) or is_attr_call(node.value, 'appy.vidx'):
             assert isinstance(lhs, ast.Name)
             start, stepsize = node.value.args[0:2]            
             bound = None

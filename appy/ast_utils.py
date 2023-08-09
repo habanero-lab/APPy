@@ -30,6 +30,12 @@ def is_call(node, names=None):
             names = [names]
         return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in names
 
+def is_attr_call(node, name=None):
+    if name == None:
+        return isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+    else:
+        return isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and ast.unparse(node.func) == name
+
 def get_first_noncomment_child(node):
     for c in node.body:
         if type(c) == ast.Comment:
@@ -72,8 +78,11 @@ def new_name_node(name, ctx=None):
 def new_const_node(val):
     return ast.Constant(value=val)
 
-def new_assign_node(target, value):
-    return ast.Assign(targets=[target], value=value)
+def new_assign_node(target, value, lineno=None):
+    if lineno:
+        return ast.Assign(targets=[target], value=value, lineno=lineno)
+    else:
+        return ast.Assign(targets=[target], value=value)
 
 def new_add_node(a, b):
     return ast.BinOp(left=a, op=ast.Add(), right=b)
