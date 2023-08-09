@@ -31,13 +31,13 @@ class RewriteSlice(ast.NodeTransformer):
                 key_low, key_up = key
                 key_low, key_up = str(key_low), str(key_up)                
                 from sympy import simplify
-                low_off = simplify(key_low) - simplify(low)
+                low_off = simplify(low) - simplify(key_low)
                 # N is a special function in sympy and need to be replaced
-                up_off = simplify(key_up.replace('N', 'n')) - simplify(up.replace('N', 'n'))
+                up_off = simplify(up.replace('N', 'n')) - simplify(key_up.replace('N', 'n'))
                 if (low_off == up_off):
                     var = self.map[key]
                     off = int(low_off)
-                    #print('symbolic offset:', off)
+                    #print(low, up, key_low, key_up, 'symbolic offset:', off)
                     return new_add_node(
                         new_const_node(off),
                         new_name_node(var)
