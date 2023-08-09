@@ -21,8 +21,30 @@ class RewriteSlice(ast.NodeTransformer):
 
     def visit_Slice(self, node):
         low, up = slice_to_tuple(unparse(node))
-        var = self.map[(low, up)]
-        return new_name_node(var)
+        if (low, up) in self.map:
+            var = self.map[(low, up)]
+            return new_name_node(var)
+        else:
+            var = None
+            off = 0
+            for key in self.map:
+                key_low, key_up = key
+                key_low, key_up = str(key_low), str(key_up)                
+                from sympy import simplify
+                low_off = simplify(key_low) - simplify(low)
+                # N is a special function in sympy and need to be replaced
+                up_off = simplify(key_up.replace('N', 'n')) - simplify(up.replace('N', 'n'))
+                if (low_off == up_off):
+                    var = self.map[key]
+                    off = int(low_off)
+                    #print('symbolic offset:', off)
+                    return new_add_node(
+                        new_const_node(off),
+                        new_name_node(var)
+                    )
+
+            assert False, f'slice not found in map: {(low, up)}' 
+        
 
 class RewriteTensorOperation(ast.NodeTransformer):
     def __init__(self):

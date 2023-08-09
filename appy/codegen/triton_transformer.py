@@ -63,8 +63,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
             # A bit hacky, to make indexings like `A[i, 1 + _t1]` work
             additional_offset = '0'
             if isinstance(e, ast.BinOp):
-                assert isinstance(e.op, ast.Add)
-                dump(e)
+                assert isinstance(e.op, ast.Add)                
                 assert isinstance(e.right, ast.Name) and (
                                             isinstance(e.left, (ast.Constant, ast.Name)) or \
                                             isinstance(e.left, (ast.UnaryOp)) and isinstance(e.left.operand, (ast.Constant, ast.Name))
