@@ -6,7 +6,7 @@ import textwrap
 import numpy as np
 from copy import deepcopy
 import ast_comments as ast
-from ast import unparse
+from ast_comments import unparse
 from .typesys import build_type_from_value, get_tl_dtype_from_str
 from .typesys import Tensor as TensorType
 from .typesys import Constant as ConstantType
@@ -892,13 +892,12 @@ class TritonBackend(object):
         
         func = RewriteTensorOperation().visit(func)
         self.func = ast.fix_missing_locations(func)
+        if self.options.get('dump_final_appy', None):             
+            print(ast.unparse(self.func))
+
         func = PragmaLinker().visit(func)
         
-        if 'dump_final_appy' in self.options and self.options['dump_final_appy']:
-            
-            print(unparse(self.func))
-
-        #exit(1)
+    
     
         lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
         self.lf = lf
