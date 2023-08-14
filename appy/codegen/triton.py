@@ -31,6 +31,9 @@ class TritonBackend(object):
             from triton.language import debug_barrier
             import appy
             from appy import vidx, vindex
+
+            def init_to_zero(name):
+                return lambda nargs: nargs[name].zero_()
         '''
         ))
         self.arg_names = get_arg_names(self.func)
@@ -886,9 +889,14 @@ class TritonBackend(object):
         
         triton_configs = []
         for config in configs:
-            triton_configs.append(f'triton.Config({config})')
+            triton_config = f'triton.Config({config}'
+            if 'init_hook' in self.options:            
+                for tensor in self.options['init_hook']:
+                    triton_config += f',pre_hook=init_to_zero("{tensor}")'
+            triton_config += ')'
+            triton_configs.append(triton_config)
+            
         
-
         code = textwrap.dedent(f'''
         @triton.autotune(
             configs=[{','.join(triton_configs)}],
@@ -910,7 +918,7 @@ class TritonBackend(object):
         func = RewriteAugAssign().visit(func)
         func = RewriteRange().visit(func)        
         func = PragmaLinker().visit(func)        
-        func = RewriteTensorOperation().visit(func)
+        func = RewriteTensorOperation(self.options).visit(func)
         func = RenameTorchToTriton().visit(func)
         self.func = ast.fix_missing_locations(func)
         if self.options.get('dump_final_appy', None):             
@@ -940,9 +948,7 @@ class TritonBackend(object):
                 grid = []
                 kernel_code = TritonKernelTransformer(grid).visit(node)                 
                 kf.body += kernel_code
-                meta_grid = f'kernel_grid = lambda META: ({",".join(grid)},)'
-                self.append_stmts(self.lf, meta_grid)
-                #print(grid)
+                meta_grid = f'kernel_grid = lambda META: ({",".join(grid)},)'                
                 print(meta_grid)
                 #print(self.options)
                 
@@ -956,11 +962,13 @@ class TritonBackend(object):
                             configs.append({key: value})
                         # Remove this tuning parameter from argument list
                         k_args.remove(key)
+                        # Update the grid 
+                        meta_grid = meta_grid.replace(key, f'META["{key}"]')
                     tune_code = self.make_triton_configs(configs)
                     kf = to_ast_node(tune_code + unparse(kf))
                     print(unparse(kf))
                     
-
+                self.append_stmts(self.lf, meta_grid)
                 self.module.body.append(kf)
                 self.append_stmts(self.lf, f'fn = {kf.name}[kernel_grid]({",".join(k_args)})')
                 if 'print_ptx' in self.options and self.options['print_ptx']:

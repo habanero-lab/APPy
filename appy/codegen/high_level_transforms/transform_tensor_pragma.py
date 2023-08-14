@@ -47,8 +47,9 @@ class RewriteSlice(ast.NodeTransformer):
         
 
 class RewriteTensorOperation(ast.NodeTransformer):
-    def __init__(self):
+    def __init__(self, options):
         self.verbose = True
+        self.options = options
 
     def new_variable_name(self):
         return f'_t{random.randint(0, 1e4)}'
@@ -142,6 +143,10 @@ class RewriteTensorOperation(ast.NodeTransformer):
                     # Rewrite the statement to do reduction
                     if properties['reduce']:
                         reduce_op, reduce_tensor = properties['reduce'].split(':')
+                        if 'init_hook' not in self.options:
+                            self.options['init_hook'] = []
+                        self.options['init_hook'].append(reduce_tensor)
+                        
                         if reduce_op == '+':
                             target_load = copy.deepcopy(node.targets[0])
                             target_load.ctx = ast.Load()
