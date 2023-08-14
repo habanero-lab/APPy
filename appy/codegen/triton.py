@@ -895,16 +895,30 @@ class TritonBackend(object):
                     triton_config += f',pre_hook=init_to_zero("{tensor}")'
             triton_config += ')'
             triton_configs.append(triton_config)
-            
-        
+                    
         code = textwrap.dedent(f'''
         @triton.autotune(
             configs=[{','.join(triton_configs)}],
             key=[{','.join(keys)}],
         )
-        ''')
-        print(code)
+        ''')        
         return code
+
+    def append_new_argument(self, f: ast.FunctionDef, arg_name: str, annotation=None):
+        class ArgumentAppender(ast.NodeTransformer):
+            def __init__(self, arg_name, annotation):
+                self.arg_name = arg_name
+                self.annotation = annotation
+
+            def visit_FunctionDef(self, node):
+                new_arg = ast.arg(arg=self.arg_name, annotation=ast.parse(self.annotation).body[0].value if self.annotation else None)
+                node.args.args.append(new_arg)
+                return node
+
+        appender = ArgumentAppender(arg_name, annotation)
+        new_function = appender.visit(f)
+        return new_function
+
         
     def codegen(self):
         from .high_level_transforms.range_rewriter import RewriteRange
@@ -955,13 +969,18 @@ class TritonBackend(object):
                 #exit(2)                
                 
                 k_args = self.get_kernel_function_arguments()
-                if self.options.get('tune'):
+                if self.options.get('tune'):                    
                     configs = []
                     for key, values in self.options.get('tune').items():
+                        if key == 'APPY_BLOCK':
+                            self.append_new_argument(kf, key, annotation='tl.constexpr')                            
+                            
                         for value in values:
                             configs.append({key: value})
                         # Remove this tuning parameter from argument list
-                        k_args.remove(key)
+                        # Note that DEFAULT_BLOCK may not be in the argument list
+                        if key in k_args:
+                            k_args.remove(key)
                         # Update the grid 
                         meta_grid = meta_grid.replace(key, f'META["{key}"]')
                     tune_code = self.make_triton_configs(configs)

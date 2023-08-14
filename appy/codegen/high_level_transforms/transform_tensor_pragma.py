@@ -75,6 +75,16 @@ class RewriteTensorOperation(ast.NodeTransformer):
             
             d[slice_to_tuple(key)] = props
         
+        
+        if self.options.get('auto_block'):
+            default_block = 'APPY_BLOCK'
+            if d[slice_to_tuple(key)]['block'] == 1:
+                if self.verbose:
+                    print(f'update the `block` property for slice {key} to `{default_block}`')
+                d[slice_to_tuple(key)]['block'] = f'{default_block}'
+                self.options.setdefault('tune', {})
+                self.options['tune'][f'{default_block}'] = (1024, 512, 256, 128)
+
         return d
 
     def visit_Assign(self, node):        
