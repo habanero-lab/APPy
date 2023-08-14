@@ -141,7 +141,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
 
                     # Rewrite the statement to do reduction
                     if properties['reduce']:
-                        reduce_op = properties['reduce']
+                        reduce_op, reduce_tensor = properties['reduce'].split(':')
                         if reduce_op == '+':
                             target_load = copy.deepcopy(node.targets[0])
                             target_load.ctx = ast.Load()
@@ -150,7 +150,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
                                 new_add_node(target_load, node.value),
                                 node.lineno
                             )
-                            dump(node)
+                            
                             #print(unparse(node))
                             #exit(1)
                         else:

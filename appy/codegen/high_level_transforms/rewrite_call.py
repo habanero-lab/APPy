@@ -3,7 +3,7 @@ from ast import unparse
 from appy.ast_utils import *
 from copy import deepcopy
 
-class RewriteTopCall(ast.NodeTransformer):
+class RenameTorchToTriton(ast.NodeTransformer):
     def visit_Attribute(self, node):
         if node.value.id == 'torch':      
             node.value = new_name_node('tl')

@@ -96,7 +96,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
                 start, step, bound = unparse(start), unparse(step), unparse(bound)
                 offset = f'({start} + tl.arange(0, {step}))'
                 if bound:
-                    mask = f'{offset} < {bound}'
+                    mask = f'({offset}) < ({bound})'
             else:
                 offset = ast.unparse(e)
 

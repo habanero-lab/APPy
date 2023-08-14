@@ -876,28 +876,48 @@ class TritonBackend(object):
             return p
         else:
             return None
+
+    def make_triton_configs(self, configs):
+        
+        keys = []
+        for param in self.get_kernel_function_parameters():
+            if '_shape_' in param and 'tl.constexpr' in param:
+                keys.append('"' + param.replace(': tl.constexpr', '') + '"')
+        
+        triton_configs = []
+        for config in configs:
+            triton_configs.append(f'triton.Config({config})')
+        
+
+        code = textwrap.dedent(f'''
+        @triton.autotune(
+            configs=[{','.join(triton_configs)}],
+            key=[{','.join(keys)}],
+        )
+        ''')
+        print(code)
+        return code
         
     def codegen(self):
         from .high_level_transforms.range_rewriter import RewriteRange
-        from .high_level_transforms.rewrite_call import RewriteTopCall
+        from .high_level_transforms.rewrite_call import RenameTorchToTriton
         from .high_level_transforms.link_pragma import PragmaLinker
         from .high_level_transforms.aug_assign_rewriter import RewriteAugAssign
+        from .high_level_transforms.shape_analysis import ShapeAnalysis
         from .high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
 
         func = self.func
         func = RewriteAugAssign().visit(func)
-        func = RewriteRange().visit(func)
-        func = RewriteTopCall().visit(func)
-        func = PragmaLinker().visit(func)
-        
+        func = RewriteRange().visit(func)        
+        func = PragmaLinker().visit(func)        
         func = RewriteTensorOperation().visit(func)
+        func = RenameTorchToTriton().visit(func)
         self.func = ast.fix_missing_locations(func)
         if self.options.get('dump_final_appy', None):             
             print(ast.unparse(self.func))
 
         func = PragmaLinker().visit(func)
         
-    
     
         lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
         self.lf = lf
@@ -911,7 +931,7 @@ class TritonBackend(object):
                     num_warps = int(p)
                 
                 kf = self.create_new_kernel_function()
-                self.module.body.append(kf)
+                
                 self.allBlockDims = ['x', 'y', 'z']
                 self.usedBlockDims = []
 
@@ -920,10 +940,29 @@ class TritonBackend(object):
                 grid = []
                 kernel_code = TritonKernelTransformer(grid).visit(node)                 
                 kf.body += kernel_code
+                meta_grid = f'kernel_grid = lambda META: ({",".join(grid)},)'
+                self.append_stmts(self.lf, meta_grid)
+                #print(grid)
+                print(meta_grid)
+                #print(self.options)
+                
                 #exit(2)                
                 
                 k_args = self.get_kernel_function_arguments()
-                self.append_stmts(self.lf, f'fn = {kf.name}[{",".join(grid)},]({",".join(k_args)}, num_warps={num_warps}, num_stages=3)')
+                if self.options.get('tune'):
+                    configs = []
+                    for key, values in self.options.get('tune').items():
+                        for value in values:
+                            configs.append({key: value})
+                        # Remove this tuning parameter from argument list
+                        k_args.remove(key)
+                    tune_code = self.make_triton_configs(configs)
+                    kf = to_ast_node(tune_code + unparse(kf))
+                    print(unparse(kf))
+                    
+
+                self.module.body.append(kf)
+                self.append_stmts(self.lf, f'fn = {kf.name}[kernel_grid]({",".join(k_args)})')
                 if 'print_ptx' in self.options and self.options['print_ptx']:
                     self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
             
