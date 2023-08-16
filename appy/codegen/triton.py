@@ -904,21 +904,6 @@ class TritonBackend(object):
         ''')        
         return code
 
-    def append_new_argument(self, f: ast.FunctionDef, arg_name: str, annotation=None):
-        class ArgumentAppender(ast.NodeTransformer):
-            def __init__(self, arg_name, annotation):
-                self.arg_name = arg_name
-                self.annotation = annotation
-
-            def visit_FunctionDef(self, node):
-                new_arg = ast.arg(arg=self.arg_name, annotation=ast.parse(self.annotation).body[0].value if self.annotation else None)
-                node.args.args.append(new_arg)
-                return node
-
-        appender = ArgumentAppender(arg_name, annotation)
-        new_function = appender.visit(f)
-        return new_function
-
         
     def codegen(self):
         from .high_level_transforms.range_rewriter import RewriteRange
@@ -927,10 +912,17 @@ class TritonBackend(object):
         from .high_level_transforms.aug_assign_rewriter import RewriteAugAssign
         from .high_level_transforms.shape_analysis import ShapeAnalysis
         from .high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
+        from .high_level_transforms.add_dim_to_slice import AddDimToSlice
 
         func = self.func
         func = RewriteAugAssign().visit(func)
         func = RewriteRange().visit(func)        
+        if self.options.get('dim_info'):
+            dim_info = self.options.get('dim_info')
+            func = AddDimToSlice(dim_info).visit(func)
+
+        #print(unparse(func))
+        #exit(1)
         func = PragmaLinker().visit(func)        
         func = RewriteTensorOperation(self.options).visit(func)
         func = RenameTorchToTriton().visit(func)
@@ -963,7 +955,7 @@ class TritonBackend(object):
                 kernel_code = TritonKernelTransformer(grid).visit(node)                 
                 kf.body += kernel_code
                 meta_grid = f'kernel_grid = lambda META: ({",".join(grid)},)'                
-                print(meta_grid)
+                #print(meta_grid)
                 #print(self.options)
                 
                 #exit(2)                
@@ -973,7 +965,7 @@ class TritonBackend(object):
                     configs = []
                     for key, values in self.options.get('tune').items():
                         if key == 'APPY_BLOCK':
-                            self.append_new_argument(kf, key, annotation='tl.constexpr')                            
+                            append_new_argument(kf, key, annotation='tl.constexpr')                            
                             
                         for value in values:
                             configs.append({key: value})
@@ -985,13 +977,13 @@ class TritonBackend(object):
                         meta_grid = meta_grid.replace(key, f'META["{key}"]')
                     tune_code = self.make_triton_configs(configs)
                     kf = to_ast_node(tune_code + unparse(kf))
-                    print(unparse(kf))
+                    #print(unparse(kf))
                     
                 self.append_stmts(self.lf, meta_grid)
                 self.module.body.append(kf)
                 self.append_stmts(self.lf, f'fn = {kf.name}[kernel_grid]({",".join(k_args)})')
                 if 'print_ptx' in self.options and self.options['print_ptx']:
-                    self.append_stmts(self.lf, 'print(fn.asm["ptx"])')
+                    self.append_stmts(self.lf, 'print(fn.asm["ttgir"])')
             
                 #self.append_stmts(self.lf, 'exit(1)')
             else:

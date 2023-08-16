@@ -1,4 +1,4 @@
-import ast_comments as ast
+import ast
 
 def dump(node):
     print(ast.dump(node))
@@ -97,3 +97,18 @@ def new_for_loop(target, low, up, step):
     loop = ast.For(target=target, iter=new_call_node('range', [low, up, step]), body=[], \
         orelse=[], type_ignores=[])
     return loop
+
+def append_new_argument(f: ast.FunctionDef, arg_name: str, annotation=None):
+    class ArgumentAppender(ast.NodeTransformer):
+        def __init__(self, arg_name, annotation):
+            self.arg_name = arg_name
+            self.annotation = annotation
+
+        def visit_FunctionDef(self, node):
+            new_arg = ast.arg(arg=self.arg_name, annotation=ast.parse(self.annotation).body[0].value if self.annotation else None)
+            node.args.args.append(new_arg)
+            return node
+
+    appender = ArgumentAppender(arg_name, annotation)
+    new_function = appender.visit(f)
+    return new_function

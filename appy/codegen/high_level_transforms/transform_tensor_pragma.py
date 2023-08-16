@@ -1,9 +1,10 @@
-import ast_comments as ast
+
 from ast import unparse
 from appy.ast_utils import *
 import random
 import re
 import copy
+import ast_comments as ast
 
 random.seed(0)
 
