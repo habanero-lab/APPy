@@ -13,8 +13,17 @@ def slice_to_tuple(s):
     if low == '':
         low = 0
     if up == '':
-        assert False, 'upper bound of the slice must be specified: ' + key
+        assert False, 'upper bound of the slice must be specified: ' + s
     return low, up
+
+def get_init_val_for_reduction(r):
+    if r == 'sum':
+        return 0
+    elif r == 'max':
+        return float('-inf')
+    elif r == 'min':
+        return float('inf')
+    assert False
 
 class RewriteSlice(ast.NodeTransformer):
     def __init__(self, map):
@@ -45,15 +54,26 @@ class RewriteSlice(ast.NodeTransformer):
                     )
 
             assert False, f'slice not found in map: {(low, up)}' 
+
+    def visit_Subscript(self, node):
+        if unparse(node.slice) in ['(:, None)', '(None, :)']:
+            self.generic_visit(node.value)
+        else:        
+            self.generic_visit(node)
+        return node
         
 
 class RewriteTensorOperation(ast.NodeTransformer):
-    def __init__(self, options):
+    def __init__(self, options, arg_types):
         self.verbose = True
         self.options = options
+        self.arg_types = arg_types
+        self.tmp_var_count = 0
 
     def new_variable_name(self):
-        return f'_t{random.randint(0, 1e4)}'
+        name = f'_top_var_{self.tmp_var_count}'
+        self.tmp_var_count += 1
+        return name
 
     def parse_pragma(self, pragma):
         d = {}
@@ -106,6 +126,11 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 
                 slice_to_var[(low,up)] = index_var
 
+                # Insert either only a vidx statement or a loop + an vidx statement
+                # into the parent body. Note that the inner most compute statement
+                # is only added later once all dimensions are visited
+                # Whether to generate a loop depends on if the property specifies no loop
+                # or not (via in_reg)
                 if properties['in_reg']:
                     vidx_stmt = new_assign_node(
                                 new_name_node(index_var),
@@ -145,32 +170,73 @@ class RewriteTensorOperation(ast.NodeTransformer):
                         loop.body.append(
                             vidx_stmt
                         )
-                    
+
+                    # Before inserting the loop, need to consider if need to initialize 
+                    # the value for reduction, if there is reduction for this dimension
+                    # Furthermore, reduction has two situations:
+                    # 1. targets[0] is array index (store to global memory)
+                    # 2. targets[0] is a variable (store to register)
+                    # Currently strategy is for 1) use pre_hook in triton configs and 
+                    # for 2) support only scalar reduction variable, which we know how to 
+                    # initialize. Multi-dimensional array reduction must be stored to
+                    # global memory.
+                    reduction_prelogue = None      
+                    reduction_epilogue = None      
+                    if properties['reduce']:
+                        reduce_op, reduce_tensor = properties['reduce'].split(':')
+                        assert isinstance(node.targets[0], (ast.Name,ast.Subscript))
+                        if isinstance(node.targets[0], ast.Subscript):
+                            self.options.setdefault('init_hook', [])                        
+                            self.options['init_hook'].append(reduce_tensor)
+                            # Doesn't change the target when storing to global memory, just update the 
+                            # operator to do accumulation                            
+                            newtarget = node.targets[0]
+                        else:
+                            # This is to gen code for patterns like a = sum(A[i,:j]), where :j is blocked in a loop
+                            # Multiple possible codegen exists. Currently we initialize the original target to
+                            # proper initial value. This requires dtype known.
+                            import appy.codegen.typesys as typesys
+                            dtype  = None
+                            for e in self.arg_types.values():
+                                if isinstance(e, typesys.Tensor):
+                                    dtype = e.get_tl_dtype()
+                                    break
+                            assert dtype != None
+                            # reduce_tmp = self.new_variable_name()
+                            # init_value = get_init_val_for_reduction(reduce_op)
+                            target_s = unparse(node.targets[0])
+                            init_value = get_init_val_for_reduction(reduce_op)
+                            reduction_prelogue = f'{target_s} = float("{init_value}"); {target_s} = {target_s}.to({dtype})'
+                            # reduction_epilogue = f'{reduce_tensor} = tl.{reduce_op}({reduce_tmp})'                            
+                            newtarget = node.targets[0]
+                            
+                            # print(reduction_prelogue)
+                            # print(reduction_epilogue)
+                            # exit(1)
+
+                        newtarget_s = unparse(newtarget)
+                        if reduce_op == 'sum':                            
+                            newnode_s = f'{newtarget_s} = {newtarget_s} + {unparse(node.value)}'                    
+                        elif reduce_op == 'max':                            
+                            newnode_s = f'{newtarget_s} = tl.maximum({newtarget_s}, {unparse(node.value)})'                                                        
+                        elif reduce_op == 'min':                            
+                            newnode_s = f'{newtarget_s} = tl.minimum({newtarget_s}, {unparse(node.value)})'                                                        
+                        else:
+                            assert False, 'unsupported'
+                        node = to_ast_node(newnode_s)
+
+                    if reduction_prelogue:
+                        parent.body += to_ast_nodes(reduction_prelogue)
+
                     if properties['parallel']:
                         parent.body.append(ast.Comment(value='#pragma parallel'))
                     parent.body.append(loop)
+
+                    if reduction_epilogue:
+                        parent.body.append(to_ast_node(reduction_epilogue))
                     parent = loop
 
-                    # Rewrite the statement to do reduction
-                    if properties['reduce']:
-                        reduce_op, reduce_tensor = properties['reduce'].split(':')
-                        if 'init_hook' not in self.options:
-                            self.options['init_hook'] = []
-                        self.options['init_hook'].append(reduce_tensor)
-                        
-                        if reduce_op == '+':
-                            target_load = copy.deepcopy(node.targets[0])
-                            target_load.ctx = ast.Load()
-                            node = new_assign_node(                                
-                                node.targets[0],
-                                new_add_node(target_load, node.value),
-                                node.lineno
-                            )
-                            
-                            #print(unparse(node))
-                            #exit(1)
-                        else:
-                            assert False, 'unsupported'
+                    
                 
             # Add statement to innermost loop (now `parent` points to)
             parent.body.append(RewriteSlice(slice_to_var).visit(node))            

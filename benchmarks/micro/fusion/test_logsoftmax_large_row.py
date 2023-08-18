@@ -35,12 +35,16 @@ def _mykernel1(a, b, t0, t1, t2, M, N):
     t2[:M] = sum(exp(a[:M, :N] - t0[:M, None]), axis=1)
     b[:M, :N] = a[:M, :N] - (t0[:M] + log(t2[:M]))[:M, None]
 
-def _mykernel1_loop(a, b, t0, t1, t2, M, N, BN=512):
-    #pragma parallel loop :N=>block(BN),reduce(max:m,+:s)
-    for i in range(0, M, BM):
-        m = max(a[i, :N])
-        s = sum(exp(a[i, :N] - m))
-        b[i, :N] = a[i, :N] - (m + log(s))
+@jit(dump_final_appy=1, auto_block=1)
+def _mykernel1_loop(a, b, t0, t1, t2, M, N):
+    #pragma parallel
+    for i in range(M):
+        #pragma :N=>reduce(max:m)
+        m = torch.max(a[i, :N])
+        #pragma :N=>reduce(sum:s)
+        s = torch.sum(torch.exp(a[i, :N] - m))
+        #pragma :N=>
+        b[i, :N] = a[i, :N] - (m + torch.log(s))
 
 # Our version above is 5 lines of code
 # Typical CUDA version is about 170 lines of code: https://github.com/pytorch/pytorch/blob/d49cb6613eac9ad4d9dde60243b6c981d3952094/LogSoftMax.cu#L134
@@ -65,13 +69,13 @@ def test1():
             a = torch.randn(M, N, dtype=dtype)
             b_ref = torch_kernel(a, M, N)
 
-            for f in (torch_kernel, torch_kernel_native, _mykernel):
+            for f in (torch_kernel, torch_kernel_native, _mykernel1_loop):
                 ff = lambda: f(a, M, N)
                 if f.__name__.startswith('_'):
                     ff = lambda: mykernel(a, M, N, f)
                 b = ff()
                 
-                assert(torch.allclose(b, b_ref, atol=0.5, rtol=0.05))
+                assert(torch.allclose(b, b_ref, atol=0.001))
                 ms = bench(ff)
                 print(f'{f.__name__}: {ms:.4f} ms')
             

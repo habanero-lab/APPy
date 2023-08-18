@@ -48,6 +48,10 @@ def to_ast_node(s):
     #     n = n.value
     return n
 
+def to_ast_nodes(s):
+    n = ast.parse(s).body
+    return n
+
 def to_ast_expr(s):
     n = ast.parse(s).body[0]
     assert isinstance(n, ast.Expr)

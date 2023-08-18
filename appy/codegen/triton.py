@@ -774,15 +774,6 @@ class TritonBackend(object):
         self.kf = kf
         return kf
 
-    def get_init_val_for_reduction(r):
-        if r == 'sum':
-            return 0
-        elif r == 'max':
-            return float('-inf')
-        elif r == 'min':
-            return float('inf')
-        assert False
-
     def get_low_up_from_slice(self, slice):
         assert hasattr(slice, 'upper')
         assert hasattr(slice, 'lower')
@@ -924,7 +915,7 @@ class TritonBackend(object):
         #print(unparse(func))
         #exit(1)
         func = PragmaLinker().visit(func)        
-        func = RewriteTensorOperation(self.options).visit(func)
+        func = RewriteTensorOperation(self.options, self.arg_type_map).visit(func)
         func = RenameTorchToTriton().visit(func)
         self.func = ast.fix_missing_locations(func)
         if self.options.get('dump_final_appy', None):             

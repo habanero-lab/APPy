@@ -52,17 +52,12 @@ class AddDimToSlice(ast.NodeTransformer):
                     import sympy
                     new_upper_simplified = str(sympy.simplify(unparse(new_upper).replace('N', 'n'))).replace('n', 'N')
                     new_upper = to_ast_expr(new_upper_simplified)
-
-                    new_dim_slice = ast.Slice(lower, new_upper, step)                    
+                    new_dim_slice = ast.Slice(lower, new_upper, step) 
+                                       
                     new_slice_elements.append(new_dim_slice)
                 else:
                     new_slice_elements.append(dim_slice)
 
-
-            # slices_str = ','.join(map(lambda x: unparse(x), new_slice_elements))
-
-            # new_subscript = f'{node.value.id}[{slices_str}]'
-            # return to_ast_expr(new_subscript)
             new_slice = ast.Tuple(elts=new_slice_elements, ctx=ast.Load())
             new_subscript = ast.Subscript(value=node.value, slice=new_slice, ctx=node.ctx)
             return new_subscript

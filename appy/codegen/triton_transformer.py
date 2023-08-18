@@ -146,7 +146,11 @@ class TritonKernelTransformer(ast.NodeTransformer):
             * A[offset + name (scalar index)]
             * A[offset + name (vector index)]
         Or a tuple of the above.
-        '''    
+        '''
+        if unparse(node.slice) in ['(:, None)', '(None, :)']:
+            node.value = self.visit_Subscript(node.value)
+            return node
+
         offset, mask = self.gen_subscript_offset(node)
         
         base = node.value
