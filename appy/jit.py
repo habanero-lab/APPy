@@ -14,20 +14,26 @@ compiled = {}
 
 def compile(fn, args, dump_code=0, verbose=False, **options):
     #print('options:', options)
-    os.makedirs('./.appyl_kernels', exist_ok=True)
-    if verbose:
-        print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
-    src = inspect.getsource(fn)
-    #src = preprocess(src)
-    src = constant_prop(src, get_arg_names(src), args)
-    tree = ast.parse(src)
-    
-    backend = TritonBackend(tree, args, **options)
-    module = backend.codegen()
-    if dump_code:
-        print(module)
-    filename = f'./.appyl_kernels/{fn.__name__}.py'
-    Path(filename).write_text(module)
+    if options.get('use_compiled_file'):
+        filename = options.get('use_compiled_file')
+        print('use compiled file:', filename)
+    else:
+        os.makedirs('./.appyl_kernels', exist_ok=True)
+        if verbose:
+            print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
+        src = inspect.getsource(fn)
+        #src = preprocess(src)
+        src = constant_prop(src, get_arg_names(src), args)
+        tree = ast.parse(src)
+        
+        backend = TritonBackend(tree, args, **options)
+        module = backend.codegen()
+        if dump_code:
+            print(module)
+        filename = f'./.appyl_kernels/{fn.__name__}.py'
+        Path(filename).write_text(module)
+
+
     subprocess.run(['black', filename], capture_output=True, text=True)
     #exit(1)
     spec = importlib.util.spec_from_file_location("module.name", filename)

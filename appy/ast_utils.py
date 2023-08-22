@@ -65,6 +65,10 @@ def new_call_node(func_name, args, keywords=None):
     node = ast.Call(func=ast.Name(func_name, ctx=ast.Load()), args=args, keywords=kws)
     return node
 
+def new_attr_node(value, attr):
+    node = ast.Attribute(value=value, attr=attr, ctx=ast.Load())
+    return node
+
 def new_attr_call_node(func_name, args, keywords=None):
     m, f = func_name.split('.')
     kws = []

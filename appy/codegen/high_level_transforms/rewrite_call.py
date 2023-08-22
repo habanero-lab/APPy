@@ -4,9 +4,16 @@ from appy.ast_utils import *
 from copy import deepcopy
 
 class RenameTorchToTriton(ast.NodeTransformer):
-    def visit_Attribute(self, node):
+    def visit_Attribute(self, node: ast.Attribute):
         if node.value.id == 'torch':      
+            if node.attr in ['tanh']:
+                node.value = new_attr_node(new_name_node('tl'), 'math')
+            else:
+                node.value = new_name_node('tl')
+
+        elif node.value.id == 'appy' and node.attr not in ['vidx', 'vindex']:
             node.value = new_name_node('tl')
+            
         return node
 
     def visit_Call(self, node):
