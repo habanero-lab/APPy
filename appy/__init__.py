@@ -29,8 +29,8 @@ def step(start, stepsize, bound=None):
 def debug_barrier():
     pass
 
-def atomic_add():
-    pass
+def atomic_add(a, offset, b):
+    a[offset] += b
 
 vindex = step
 vidx = step
