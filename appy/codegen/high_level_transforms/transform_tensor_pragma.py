@@ -136,9 +136,12 @@ class RewriteTensorOperation(ast.NodeTransformer):
                                 new_name_node(index_var),
                                 new_call_node(
                                     'vidx', [
-                                        new_name_node(low) if isinstance(low, str) else new_const_node(low),
-                                        new_name_node(step),
-                                        new_name_node(up)
+                                        to_ast_expr(str(low)),
+                                        to_ast_expr(str(step)),
+                                        to_ast_expr(str(up)),
+                                        # new_name_node(low) if isinstance(low, str) else new_const_node(low),
+                                        # new_name_node(step),
+                                        # new_name_node(up)
                                     ]
                                 )
                             )
@@ -149,9 +152,12 @@ class RewriteTensorOperation(ast.NodeTransformer):
                     # recursive logic                    
                     loop = new_for_loop(
                         new_name_node(index_var),
-                        new_name_node(low) if isinstance(low, str) else new_const_node(low), 
-                        new_name_node(up),
-                        new_name_node(step) if isinstance(step, str) else new_const_node(step),
+                        to_ast_expr(str(low)),
+                        to_ast_expr(str(up)),
+                        to_ast_expr(str(step)),
+                        #new_name_node(low) if isinstance(low, str) else new_const_node(low), 
+                        #new_name_node(up),
+                        #new_name_node(step) if isinstance(step, str) else new_const_node(step),
                     )
                     
                     # Make index vectorized if step size is > 1
@@ -162,8 +168,8 @@ class RewriteTensorOperation(ast.NodeTransformer):
                                 new_call_node(
                                     'vidx', [
                                         new_name_node(index_var),
-                                        new_name_node(step),
-                                        new_name_node(up)
+                                        to_ast_expr(str(step)),
+                                        to_ast_expr(str(up)),
                                     ]
                                 )
                             )

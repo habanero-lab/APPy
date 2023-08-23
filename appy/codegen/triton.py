@@ -926,7 +926,7 @@ class TritonBackend(object):
             print(ast.unparse(self.func))
 
         func = PragmaLinker().visit(func)
-        from .high_level_transforms.rewrite_pfor import RewritePFor
+        from .rewrite_pfor import RewritePFor
 
         launcher_func = RewritePFor(self.module, self.options, self.arg_type_map).visit(func)
         launcher_func.decorator_list = []

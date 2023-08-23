@@ -101,7 +101,12 @@ class RewritePFor(ast.NodeTransformer):
             #     num_warps = int(p)
             
             kf = self.create_new_kernel_function()
-            #self.gen_parallel_for(node, pragma)
+            from .high_level_transforms.get_loaded_names import GetLoadedNames
+            names = []
+            GetLoadedNames(names).visit(node)
+            print(names)
+            exit(1)
+
             from appy.codegen.triton_transformer import TritonKernelTransformer
             grid = []
             kernel_code = TritonKernelTransformer(grid).visit(node)                 
