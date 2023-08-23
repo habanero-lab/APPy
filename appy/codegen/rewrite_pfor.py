@@ -102,9 +102,9 @@ class RewritePFor(ast.NodeTransformer):
             
             kf = self.create_new_kernel_function()
             from .high_level_transforms.get_loaded_names import GetLoadedNames
-            names = []
-            GetLoadedNames(names).visit(node)
-            print(names)
+            self.extracted_args = {}
+            GetLoadedNames(self.extracted_args).visit(node)
+            
             exit(1)
 
             from appy.codegen.triton_transformer import TritonKernelTransformer
@@ -144,6 +144,7 @@ class RewritePFor(ast.NodeTransformer):
                 new_nodes.append(to_ast_node('print(fn.asm["ttgir"])'))
             return new_nodes
         else:
+            self.generic_visit(node)
             return node
 
     

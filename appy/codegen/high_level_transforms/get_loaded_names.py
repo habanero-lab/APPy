@@ -2,11 +2,24 @@ import ast
 from ast import unparse
 from appy.ast_utils import *
 from copy import deepcopy
+import appy.codegen.typesys as typesys
 
 class GetLoadedNames(ast.NodeVisitor):
     def __init__(self, names):
         self.names = names
         self.stored_vars = []
+
+    def visit_Subscript(self, node):
+        if isinstance(node.value, ast.Name):
+            
+            ndim = 1
+            if isinstance(node.slice, ast.Tuple):
+                ndim = len(node.slice.elts)
+            self.names[node.value.id] = ndim
+            print(self.names)
+        else:
+            self.generic_visit(node)
+
 
     def visit_Name(self, node):        
         if node.id.startswith('_top_var'):
@@ -19,4 +32,4 @@ class GetLoadedNames(ast.NodeVisitor):
             self.stored_vars.append(node.id) 
         
         if node.id not in self.stored_vars and (node.id not in self.names):
-            self.names.append(node.id)
+            self.names[node.id] = 0
