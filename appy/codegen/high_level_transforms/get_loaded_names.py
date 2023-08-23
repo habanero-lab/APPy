@@ -4,10 +4,11 @@ from appy.ast_utils import *
 from copy import deepcopy
 import appy.codegen.typesys as typesys
 
-class GetLoadedNames(ast.NodeVisitor):
+class ExtractArguments(ast.NodeVisitor):
     def __init__(self, names):
         self.names = names
         self.stored_vars = []
+        self.func_or_package_names = []
 
     def visit_Subscript(self, node):
         if isinstance(node.value, ast.Name):            
@@ -19,20 +20,28 @@ class GetLoadedNames(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call):
+        if isinstance(node.func, ast.Name):
+            self.func_or_package_names.append(node.func.id)
+
         if unparse(node).startswith('vidx(') or unparse(node).startswith('appy.vidx('):
             if isinstance(node.args[1], ast.Name):
                 self.names[node.args[1].id] = ('const', 0)
+        
         self.generic_visit(node)
 
-    def visit_Name(self, node):        
-        if node.id.startswith('_top_var'):
-            return
-        
-        if node.id in ['range', 'vidx', 'float', 'int', 'tl', 'torch', 'appy']:
+    def visit_Attribute(self, node: ast.Attribute):
+        if isinstance(node.value, ast.Name):
+            self.func_or_package_names.append(node.value.id)
+
+        self.generic_visit(node)
+
+    def visit_Name(self, node):   
+        id = node.id     
+        if id.startswith('_top_var'):
             return
 
         if isinstance(node.ctx, ast.Store):
-            self.stored_vars.append(node.id)         
+            self.stored_vars.append(id)         
         
-        if node.id not in self.stored_vars and (node.id not in self.names):
-            self.names[node.id] = ('scalar', 0)
+        if id not in (self.stored_vars + self.func_or_package_names) and (id not in self.names):
+            self.names[id] = ('scalar', 0)

@@ -118,9 +118,10 @@ class RewritePFor(ast.NodeTransformer):
             #     num_warps = int(p)
             
             
-            from .high_level_transforms.get_loaded_names import GetLoadedNames
+            from .high_level_transforms.get_loaded_names import ExtractArguments
             self.extracted_args = {}
-            GetLoadedNames(self.extracted_args).visit(node)
+            ExtractArguments(self.extracted_args).visit(node)
+            
             # Rearrange the args to make tl.constexpr args the last
             reordered = OrderedDict()
             for name, (ty, ndim) in self.extracted_args.items():
@@ -160,7 +161,7 @@ class RewritePFor(ast.NodeTransformer):
                     meta_grid = meta_grid.replace(key, f'META["{key}"]')
                 tune_code = self.make_triton_configs(configs)
                 kf = to_ast_node(tune_code + unparse(kf))
-            print(unparse(kf))
+            #print(unparse(kf))
             
             self.module.body.append(kf)
             
