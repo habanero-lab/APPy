@@ -15,7 +15,7 @@ class RewritePFor(ast.NodeTransformer):
     def create_new_kernel_function(self):
         kernel_name = f'_kernel{self.kernel_count}'
         self.kernel_count += 1
-        k_params = self.get_kernel_function_parameters()
+        k_params = self.get_kernel_function_parameters(self.extracted_args)
         kf = ast.parse(textwrap.dedent(f'''
             @triton.jit
             def {kernel_name}({', '.join(k_params)}):
@@ -24,7 +24,29 @@ class RewritePFor(ast.NodeTransformer):
         self.kf = kf
         return kf
 
-    def get_kernel_function_parameters(self):
+    def get_kernel_function_parameters(self, arg_dim_map):
+        newargs = []
+        for name, ndim in arg_dim_map.items():
+            #print(name, val)
+            newargs.append(name)
+            if ndim > 0:
+                for d in range(ndim):
+                    #newargs.append(f'{name}_shape_{d}')
+                    newargs.append(f'{name}_stride_{d}')
+        return newargs
+
+    def get_kernel_function_arguments(self, arg_dim_map):
+        newargs = []
+        for name, ndim in arg_dim_map.items():
+            #print(name, val)
+            newargs.append(name)
+            if ndim > 0:
+                for d in range(ndim):
+                    #newargs.append(f'{name}.size({d})')
+                    newargs.append(f'{name}.stride({d})')
+        return newargs
+
+    def old_get_kernel_function_parameters(self):
         newargs = []
         for name, val in self.arg_type_map.items():
             #print(name, val)
@@ -37,22 +59,9 @@ class RewritePFor(ast.NodeTransformer):
                     newargs.append(f'{name}_stride_{d}')
             else:
                 newargs.append(name)
-
-        #     if type(val) in (int, float, torch.dtype):
-        #         newargs.append(name+': tl.constexpr')
-        #     elif type(val) == torch.Tensor:
-        #         if val.layout != torch.strided:
-        #             continue
-        #         newargs.append(name)
-        #         for d in range(val.dim()):
-        #             newargs.append(f'{name}_shape_{d}: tl.constexpr')
-        #             newargs.append(f'{name}_stride_{d}: tl.constexpr')                    
-        #     else:
-        #         newargs.append(name)
-        # exit(1)       
         return newargs
 
-    def get_kernel_function_arguments(self):
+    def old_get_kernel_function_arguments(self):
         newargs = []
         for name, val in self.arg_type_map.items():
             if isinstance(val, typesys.Tensor):
@@ -70,8 +79,8 @@ class RewritePFor(ast.NodeTransformer):
 
     def make_triton_configs(self, configs):    
         keys = []
-        for param in self.get_kernel_function_parameters():
-            if '_shape_' in param and 'tl.constexpr' in param:
+        for param in self.get_kernel_function_parameters(self.extracted_args):
+            if '_shape_' in param:
                 keys.append('"' + param.replace(': tl.constexpr', '') + '"')
         
         triton_configs = []
@@ -100,12 +109,13 @@ class RewritePFor(ast.NodeTransformer):
             # if p:
             #     num_warps = int(p)
             
-            kf = self.create_new_kernel_function()
+            
             from .high_level_transforms.get_loaded_names import GetLoadedNames
             self.extracted_args = {}
             GetLoadedNames(self.extracted_args).visit(node)
-            
-            exit(1)
+
+            kf = self.create_new_kernel_function()
+            #exit(1)
 
             from appy.codegen.triton_transformer import TritonKernelTransformer
             grid = []
@@ -116,7 +126,7 @@ class RewritePFor(ast.NodeTransformer):
             #print(self.options)
               
                 
-            k_args = self.get_kernel_function_arguments()
+            k_args = self.get_kernel_function_arguments(self.extracted_args)
             if self.options.get('tune'):                    
                 configs = []
                 for key, values in self.options.get('tune').items():
@@ -133,7 +143,7 @@ class RewritePFor(ast.NodeTransformer):
                     meta_grid = meta_grid.replace(key, f'META["{key}"]')
                 tune_code = self.make_triton_configs(configs)
                 kf = to_ast_node(tune_code + unparse(kf))
-                #print(unparse(kf))
+            print(unparse(kf))
             
             self.module.body.append(kf)
             
