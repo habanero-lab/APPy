@@ -15,7 +15,7 @@ class GetLoadedNames(ast.NodeVisitor):
             if isinstance(node.slice, ast.Tuple):
                 ndim = len(node.slice.elts)
             self.names[node.value.id] = ('tensor', ndim)
-            print(self.names)
+            #print(self.names)
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call):
@@ -28,7 +28,7 @@ class GetLoadedNames(ast.NodeVisitor):
         if node.id.startswith('_top_var'):
             return
         
-        if node.id in ['range', 'vidx', 'float', 'int', 'tl', 'torch']:
+        if node.id in ['range', 'vidx', 'float', 'int', 'tl', 'torch', 'appy']:
             return
 
         if isinstance(node.ctx, ast.Store):
