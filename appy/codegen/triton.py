@@ -108,10 +108,14 @@ class TritonBackend(object):
             if type(val) == torch.Tensor:
                 if val.layout != torch.strided:
                     continue
-                newargs.append(name)
-                for d in range(val.dim()):
-                    newargs.append(f'{name}.size({d})')
-                    newargs.append(f'{name}.stride({d})')
+                if val.dim() == 0:
+                    newargs.append(f'{name}.item()')
+                else:
+                    newargs.append(name)
+                    for d in range(val.dim()):
+                        newargs.append(f'{name}.size({d})')
+                        newargs.append(f'{name}.stride({d})')
+                
             elif type(val) == torch.dtype:
                 newargs.append(str(val).replace('torch.', 'tl.'))
             else:
