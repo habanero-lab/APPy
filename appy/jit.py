@@ -13,7 +13,7 @@ from appy.codegen.triton import TritonBackend
 compiled = {}
 
 def compile(fn, args, dump_code=0, verbose=False, **options):
-    #print('options:', options)
+    #print('options:', options)    
     if options.get('use_compiled_file'):
         filename = options.get('use_compiled_file')
         print('use compiled file:', filename)
@@ -21,9 +21,9 @@ def compile(fn, args, dump_code=0, verbose=False, **options):
         os.makedirs('./.appyl_kernels', exist_ok=True)
         if verbose:
             print(f'[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}')
-        src = inspect.getsource(fn)
-        #src = preprocess(src)
+        src = inspect.getsource(fn)        
         src = constant_prop(src, get_arg_names(src), args)
+        #src = convert_kernel_pragma_to_funcs(src)
         tree = ast.parse(src)
         
         backend = TritonBackend(tree, args, **options)
@@ -45,6 +45,26 @@ def compile(fn, args, dump_code=0, verbose=False, **options):
     compiled = foo.kernel
     
     return compiled
+
+def convert_kernel_pragma_to_funcs(src):
+    kernels = []
+    in_kernel = False
+    kernel_code = ''
+    pragma = ''
+    for line in src.split('\n'):
+        if line.strip().startswith('#pragma kernel'):
+            pragma = line.strip()
+            continue
+        elif line.strip().startswith('#pragma end kernel'):
+            kernels.append([pragma, kernel_code])
+            pragma = ''
+
+        if pragma:
+            kernel_code += line
+
+    print(kernels)
+    return 
+        
 
 def move_pragmas_before_stmt(src):
     lines = src.split('\n')
