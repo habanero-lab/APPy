@@ -42,7 +42,7 @@ def compile(fn, args, dump_code=0, verbose=False, **options):
     spec.loader.exec_module(foo)
     if verbose:
         print("[jit] Done compiling")
-    compiled = foo.kernel
+    compiled = getattr(foo, fn.__name__)
     
     return compiled
 

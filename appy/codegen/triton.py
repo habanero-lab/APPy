@@ -926,66 +926,68 @@ class TritonBackend(object):
             print(ast.unparse(self.func))
 
         func = PragmaLinker().visit(func)
-        
+        from .high_level_transforms.rewrite_pfor import RewritePFor
+
+        launcher_func = RewritePFor(self.module, self.options, self.arg_type_map).visit(func)
+        launcher_func.decorator_list = []
     
-        lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
-        self.lf = lf
+        # lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
+        # self.lf = lf        
 
-        for node in self.func.body:
-            if isinstance(node, ast.For) and hasattr(node, 'pragma'):
-                pragma = node.pragma
-                p = self.get_pragma_property(pragma, 'num_warps')
-                num_warps = 4
-                if p:
-                    num_warps = int(p)
+        # for node in self.func.body:
+        #     if isinstance(node, ast.For) and hasattr(node, 'pragma'):
+        #         pragma = node.pragma
+        #         p = self.get_pragma_property(pragma, 'num_warps')
+        #         num_warps = 4
+        #         if p:
+        #             num_warps = int(p)
                 
-                kf = self.create_new_kernel_function()
+        #         kf = self.create_new_kernel_function()
                 
-                self.allBlockDims = ['x', 'y', 'z']
-                self.usedBlockDims = []
+        #         self.allBlockDims = ['x', 'y', 'z']
+        #         self.usedBlockDims = []
 
-                #self.gen_parallel_for(node, pragma)
-                from .triton_transformer import TritonKernelTransformer
-                grid = []
-                kernel_code = TritonKernelTransformer(grid).visit(node)                 
-                kf.body += kernel_code
-                meta_grid = f'kernel_grid = lambda META: ({",".join(grid)},)'                
-                #print(meta_grid)
-                #print(self.options)
+        #         #self.gen_parallel_for(node, pragma)
+        #         from .triton_transformer import TritonKernelTransformer
+        #         grid = []
+        #         kernel_code = TritonKernelTransformer(grid).visit(node)                 
+        #         kf.body += kernel_code
+        #         meta_grid = f'kernel_grid = lambda META: ({",".join(grid)},)'                
+        #         #print(meta_grid)
+        #         #print(self.options)
                 
-                #exit(2)                
+        #         #exit(2)                
                 
-                k_args = self.get_kernel_function_arguments()
-                if self.options.get('tune'):                    
-                    configs = []
-                    for key, values in self.options.get('tune').items():
-                        if key == 'APPY_BLOCK':
-                            append_new_argument(kf, key, annotation='tl.constexpr')                            
+        #         k_args = self.get_kernel_function_arguments()
+        #         if self.options.get('tune'):                    
+        #             configs = []
+        #             for key, values in self.options.get('tune').items():
+        #                 if key == 'APPY_BLOCK':
+        #                     append_new_argument(kf, key, annotation='tl.constexpr')                            
                             
-                        for value in values:
-                            configs.append({key: value})
-                        # Remove this tuning parameter from argument list
-                        # Note that DEFAULT_BLOCK may not be in the argument list
-                        if key in k_args:
-                            k_args.remove(key)
-                        # Update the grid 
-                        meta_grid = meta_grid.replace(key, f'META["{key}"]')
-                    tune_code = self.make_triton_configs(configs)
-                    kf = to_ast_node(tune_code + unparse(kf))
-                    #print(unparse(kf))
+        #                 for value in values:
+        #                     configs.append({key: value})
+        #                 # Remove this tuning parameter from argument list
+        #                 # Note that DEFAULT_BLOCK may not be in the argument list
+        #                 if key in k_args:
+        #                     k_args.remove(key)
+        #                 # Update the grid 
+        #                 meta_grid = meta_grid.replace(key, f'META["{key}"]')
+        #             tune_code = self.make_triton_configs(configs)
+        #             kf = to_ast_node(tune_code + unparse(kf))
+        #             #print(unparse(kf))
                     
-                self.append_stmts(self.lf, meta_grid)
-                self.module.body.append(kf)
-                self.append_stmts(self.lf, f'fn = {kf.name}[kernel_grid]({",".join(k_args)})')
-                if 'print_ptx' in self.options and self.options['print_ptx']:
-                    self.append_stmts(self.lf, 'print(fn.asm["ttgir"])')
+        #         self.append_stmts(self.lf, meta_grid)
+        #         self.module.body.append(kf)
+        #         self.append_stmts(self.lf, f'fn = {kf.name}[kernel_grid]({",".join(k_args)})')
+        #         if 'print_ptx' in self.options and self.options['print_ptx']:
+        #             self.append_stmts(self.lf, 'print(fn.asm["ttgir"])')
             
-                #self.append_stmts(self.lf, 'exit(1)')
-            else:
-                self.append_node(self.lf, node)
+        #         #self.append_stmts(self.lf, 'exit(1)')
+        #     else:
+        #         self.append_node(self.lf, node)
             
             
         m = self.module
-        #dump(self.kf)
-        m.body += [self.lf]
+        m.body += [launcher_func]
         return ast.unparse(m)

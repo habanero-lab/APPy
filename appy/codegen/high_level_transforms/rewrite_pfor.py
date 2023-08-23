@@ -1,0 +1,144 @@
+import textwrap
+import torch
+from ast import unparse
+from appy.ast_utils import *
+from copy import deepcopy
+import appy.codegen.typesys as typesys
+
+class RewritePFor(ast.NodeTransformer):
+    def __init__(self, module, options, arg_type_map):
+        self.module = module
+        self.options = options
+        self.kernel_count = 0
+        self.arg_type_map = arg_type_map
+
+    def create_new_kernel_function(self):
+        kernel_name = f'_kernel{self.kernel_count}'
+        self.kernel_count += 1
+        k_params = self.get_kernel_function_parameters()
+        kf = ast.parse(textwrap.dedent(f'''
+            @triton.jit
+            def {kernel_name}({', '.join(k_params)}):
+                pass
+        ''')).body[0]
+        self.kf = kf
+        return kf
+
+    def get_kernel_function_parameters(self):
+        newargs = []
+        for name, val in self.arg_type_map.items():
+            #print(name, val)
+            if isinstance(val, typesys.Constant):
+                newargs.append(name+': tl.constexpr')
+            elif isinstance(val, typesys.Tensor):
+                newargs.append(name)
+                for d in range(val.ndim):
+                    newargs.append(f'{name}_shape_{d}')
+                    newargs.append(f'{name}_stride_{d}')
+            else:
+                newargs.append(name)
+
+        #     if type(val) in (int, float, torch.dtype):
+        #         newargs.append(name+': tl.constexpr')
+        #     elif type(val) == torch.Tensor:
+        #         if val.layout != torch.strided:
+        #             continue
+        #         newargs.append(name)
+        #         for d in range(val.dim()):
+        #             newargs.append(f'{name}_shape_{d}: tl.constexpr')
+        #             newargs.append(f'{name}_stride_{d}: tl.constexpr')                    
+        #     else:
+        #         newargs.append(name)
+        # exit(1)       
+        return newargs
+
+    def get_kernel_function_arguments(self):
+        newargs = []
+        for name, val in self.arg_type_map.items():
+            if isinstance(val, typesys.Tensor):
+                if val.ndim == 0:
+                    newargs.append(f'{name}.item()')
+                else:
+                    newargs.append(name)
+                    for d in range(val.ndim):
+                        newargs.append(f'{name}.size({d})')
+                        newargs.append(f'{name}.stride({d})')
+                
+            else:
+                newargs.append(name)
+        return newargs
+
+    def make_triton_configs(self, configs):    
+        keys = []
+        for param in self.get_kernel_function_parameters():
+            if '_shape_' in param and 'tl.constexpr' in param:
+                keys.append('"' + param.replace(': tl.constexpr', '') + '"')
+        
+        triton_configs = []
+        for config in configs:
+            triton_config = f'triton.Config({config}'
+            if 'init_hook' in self.options:            
+                for tensor in self.options['init_hook']:
+                    triton_config += f',pre_hook=init_to_zero("{tensor}")'
+            triton_config += ')'
+            triton_configs.append(triton_config)
+                    
+        code = textwrap.dedent(f'''
+        @triton.autotune(
+            configs=[{','.join(triton_configs)}],
+            key=[{','.join(keys)}],
+        )
+        ''')        
+        return code
+
+
+    def visit_For(self, node):
+        if hasattr(node, 'pragma'):
+            pragma = node.pragma
+            # p = self.get_pragma_property(pragma, 'num_warps')
+            # num_warps = 4
+            # if p:
+            #     num_warps = int(p)
+            
+            kf = self.create_new_kernel_function()
+            #self.gen_parallel_for(node, pragma)
+            from appy.codegen.triton_transformer import TritonKernelTransformer
+            grid = []
+            kernel_code = TritonKernelTransformer(grid).visit(node)                 
+            kf.body += kernel_code
+            meta_grid = f'kernel_grid = lambda META: ({",".join(grid)},)'                
+            #print(meta_grid)
+            #print(self.options)
+              
+                
+            k_args = self.get_kernel_function_arguments()
+            if self.options.get('tune'):                    
+                configs = []
+                for key, values in self.options.get('tune').items():
+                    if key == 'APPY_BLOCK':
+                        append_new_argument(kf, key, annotation='tl.constexpr')                            
+                        
+                    for value in values:
+                        configs.append({key: value})
+                    # Remove this tuning parameter from argument list
+                    # Note that DEFAULT_BLOCK may not be in the argument list
+                    if key in k_args:
+                        k_args.remove(key)
+                    # Update the grid 
+                    meta_grid = meta_grid.replace(key, f'META["{key}"]')
+                tune_code = self.make_triton_configs(configs)
+                kf = to_ast_node(tune_code + unparse(kf))
+                #print(unparse(kf))
+            
+            self.module.body.append(kf)
+            
+            launch_stmt = f'fn = {kf.name}[kernel_grid]({",".join(k_args)})'
+            new_nodes = [to_ast_node(meta_grid), to_ast_node(launch_stmt) ]
+
+            if self.options.get('print_ptx'):
+                new_nodes.append(to_ast_node('print(fn.asm["ttgir"])'))
+            return new_nodes
+        else:
+            return node
+
+    
