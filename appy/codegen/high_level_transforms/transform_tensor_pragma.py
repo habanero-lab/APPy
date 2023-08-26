@@ -159,6 +159,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
                         #new_name_node(up),
                         #new_name_node(step) if isinstance(step, str) else new_const_node(step),
                     )
+                    loop.from_tensor_expr = True
                     
                     # Make index vectorized if step size is > 1
                     # `index_var` is reused

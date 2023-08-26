@@ -4,7 +4,7 @@ Annotated Parallelism for Python (APPy) is parallel programming model that allow
 # Install
 
 ```bash
-python setup.py develop
+pip install -e .
 ```
 
 # Clauses
@@ -33,9 +33,9 @@ def add(a, b, c, N, BLOCK=128):
 
 or tensor operator based pragmas:
 ```python
-@jit
+@jit(auto_block=True)
 def add(a, b, c, N, BLOCK=128):
-    #pragma par_dim(0:N:BLOCK)
+    #pragma :N=>parallel
     c[:N] = a[:N] + b[:N]
 ```
 

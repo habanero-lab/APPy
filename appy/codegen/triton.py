@@ -908,8 +908,10 @@ class TritonBackend(object):
         from .high_level_transforms.shape_analysis import ShapeAnalysis
         from .high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
         from .high_level_transforms.add_dim_to_slice import AddDimToSlice
+        from .high_level_transforms.insert_barrier import InsertBarrier
 
         func = self.func
+        func.decorator_list = []
         func = RewriteAugAssign().visit(func)
         func = RewriteRange().visit(func)        
         if self.options.get('dim_info'):
@@ -922,14 +924,22 @@ class TritonBackend(object):
         func = RewriteTensorOperation(self.options, self.arg_type_map).visit(func)
         func = RenameTorchToTriton().visit(func)
         self.func = ast.fix_missing_locations(func)
-        if self.options.get('dump_final_appy', None):             
-            print(ast.unparse(self.func))
+        
 
         func = PragmaLinker().visit(func)
-        from .rewrite_pfor import RewritePFor
+        if self.options.get('no_barrier_after_write'):
+            pass
+        else:
+            func = InsertBarrier().visit(func)
 
+        if self.options.get('dump_final_appy'): 
+            print('dump final APPy code:')            
+            print(ast.unparse(func))
+
+        #exit(1)
+        from .rewrite_pfor import RewritePFor
         launcher_func = RewritePFor(self.module, self.options, self.arg_type_map).visit(func)
-        launcher_func.decorator_list = []
+        #launcher_func.decorator_list = []
     
         # lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)
         # self.lf = lf        
