@@ -22,9 +22,11 @@ class RenameTorchToTriton(ast.NodeTransformer):
     def visit_Call(self, node: ast.Call):
         if unparse(node).startswith('torch.mv('):
             assert len(node.args) == 2
+            
             newnode = new_attr_call_node(
                     'torch.sum', 
-                    [new_mul_node(node.args[0], node.args[1])]
+                    [new_mul_node(node.args[0], node.args[1])],
+                    keywords={'axis': to_ast_expr('1')}
                 )
             newnode.lineno = node.lineno
             node = newnode

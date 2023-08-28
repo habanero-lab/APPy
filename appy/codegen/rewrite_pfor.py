@@ -117,8 +117,9 @@ class RewritePFor(ast.NodeTransformer):
             # if p:
             #     num_warps = int(p)
             
-            
+            from .high_level_transforms.rewrite_call import RenameTorchToTriton
             from .high_level_transforms.get_loaded_names import ExtractArguments
+            node = RenameTorchToTriton().visit(node)
             self.extracted_args = {}
             ExtractArguments(self.extracted_args).visit(node)
             

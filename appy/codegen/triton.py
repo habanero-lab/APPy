@@ -922,7 +922,7 @@ class TritonBackend(object):
         #exit(1)
         func = PragmaLinker().visit(func)        
         func = RewriteTensorOperation(self.options, self.arg_type_map).visit(func)
-        func = RenameTorchToTriton().visit(func)
+        #func = RenameTorchToTriton().visit(func)
         self.func = ast.fix_missing_locations(func)
         
 

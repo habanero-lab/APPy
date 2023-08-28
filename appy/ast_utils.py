@@ -73,7 +73,7 @@ def new_attr_call_node(func_name, args, keywords=None):
     m, f = func_name.split('.')
     kws = []
     if keywords:
-        for k, v in keywords.items():
+        for k, v in keywords.items():            
             kws.append(ast.keyword(arg=k, value=v))
     node = ast.Call(func=ast.Attribute(value=ast.Name(id=m, ctx=ast.Load()), attr=f, ctx=ast.Load()), \
         args=args, keywords=kws)
