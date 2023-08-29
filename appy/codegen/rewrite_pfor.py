@@ -81,7 +81,7 @@ class RewritePFor(ast.NodeTransformer):
                 newargs.append(name)
         return newargs
 
-    def make_triton_configs(self, configs):    
+    def make_triton_configs(self, configs, init_hook):    
         keys = []
         for name, (ty, ndim) in self.extracted_args.items():
             if ty == 'tensor':
@@ -94,9 +94,12 @@ class RewritePFor(ast.NodeTransformer):
         triton_configs = []
         for config in configs:
             triton_config = f'triton.Config({config}'
-            if 'init_hook' in self.options:            
-                for tensor in self.options['init_hook']:
-                    triton_config += f',pre_hook=init_to_zero("{tensor}")'
+            if init_hook:
+                op, var = init_hook
+                if op == 'sum':
+                    triton_config += f',pre_hook=init_to_zero("{var}")' 
+                else:
+                    assert False
             triton_config += ')'
             triton_configs.append(triton_config)
                     
@@ -160,7 +163,10 @@ class RewritePFor(ast.NodeTransformer):
                         k_args.remove(key)
                     # Update the grid 
                     meta_grid = meta_grid.replace(key, f'META["{key}"]')
-                tune_code = self.make_triton_configs(configs)
+                init_hook = None
+                if hasattr(node, 'init_hook'):
+                    init_hook = node.init_hook
+                tune_code = self.make_triton_configs(configs, init_hook)
                 kf = to_ast_node(tune_code + unparse(kf))
             #print(unparse(kf))
             

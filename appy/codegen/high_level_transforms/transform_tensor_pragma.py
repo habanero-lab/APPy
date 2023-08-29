@@ -5,16 +5,9 @@ import random
 import re
 import copy
 import ast_comments as ast
+from .utils import *
 
 random.seed(0)
-
-def slice_to_tuple(s):
-    low, up = s.replace(' ', '').split(':')
-    if low == '':
-        low = 0
-    if up == '':
-        assert False, 'upper bound of the slice must be specified: ' + s
-    return low, up
 
 def get_init_val_for_reduction(r):
     if r == 'sum':
@@ -75,49 +68,29 @@ class RewriteTensorOperation(ast.NodeTransformer):
         self.tmp_var_count += 1
         return name
 
-    def parse_pragma(self, pragma):
-        d = {}
-        s = pragma.replace('#pragma', '')
-        for item in s.split(' '):
-            if item == '':
-                continue
-            
-            key, value = item.split('=>')            
-            props = {'parallel': False, 'block': 1, 'in_reg': False, 'reduce': None}
-            for prop in value.split(','):
-                
-                match = re.search(r'\((.*?)\)', prop)
-                if match:
-                    arg = match.groups()[0]
-                    prop_name = prop.split('(')[0]
-                    props[prop_name] = arg
-                else:
-                    props[prop] = True
-            
-            d[slice_to_tuple(key)] = props
-        
-        
-        if self.options.get('auto_block'):
-            default_block = 'APPY_BLOCK'
-            if d[slice_to_tuple(key)]['block'] == 1:
-                if self.verbose:
-                    print(f'update the `block` property for slice {key} to `{default_block}`')
-                d[slice_to_tuple(key)]['block'] = f'{default_block}'
-                self.options.setdefault('tune', {})
-                self.options['tune'][f'{default_block}'] = (1024, 512, 256, 128)
-
-        return d
-
     def visit_Assign(self, node):        
         if hasattr(node, 'pragma'):
             module = ast.Module(body=[])
             parent = module
+            init_hook = None            
+            if hasattr(node, 'init_hook'):
+                init_hook = node.init_hook
             
             slice_to_var = {}
             pragma = node.pragma
-            slice_map = self.parse_pragma(pragma)
+            slice_map = parse_pragma(pragma)
             if self.verbose:
                 print(slice_map)
+                
+            if self.options.get('auto_block'):
+                default_block = 'APPY_BLOCK'
+                last_slice = list(slice_map.keys())[-1]
+                if slice_map[last_slice]['block'] == 1:
+                    if self.verbose:
+                        print(f'update the `block` property for slice {last_slice} to `{default_block}`')
+                    slice_map[last_slice]['block'] = f'{default_block}'
+                    self.options.setdefault('tune', {})
+                    self.options['tune'][f'{default_block}'] = (1024, 512, 256, 128)
 
             for slice,properties in slice_map.items():
                 low, up = slice
@@ -138,10 +111,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
                                     'vidx', [
                                         to_ast_expr(str(low)),
                                         to_ast_expr(str(step)),
-                                        to_ast_expr(str(up)),
-                                        # new_name_node(low) if isinstance(low, str) else new_const_node(low),
-                                        # new_name_node(step),
-                                        # new_name_node(up)
+                                        to_ast_expr(str(up)),                                        
                                     ]
                                 )
                             )
@@ -155,9 +125,6 @@ class RewriteTensorOperation(ast.NodeTransformer):
                         to_ast_expr(str(low)),
                         to_ast_expr(str(up)),
                         to_ast_expr(str(step)),
-                        #new_name_node(low) if isinstance(low, str) else new_const_node(low), 
-                        #new_name_node(up),
-                        #new_name_node(step) if isinstance(step, str) else new_const_node(step),
                     )
                     loop.from_tensor_expr = True
                     
@@ -190,11 +157,13 @@ class RewriteTensorOperation(ast.NodeTransformer):
                     reduction_prelogue = None      
                     reduction_epilogue = None      
                     if properties['reduce']:
-                        reduce_op, reduce_tensor = properties['reduce'].split(':')
+                        reduce_op, reduce_tensor = properties['reduce'].split(':')                        
                         assert isinstance(node.targets[0], (ast.Name,ast.Subscript))
                         if isinstance(node.targets[0], ast.Subscript):
-                            self.options.setdefault('init_hook', [])                        
-                            self.options['init_hook'].append(reduce_tensor)
+                            #self.options.setdefault('init_hook', [])                        
+                            #self.options['init_hook'].append(reduce_tensor)
+                            #self.options['init_hook'] = [reduce_tensor]
+                            #loop.init_hook = reduce_tensor
                             # Doesn't change the target when storing to global memory, just update the 
                             # operator to do accumulation                            
                             newtarget = node.targets[0]
@@ -243,10 +212,14 @@ class RewriteTensorOperation(ast.NodeTransformer):
                         parent.body.append(to_ast_node(reduction_epilogue))
                     parent = loop
 
-                    
-                
+                                    
             # Add statement to innermost loop (now `parent` points to)
-            parent.body.append(RewriteSlice(slice_to_var).visit(node))            
+            parent.body.append(RewriteSlice(slice_to_var).visit(node)) 
+            if init_hook:                
+                for child in module.body:
+                    if isinstance(child, ast.For):
+                        child.init_hook = init_hook
+                        break
             return module.body
         else:
             return node

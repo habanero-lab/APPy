@@ -909,6 +909,7 @@ class TritonBackend(object):
         from .high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
         from .high_level_transforms.add_dim_to_slice import AddDimToSlice
         from .high_level_transforms.insert_barrier import InsertBarrier
+        from .high_level_transforms.insert_initialization import InsertInitialization
 
         func = self.func
         func.decorator_list = []
@@ -920,7 +921,8 @@ class TritonBackend(object):
 
         #print(unparse(func))
         #exit(1)
-        func = PragmaLinker().visit(func)        
+        func = PragmaLinker().visit(func)    
+        func = InsertInitialization().visit(func) 
         func = RewriteTensorOperation(self.options, self.arg_type_map).visit(func)
         #func = RenameTorchToTriton().visit(func)
         self.func = ast.fix_missing_locations(func)
