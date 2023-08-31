@@ -103,8 +103,8 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 # into the parent body. Note that the inner most compute statement
                 # is only added later once all dimensions are visited
                 # Whether to generate a loop depends on if the property specifies no loop
-                # or not (via in_reg)
-                if properties['in_reg']:
+                # or not (via single_block)
+                if properties['single_block']:
                     vidx_stmt = new_assign_node(
                                 new_name_node(index_var),
                                 new_call_node(

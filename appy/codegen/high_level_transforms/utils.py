@@ -17,7 +17,7 @@ def parse_pragma(pragma):
             continue
         
         key, value = item.split('=>')            
-        props = {'parallel': False, 'block': 1, 'in_reg': False, 'reduce': None}
+        props = {'parallel': False, 'block': 1, 'single_block': False, 'reduce': None}
         for prop in value.split(','):
             
             match = re.search(r'\((.*?)\)', prop)
