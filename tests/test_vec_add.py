@@ -17,6 +17,8 @@ for shape in [1024*128, 1024*1024, 1024*1024*2]:
     ms = appy.utils.bench(lambda: a + b)
     print(f'torch: {ms} ms')
 
+    import triton.language as tl
+    tl.store(pointer, value)
 
     for f in [kernel]:
         c = torch.zeros_like(a)

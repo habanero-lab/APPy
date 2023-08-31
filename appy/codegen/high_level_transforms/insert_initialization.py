@@ -6,7 +6,7 @@ from .utils import parse_pragma
 
 class InsertInitialization(ast.NodeTransformer):
     def visit_Assign(self, node: ast.Assign):
-        if hasattr(node, 'pragma'):
+        if hasattr(node, 'pragma') and '=>' in node.pragma:
             slice_map = parse_pragma(node.pragma)
             for key,props in slice_map.items():
                 if props['reduce'] and isinstance(node.targets[0], ast.Subscript):

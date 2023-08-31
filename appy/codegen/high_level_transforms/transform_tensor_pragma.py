@@ -69,7 +69,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
         return name
 
     def visit_Assign(self, node):        
-        if hasattr(node, 'pragma'):
+        if hasattr(node, 'pragma') and '=>' in node.pragma:
             module = ast.Module(body=[])
             parent = module
             init_hook = None            
@@ -215,7 +215,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
                                     
             # Add statement to innermost loop (now `parent` points to)
             parent.body.append(RewriteSlice(slice_to_var).visit(node)) 
-            if init_hook:                
+            if init_hook:          
                 for child in module.body:
                     if isinstance(child, ast.For):
                         child.init_hook = init_hook

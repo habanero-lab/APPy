@@ -164,6 +164,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
 
     def visit_Assign(self, node: ast.Assign):
         #ast.NodeTransformer.generic_visit(self, node)
+        
         lhs = node.targets[0]
         if is_call(node.value, ['vidx', 'vindex']) or is_attr_call(node.value, 'appy.vidx'):
             assert isinstance(lhs, ast.Name)
@@ -181,10 +182,29 @@ class TritonKernelTransformer(ast.NodeTransformer):
 
         # This will modify `node`
         self.generic_visit(node)
+
+        # Update if node is a store
         lhs = node.targets[0]
-        if unparse(lhs).startswith('tl.store'):            
+        is_atomic = False
+        if hasattr(node, 'pragma') and 'atomic' in node.pragma:
+            is_atomic = True
+
+        if unparse(lhs).startswith('tl.store'):
+            lhs: ast.Attribute = lhs
+            value_to_be_stored = node.value
+            if is_atomic:                                
+                if is_add(node.value):
+                    assert(unparse(node.value.left) == unparse(lhs).replace('store', 'load'))
+                    value_to_be_stored = node.value.right
+                    lhs.func.attr = 'atomic_add'
+                    
+                elif is_call(node, ('max', 'min')):
+                    assert(unparse(node.value.args[0]) == unparse(lhs).replace('store', 'load'))
+                    value_to_be_stored = node.value.args[1]
+                    lhs.func.attr = 'atomic_' + node.value.func.id
+
             # Insert the value to be stored into arguments
-            lhs.args.insert(1, node.value)
+            lhs.args.insert(1, value_to_be_stored)
             newnode = ast.Expr(value=lhs)            
             return newnode
         else:            

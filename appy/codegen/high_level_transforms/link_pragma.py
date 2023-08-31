@@ -11,11 +11,10 @@ class PragmaLinker(ast.NodeTransformer):
 
     def visit_Comment(self, node):        
         if node.value.startswith('#pragma parallel'):
-            self.cur_loop_pragma = node.value
-            
+            self.cur_loop_pragma = node.value            
             return None
         elif node.value.startswith('#pragma '):
-            assert '=' in node.value
+            #assert '=' in node.value
             self.cur_top_pragma = node.value
             #print(self.cur_top_pragma)
             return None

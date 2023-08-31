@@ -30,6 +30,9 @@ def is_call(node, names=None):
             names = [names]
         return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in names
 
+def is_add(node):
+    return isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add)
+
 def is_attr_call(node, name=None):
     if name == None:
         return isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
