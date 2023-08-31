@@ -148,7 +148,8 @@ class TritonKernelTransformer(ast.NodeTransformer):
         Or a tuple of the above.
         '''
         if unparse(node.slice) in ['(:, None)', '(None, :)']:
-            node.value = self.visit_Subscript(node.value)
+            if isinstance(node.value, ast.Subscript):
+                node.value = self.visit_Subscript(node.value)
             return node
 
         offset, mask = self.gen_subscript_offset(node)

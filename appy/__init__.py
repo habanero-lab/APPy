@@ -1,7 +1,7 @@
 import torch
 from torch import arange
 from .jit import jit
-
+from .utils import *
 #from .config import configs
 
 parallel = None

@@ -31,3 +31,11 @@ def parse_pragma(pragma):
         d[slice_to_tuple(key)] = props
     
     return d
+
+def get_pragma_property(pragma, property_name):
+    match = re.search(r' ' + property_name + r'\((.*?)\)', pragma)
+    if match:
+        p = match.groups()[0]
+        return p
+    else:
+        return None

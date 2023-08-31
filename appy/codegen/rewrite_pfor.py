@@ -2,6 +2,7 @@ import textwrap
 import torch
 from ast import unparse
 from appy.ast_utils import *
+from .high_level_transforms.utils import *
 from copy import deepcopy
 import appy.codegen.typesys as typesys
 from collections import OrderedDict
@@ -115,10 +116,10 @@ class RewritePFor(ast.NodeTransformer):
     def visit_For(self, node):
         if hasattr(node, 'pragma'):
             pragma = node.pragma
-            # p = self.get_pragma_property(pragma, 'num_warps')
-            # num_warps = 4
-            # if p:
-            #     num_warps = int(p)
+            num_warps = 4
+            p = get_pragma_property(pragma, 'num_warps')            
+            if p:
+                num_warps = int(p)
             
             from .high_level_transforms.rewrite_call import RenameTorchToTriton
             from .high_level_transforms.get_loaded_names import ExtractArguments
@@ -151,7 +152,7 @@ class RewritePFor(ast.NodeTransformer):
             #print(self.options)
                               
             k_args = self.make_kernel_actual_arguments(self.extracted_args)
-            if self.options.get('tune'):                    
+            if self.options.get('tune'):  
                 configs = []
                 for key, values in self.options.get('tune').items():                          
                         
@@ -172,7 +173,10 @@ class RewritePFor(ast.NodeTransformer):
             
             self.module.body.append(kf)
             
-            launch_stmt = f'fn = {kf.name}[kernel_grid]({",".join(k_args)})'
+            if self.options.get('tune'):  
+                launch_stmt = f'fn = {kf.name}[kernel_grid]({",".join(k_args)})'
+            else:
+                launch_stmt = f'fn = {kf.name}[kernel_grid]({",".join(k_args)}, num_warps={num_warps})'
             new_nodes = [to_ast_node(meta_grid), to_ast_node(launch_stmt) ]
 
             if self.options.get('print_ptx'):

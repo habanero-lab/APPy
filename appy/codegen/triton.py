@@ -867,14 +867,6 @@ class TritonBackend(object):
 
         self_outer.func = RewriteAssignWithSlice().visit(self_outer.func)
 
-    def get_pragma_property(self, pragma, property_name):
-        match = re.search(r' ' + property_name + r'\((.*?)\)', pragma)
-        if match:
-            p = match.groups()[0]
-            return p
-        else:
-            return None
-
     def make_triton_configs(self, configs):
         
         keys = []
