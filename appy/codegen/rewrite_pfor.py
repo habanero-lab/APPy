@@ -94,13 +94,22 @@ class RewritePFor(ast.NodeTransformer):
         
         triton_configs = []
         for config in configs:
+            meta_args = []
+            for meta_arg in ['num_warps', 'num_stages']:
+                val = config.pop(meta_arg, None)
+                if val:
+                    meta_args.append([meta_arg, val])
             triton_config = f'triton.Config({config}'
             if init_hook:
                 op, var = init_hook
                 if op == 'sum':
                     triton_config += f',pre_hook=init_to_zero("{var}")' 
                 else:
-                    assert False
+                    assert False            
+
+            for k, v in meta_args:
+                triton_config += f', {k}={v}'
+            
             triton_config += ')'
             triton_configs.append(triton_config)
                     
@@ -167,13 +176,24 @@ class RewritePFor(ast.NodeTransformer):
                 init_hook = None
                 if hasattr(node, 'init_hook'):
                     init_hook = node.init_hook
-                tune_code = self.make_triton_configs(configs, init_hook)
-                kf = to_ast_node(tune_code + unparse(kf))
+                tune_code = self.make_triton_configs(configs, init_hook)                
+
+            if self.options.get('configs'):
+                for config in self.options.get('configs'):
+                    for key, values in config.items(): 
+                        if key in k_args:
+                            k_args.remove(key)
+                            # Update the grid 
+                            meta_grid = meta_grid.replace(key, f'META["{key}"]')
+                    tune_code = self.make_triton_configs(self.options.get('configs'), None)
+
+            kf = to_ast_node(tune_code + unparse(kf))
+
             #print(unparse(kf))
             
             self.module.body.append(kf)
             
-            if self.options.get('tune'):  
+            if self.options.get('tune') or self.options.get('configs'):  
                 launch_stmt = f'fn = {kf.name}[kernel_grid]({",".join(k_args)})'
             else:
                 launch_stmt = f'fn = {kf.name}[kernel_grid]({",".join(k_args)}, num_warps={num_warps})'

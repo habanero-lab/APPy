@@ -45,30 +45,6 @@ class TritonBackend(object):
         self.kernel_count = 0
         self.var_count = 0
 
-    def make_triton_configs(self, configs):
-        keys = []
-        for param in self.get_kernel_function_parameters():
-            if '_shape_' in param and 'tl.constexpr' in param:
-                keys.append('"' + param.replace(': tl.constexpr', '') + '"')
-        
-        triton_configs = []
-        for config in configs:
-            triton_config = f'triton.Config({config}'
-            if 'init_hook' in self.options:            
-                for tensor in self.options['init_hook']:
-                    triton_config += f',pre_hook=init_to_zero("{tensor}")'
-            triton_config += ')'
-            triton_configs.append(triton_config)
-                    
-        code = textwrap.dedent(f'''
-        @triton.autotune(
-            configs=[{','.join(triton_configs)}],
-            key=[{','.join(keys)}],
-        )
-        ''')        
-        return code
-
-        
     def codegen(self):
         from .high_level_transforms.range_rewriter import RewriteRange
         from .high_level_transforms.rewrite_call import RenameTorchToTriton
