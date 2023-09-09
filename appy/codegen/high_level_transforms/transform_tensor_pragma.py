@@ -68,6 +68,30 @@ class RewriteTensorOperation(ast.NodeTransformer):
         self.tmp_var_count += 1
         return name
 
+    def make_prelogue_epilogue(self, reduce_op, target):
+        target_s = unparse(target)
+        init_value = get_init_val_for_reduction(reduce_op)
+        if isinstance(target, ast.Subscript):            
+            prelogue = [
+                to_ast_node(f'{target_s} = float("{init_value}")')
+            ]
+            epilogue = None        
+        else:
+            import appy.codegen.typesys as typesys
+            dtype  = None
+            for e in self.arg_types.values():
+                if isinstance(e, typesys.Tensor):
+                    dtype = e.get_tl_dtype()
+                    break
+            assert dtype != None
+
+            prelogue = [
+                to_ast_node(f'{target_s} = float("{init_value}")'),
+                to_ast_node(f'{target_s} = {target_s}.to({dtype})'),
+            ]
+            epilogue = None
+        return target, prelogue, epilogue
+
     def visit_Assign(self, node):        
         if hasattr(node, 'pragma') and '=>' in node.pragma:
             module = ast.Module(body=[])
@@ -154,8 +178,8 @@ class RewriteTensorOperation(ast.NodeTransformer):
                     # for 2) support only scalar reduction variable, which we know how to 
                     # initialize. Multi-dimensional array reduction must be stored to
                     # global memory.
-                    reduction_prelogue = None      
-                    reduction_epilogue = None      
+                    loop_prelogue = None      
+                    loop_epilogue = None      
                     if properties['reduce']:
                         reduce_op, reduce_tensor = properties['reduce'].split(':')                        
                         assert isinstance(node.targets[0], (ast.Name,ast.Subscript))
@@ -172,28 +196,28 @@ class RewriteTensorOperation(ast.NodeTransformer):
                         # This is to gen code for patterns like a = sum(A[i,:j]), where :j is blocked in a loop
                         # Multiple possible codegen exists. Currently we initialize the original target to
                         # proper initial value. This requires dtype known.
-                        import appy.codegen.typesys as typesys
-                        dtype  = None
-                        for e in self.arg_types.values():
-                            if isinstance(e, typesys.Tensor):
-                                dtype = e.get_tl_dtype()
-                                break
-                        assert dtype != None
-                        # reduce_tmp = self.new_variable_name()
+                        # import appy.codegen.typesys as typesys
+                        # dtype  = None
+                        # for e in self.arg_types.values():
+                        #     if isinstance(e, typesys.Tensor):
+                        #         dtype = e.get_tl_dtype()
+                        #         break
+                        # assert dtype != None
+                        # # reduce_tmp = self.new_variable_name()
+                        # # init_value = get_init_val_for_reduction(reduce_op)
+                        # target_s = unparse(node.targets[0])
                         # init_value = get_init_val_for_reduction(reduce_op)
-                        target_s = unparse(node.targets[0])
-                        init_value = get_init_val_for_reduction(reduce_op)
-                        reduction_prelogue = f'{target_s} = float("{init_value}"); {target_s} = {target_s}.to({dtype})'
-                        if isinstance(node.targets[0], ast.Subscript):
-                            reduction_prelogue = f'{target_s} = float("{init_value}")'
-                        # reduction_epilogue = f'{reduce_tensor} = tl.{reduce_op}({reduce_tmp})'                            
-                        newtarget = node.targets[0]
+                        # loop_prelogue = f'{target_s} = float("{init_value}"); {target_s} = {target_s}.to({dtype})'
+                        # if isinstance(node.targets[0], ast.Subscript):
+                        #     loop_prelogue = f'{target_s} = float("{init_value}")'
+                        # # reduction_epilogue = f'{reduce_tensor} = tl.{reduce_op}({reduce_tmp})'                            
+                        # newtarget = node.targets[0]
                         
-                        # print(reduction_prelogue)
-                        # print(reduction_epilogue)
-                        # exit(1)
-
-                        newtarget_s = unparse(newtarget)
+                        # # print(loop_prelogue)
+                        # # print(reduction_epilogue)
+                        # # exit(1)
+                        new_target, loop_prelogue, loop_epilogue = self.make_prelogue_epilogue(reduce_op, node.targets[0])
+                        newtarget_s = unparse(new_target)
                         if reduce_op == 'sum':                            
                             newnode_s = f'{newtarget_s} = {newtarget_s} + {unparse(node.value)}'                    
                         elif reduce_op == 'max':                            
@@ -204,17 +228,19 @@ class RewriteTensorOperation(ast.NodeTransformer):
                             assert False, 'unsupported'
                         node = to_ast_node(newnode_s)
 
-                    if reduction_prelogue:
-                        for stmt in to_ast_nodes(reduction_prelogue):
-                            parent.body.append(RewriteSlice(slice_to_var).visit(stmt))
-                        
+
+                    if loop_prelogue:
+                        for stmt in loop_prelogue:
+                            parent.body.append(RewriteSlice(slice_to_var).visit(stmt))                        
 
                     if properties['parallel']:
                         parent.body.append(ast.Comment(value='#pragma parallel'))
                     parent.body.append(loop)
 
-                    if reduction_epilogue:
-                        parent.body.append(to_ast_node(reduction_epilogue))
+                    if loop_epilogue:
+                        for stmt in loop_epilogue:
+                            dump(stmt)
+                            parent.body.append(RewriteSlice(slice_to_var).visit(stmt))  
                     parent = loop
 
                                     
