@@ -38,7 +38,7 @@ def kernel1(A, B, C, BM=64, BN=64, BK=32):
 def kernel_op(A, B, C):
     M, K = A.shape
     K, N = B.shape
-    #pragma :M=>parallel,block(BM) :N=>parallel,block(BN) :K=>block(BK)
+    #pragma :M=>parallel,block(BM) :N=>parallel,block(BN) :K=>reduce(sum:C),block(BK)
     C[:M, :N] = A[:M, :K] @ B[:K, :N]
 
 # def kernel(a, b, c, Bi, Bj, Bk):
