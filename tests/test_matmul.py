@@ -16,7 +16,7 @@ def kernel(A, B, C, BM=32, BN=32, BK=32):
                 vk = appy.vidx(k, BK, bound=K)
                 C[vm, vn] += A[vm, vk] @ B[vk, vn] 
 
-@appy.jit(tune={'BM': [32, 64], 'BN': [32, 64], 'BK': [32, 64]})
+@appy.jit#(tune={'BM': [32, 64], 'BN': [32, 64], 'BK': [32, 64]})
 def kernel1(A, B, C, BM=64, BN=64, BK=32):
     M, K = A.shape
     K, N = B.shape
