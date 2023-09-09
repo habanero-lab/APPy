@@ -21,9 +21,9 @@ def max(a, axis=0):
 
 def step(start, stepsize, bound=None):
     if bound:
-        r = torch.arange(start, min(bound, start+stepsize))
+        r = slice(start, min(bound, start+stepsize))
     else:
-        r = torch.arange(start, start+stepsize)
+        r = slice(start, start+stepsize)
     return r
 
 def debug_barrier():

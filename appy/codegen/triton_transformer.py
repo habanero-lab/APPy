@@ -210,3 +210,8 @@ class TritonKernelTransformer(ast.NodeTransformer):
         else:            
             return node
         
+    def visit_BinOp(self, node: ast.BinOp):        
+        self.generic_visit(node)
+        if isinstance(node.op, ast.MatMult):
+            node = new_attr_call_node('tl.dot', [node.left, node.right], keywords={'allow_tf32': to_ast_expr('False')})
+        return node
