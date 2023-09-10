@@ -72,10 +72,16 @@ class RewriteTensorOperation(ast.NodeTransformer):
         target_s = unparse(target)
         init_value = get_init_val_for_reduction(reduce_op)
         if isinstance(target, ast.Subscript):            
+            acc_var = self.new_variable_name()
             prelogue = [
-                to_ast_node(f'{target_s} = float("{init_value}")')
+                to_ast_node(f'{target_s} = float("{init_value}")'),
+                to_ast_node(f'{acc_var} = {target_s}')
+                #to_ast_node(f'{acc_var} = tl.zeros([BM, BN], dtype=tl.float32)')
             ]
-            epilogue = None        
+            epilogue = [
+                to_ast_node(f'{target_s} = {acc_var}')
+            ]
+            target = to_ast_expr(acc_var)
         else:
             import appy.codegen.typesys as typesys
             dtype  = None

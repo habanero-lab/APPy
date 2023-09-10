@@ -177,6 +177,7 @@ class RewritePFor(ast.NodeTransformer):
                 if hasattr(node, 'init_hook'):
                     init_hook = node.init_hook
                 tune_code = self.make_triton_configs(configs, init_hook)                
+                kf = to_ast_node(tune_code + unparse(kf))
 
             if self.options.get('configs'):
                 for config in self.options.get('configs'):
@@ -185,9 +186,9 @@ class RewritePFor(ast.NodeTransformer):
                             k_args.remove(key)
                             # Update the grid 
                             meta_grid = meta_grid.replace(key, f'META["{key}"]')
-                    tune_code = self.make_triton_configs(self.options.get('configs'), None)
-
-            kf = to_ast_node(tune_code + unparse(kf))
+                tune_code = self.make_triton_configs(self.options.get('configs'), None)
+                kf = to_ast_node(tune_code + unparse(kf))
+            
 
             #print(unparse(kf))
             
