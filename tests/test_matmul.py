@@ -1,6 +1,9 @@
 import torch
 import appy
 from appy.utils import *
+from triton import ops as triton_ops
+
+dtype = torch.float64
 
 #@appy.jit(configs=appy.get_matmul_configs('BM', 'BN', 'BK'))
 def kernel(A, B, C, BM=32, BN=32, BK=32):
@@ -18,7 +21,7 @@ def kernel(A, B, C, BM=32, BN=32, BK=32):
                 C[vm, vn] += A[vm, vk] @ B[vk, vn] 
 
 
-@appy.jit(configs=appy.get_matmul_configs('BM', 'BN', 'BK'))
+@appy.jit(configs=appy.get_matmul_configs('BM', 'BN', 'BK'), use_compiled_file='/home/tzhou80/projects/SLAP/.appyl_kernels/kernel1.py')
 def kernel1(A, B, C, BM=64, BN=64, BK=32):
     M, K = A.shape
     K, N = B.shape
@@ -34,7 +37,7 @@ def kernel1(A, B, C, BM=64, BN=64, BK=32):
                 acc += A[vm, vk] @ B[vk, vn]
             C[vm, vn] = acc 
 
-@appy.jit(configs=appy.get_matmul_configs('BM', 'BN', 'BK'), dump_final_appy=1)
+@appy.jit(configs=appy.get_matmul_configs('BM', 'BN', 'BK'))
 def kernel_op(A, B, C):
     M, K = A.shape
     K, N = B.shape
@@ -81,16 +84,23 @@ def kernel_op(A, B, C):
 def torch_kernel(A, B, C):
     torch.matmul(A, B, out=C)
 
-dtype = torch.float32
-for M, N, K in [(1024, 1024, 1024), (4096, 4096, 4096), (1200, 1300, 1400)]:
+from intrepydd.examples.attention.bench_mm import kernel as pydd_kernel
+
+torch.backends.cuda.matmul.allow_tf32 = False
+
+for M, N, K in [(1024, 1024, 1024), (4096, 4096, 4096), (2000, 2300, 2600)]:
     print(f'M: {M}, N: {N}, K: {K}')
     a = torch.randn(M, K, device='cuda', dtype=dtype)
     b = torch.randn(K, N, device='cuda', dtype=dtype)
     c_ref = a @ b
 
-    for f in [torch_kernel, kernel1, kernel_op]:
+    #print(f'triton_ops time: {bench(lambda: triton_ops.matmul(a, b))} ms')
+    print(f'pydd_ops time: {bench(lambda: pydd_kernel(a, b))} ms')
+
+    for f in [torch_kernel, kernel_op]:
         c = torch.empty(M, N, device='cuda', dtype=dtype)
         
         f(a, b, c)
         assert(allclose(c_ref, c, atol=1e-3))
         print(f'{f.__name__} time: {bench(lambda: f(a, b, c))} ms')
+
