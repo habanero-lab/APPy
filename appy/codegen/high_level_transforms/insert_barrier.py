@@ -4,6 +4,21 @@ from appy.ast_utils import *
 from copy import deepcopy
 
 class AppendBarrierToWrite(ast.NodeTransformer):
+    # def visit_For(self, node: ast.For):
+        # newbody = []
+        # for s in node.body:
+        #     newbody.append(s)
+        #     if isinstance(s, ast.Assign) and isinstance(s.targets[0], ast.Subscript):
+        #         newbody += [to_ast_node('tl.debug_barrier()')]
+            
+        #     if isinstance(s, ast.For):
+        #         if hasattr(s, 'from_tensor_expr'):
+        #             newbody += [to_ast_node('tl.debug_barrier()')]
+        #         else:
+
+        # node.body = newbody
+        # return node
+
     def visit_Assign(self, node: ast.Assign):        
         if isinstance(node.targets[0], ast.Subscript):
             #print('to insert after write')
@@ -15,7 +30,11 @@ class AppendBarrierToWrite(ast.NodeTransformer):
 class InsertBarrier(ast.NodeTransformer):
     def visit_For(self, node: ast.For):
         if not hasattr(node, 'pragma'):
+            self.generic_visit(node)
             return node
+
+        print('from te:', hasattr(node, 'from_tensor_expr'))
+        print(unparse(node))
         
         # The loop can be either parallel or not parallel
         # Parallel loops can be from either original program or expanded ops

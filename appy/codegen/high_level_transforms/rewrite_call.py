@@ -21,8 +21,7 @@ class RenameTorchToTriton(ast.NodeTransformer):
 
     def visit_Call(self, node: ast.Call):
         if unparse(node).startswith('torch.mv('):
-            assert len(node.args) == 2
-            
+            assert len(node.args) == 2            
             newnode = new_attr_call_node(
                     'torch.sum', 
                     [new_mul_node(node.args[0], node.args[1])],
@@ -30,8 +29,17 @@ class RenameTorchToTriton(ast.NodeTransformer):
                 )
             newnode.lineno = node.lineno
             node = newnode
+        elif unparse(node).startswith('torch.dot('):
+            # Rewrite 1D vector dot product
+            assert len(node.args) == 2
+            newnode = new_attr_call_node(
+                    'torch.sum', 
+                    [new_mul_node(node.args[0], node.args[1])],
+                )
+            newnode.lineno = node.lineno
+            node = newnode
 
-        if unparse(node).startswith('appy.atomic_'):
+        elif unparse(node).startswith('appy.atomic_'):
             # Add the first and the second argument
             assert len(node.args) == 3
             new_args = [
