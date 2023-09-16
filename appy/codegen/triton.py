@@ -50,7 +50,6 @@ class TritonBackend(object):
         from .high_level_transforms.rewrite_call import RenameTorchToTriton
         from .high_level_transforms.link_pragma import PragmaLinker
         from .high_level_transforms.aug_assign_rewriter import RewriteAugAssign
-        from .high_level_transforms.shape_analysis import ShapeAnalysis
         from .high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
         from .high_level_transforms.add_dim_to_slice import AddDimToSlice
         from .high_level_transforms.insert_barrier import InsertBarrier, RemoveBarrierInsideTE

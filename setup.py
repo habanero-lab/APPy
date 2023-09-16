@@ -5,6 +5,6 @@ setup(
     version='0.1',
     packages=['appy'],
     install_requires=[
-        'torch', 'triton==2.0.0', 'ast-comments', 
+        'torch', 'triton', 'ast-comments', 
     ],
 )
