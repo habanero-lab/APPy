@@ -78,6 +78,8 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 to_ast_node(f'{acc_var} = {target_s}')
                 #to_ast_node(f'{acc_var} = tl.zeros([BM, BN], dtype=tl.float32)')
             ]
+            # Synchronization optimization
+            prelogue[0].no_sync = True
             epilogue = [
                 to_ast_node(f'{target_s} = {acc_var}')
             ]
