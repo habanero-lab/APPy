@@ -58,7 +58,7 @@ class RewriteSlice(ast.NodeTransformer):
 
 class RewriteTensorOperation(ast.NodeTransformer):
     def __init__(self, options, arg_types):
-        self.verbose = True
+        self.verbose = False
         self.options = options
         self.arg_types = arg_types
         self.tmp_var_count = 0

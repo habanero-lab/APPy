@@ -11,9 +11,9 @@ def bench(fn):
     N = 20
     one_run = t0.timeit(1).mean
     if one_run > 1:
-        N = 2
+        N = 5
     elif one_run > 5:
-        N = 1
+        N = 2
     return t0.timeit(N).mean * 1000
 
 def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):

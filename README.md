@@ -1,4 +1,4 @@
-Annotated Parallelism for Python (APPy) is parallel programming model that allows you to parallelize your sequential loops with annotations in the comments.
+Annotated Parallelism for Python (APPy) is parallel programming model that allows you to parallelize your sequential loops or tensor expressions with annotations in the comments.
 
 
 # Install
@@ -7,21 +7,19 @@ Annotated Parallelism for Python (APPy) is parallel programming model that allow
 pip install -e .
 ```
 
-# Clauses
-A clause starts with `#pragma`:
-- `parallel`
-  - Indicate different iterations of the loop can run in parallel in SPMD style.
-- `block(BLOCKSIZE)`
-  - To block the loop, for SIMD parallelism or data reuse.
-  - With an optional blocksize, which defaults to 128 if not specified.
-  - Two conditions to block a loop
-    - Adjacent loop iterations apply the same operation (to different data)
-    - Adjacent loop iterations reuse the same data
-  - Supported with contraints
-    - A with annotated with `block` cannot be annotated with `reduction` at the same time.
-    - No other loops are blocked, automatically via pragma or mannually.
-- `reduction(var)`
-  - Indicate a reduction pattern on variable `var`. 
+# Quick Start
+
+```bash
+python tests/test_vec_add.py
+```
+
+# Notes
+
+* APPy only works with pytorch device=cuda tensors for now. So if you have
+numpy or cupy arrays, be sure to convert them to pytorch cuda tensors.
+* Removing `@appy.jit` makes the function a normal Python function, which
+could be helpful for debugging.
+
 
 # Element-Wise Operation
 ```python
