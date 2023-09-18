@@ -5,7 +5,7 @@ import appy
 def kernel_block_oriented(a, b, c, N, BLOCK=256):
     #pragma parallel
     for i in range(0, N, BLOCK):  
-        vi = vidx(i, BLOCK, bound=N)
+        vi = appy.vidx(i, BLOCK, bound=N)
         c[vi] = a[vi] + b[vi]
 
 @appy.jit(auto_block=True)
