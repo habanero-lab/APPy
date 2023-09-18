@@ -26,14 +26,15 @@ could be helpful for debugging.
 ```python
 @jit
 def add(a, b, c, N, BLOCK=128):
-    for i in range(0, N, BLOCK):  #pragma parallel
+    #pragma parallel
+    for i in range(0, N, BLOCK):  
         c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
 ```
 
 or tensor operator based pragmas:
 ```python
-@jit(auto_block=True)
-def add(a, b, c, N, BLOCK=128):
+@appy.jit(auto_block=True)
+def kernel(a, b, c, N, BLOCK=128):
     #pragma :N=>parallel
     c[:N] = a[:N] + b[:N]
 ```
@@ -42,11 +43,13 @@ def add(a, b, c, N, BLOCK=128):
 # Grid Reduction
 
 ```python
-@jit
-def sum(a, b, N, BLOCK=256):
-    b[0] = 0
-    for i in range(0, N, BLOCK):  #pragma parallel reduction(b)
-        b[0] += torch.sum(a[i:i+BLOCK])
+@appy.jit
+def kernel(a, b, N, BLOCK=512):
+    #pragma parallel
+    for i in range(0, N, BLOCK):  
+        vi = appy.vidx(i, BLOCK, bound=N)
+        #pragma atomic
+        b[0] += torch.sum(a[vi])
 ```
 
 
