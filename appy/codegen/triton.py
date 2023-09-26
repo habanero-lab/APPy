@@ -25,6 +25,7 @@ class TritonBackend(object):
             self.arg_values.append(keyword_arg.value)
         
         self.module = ast.parse(textwrap.dedent('''
+            import numpy as np
             import torch
             import triton
             import triton.language as tl

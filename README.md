@@ -1,5 +1,30 @@
 Annotated Parallelism for Python (APPy) is parallel programming model that allows you to parallelize your sequential loops or tensor expressions with annotations in the comments.
 
+APPy supports two programming models:
+
+- A block-oriented (Vanilla) programming model, where the user uses explicit loops and annotate the loops with OpenMP/OpenACC like pragmas. Unlike OpenMP where a loop iteration works on typically only one data element, in APPy, it's recommended to make each loop iteration work on a block of data at a time, e.g. 1 to 2048 elements. Depending on the specific device, 256 is a good starting point to explore various block sizes. The best block size is hardware-specific and will need to be tuned.
+- A tensor-oriented programming model, where the user is allowed to directly annotate tensor expressions. In the vanilla programming model, the user is restricted to work with a small block of data at a time, which can be cumbersome. The tensor oriented model allows users to directly work with tensors with arbitrary size and dimensions.
+
+Expressing vector addition using either model are as follows:
+
+```python
+@jit
+def kernel_block_oriented(a, b, c, N, BLOCK=128):
+    #pragma parallel
+    for i in range(0, N, BLOCK):  
+        vi = appy.vidx(i, BLOCK, bound=N)
+        c[vi] = a[vi] + b[vi]
+```
+where `#pragma parallel` is equivalent to `#pragma parallel for` in OpenMP or OpenACC. Note that how each loop iteration works on `BLOCK` elements. 
+
+Or tensor operator based pragmas:
+```python
+@appy.jit(auto_block=True)
+def kernel_tensor_oriented(a, b, c, N, BLOCK=128):
+    #pragma :N=>parallel
+    c[:N] = a[:N] + b[:N]
+```
+Each tensor expression must have all dimensions named explicitly using slices, e.g. `:N`. And in the annotation, each dimension must appear and be specified a set of possible properties. In the example above, there's only one dimension (`:N`), and its property is `parallel`, specified using syntax `dimension=>property1,property2,...`.
 
 # Install
 
@@ -15,30 +40,15 @@ python tests/test_vec_add.py
 
 # Notes
 
-* APPy only works with pytorch device=cuda tensors for now. So if you have
+* APPy requires the tensor arguments to be pytorch cuda tensors for now. So if you have
 numpy or cupy arrays, be sure to convert them to pytorch cuda tensors.
+* APPy only supports compiling basic element-wise and reduction operations. Higher level functions like `numpy.linalg.inv` are not supported.
 * Removing `@appy.jit` makes the function a normal Python function, which
 could be helpful for debugging.
 * The result of a reduction must not be used as a sub-expression.
 
 
-# Element-Wise Operation
-```python
-@jit
-def add(a, b, c, N, BLOCK=128):
-    #pragma parallel
-    for i in range(0, N, BLOCK):  
-        c[i:i+BLOCK] = a[i:i+BLOCK] + b[i:i+BLOCK]
-```
-
-or tensor operator based pragmas:
-```python
-@appy.jit(auto_block=True)
-def kernel(a, b, c, N, BLOCK=128):
-    #pragma :N=>parallel
-    c[:N] = a[:N] + b[:N]
-```
-
+More examples.
 
 # Grid Reduction
 
