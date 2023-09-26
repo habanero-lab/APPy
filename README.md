@@ -3,9 +3,9 @@ Annotated Parallelism for Python (APPy) is parallel programming model that allow
 APPy supports two programming models:
 
 - A block-oriented (Vanilla) programming model, where the user uses explicit loops and annotate the loops with OpenMP/OpenACC like pragmas. Unlike OpenMP where a loop iteration works on typically only one data element, in APPy, it's recommended to make each loop iteration work on a block of data at a time, e.g. 1 to 2048 elements. Depending on the specific device, 256 is a good starting point to explore various block sizes. The best block size is hardware-specific and will need to be tuned.
-- A tensor-oriented programming model, where the user is allowed to directly annotate tensor expressions. In the vanilla programming model, the user is restricted to work with a small block of data at a time, which can be cumbersome. The tensor oriented model allows users to directly work with tensors with arbitrary size and dimensions.
+- A tensor-oriented programming model, where the user is allowed to directly annotate tensor expressions. In the vanilla programming model, the user is restricted to work with a small block of data at a time, which can be cumbersome. The tensor oriented model allows users to directly work with tensors with arbitrary size and dimensions. 
 
-Expressing vector addition using either model are as follows:
+Expressing vector addition using the vanilla model is as follows:
 
 ```python
 @jit
@@ -15,9 +15,12 @@ def kernel_block_oriented(a, b, c, N, BLOCK=128):
         vi = appy.vidx(i, BLOCK, bound=N)
         c[vi] = a[vi] + b[vi]
 ```
-where `#pragma parallel` is equivalent to `#pragma parallel for` in OpenMP or OpenACC. Note that how each loop iteration works on `BLOCK` elements. 
+where `#pragma parallel` is equivalent to `#pragma parallel for` in OpenMP or OpenACC. Note that how each loop iteration works on `BLOCK` elements. Two key pieces are
+* Have a parallel loop (can be nested)
+* Work with 1-2048 elements per loop iteration
 
-Or tensor operator based pragmas:
+
+Or use the tensor based pragmas:
 ```python
 @appy.jit(auto_block=True)
 def kernel_tensor_oriented(a, b, c, N, BLOCK=128):
@@ -25,6 +28,8 @@ def kernel_tensor_oriented(a, b, c, N, BLOCK=128):
     c[:N] = a[:N] + b[:N]
 ```
 Each tensor expression must have all dimensions named explicitly using slices, e.g. `:N`. And in the annotation, each dimension must appear and be specified a set of possible properties. In the example above, there's only one dimension (`:N`), and its property is `parallel`, specified using syntax `dimension=>property1,property2,...`.
+
+The tensor oriented programming model is higher level than the block oriented model, and no longer requires the user to explicitly block the operation. Instead, the user can enable option `auto_block=True` to let the compiler automatically block the tensor operation. But the user do need to specify whether a dimension is parallel or not, at minimum. On top of that, the compiler also performs more automatic optimizations with the tensor oriented model.
 
 # Install
 
