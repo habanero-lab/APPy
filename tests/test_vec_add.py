@@ -1,5 +1,6 @@
 import torch
 import appy
+import numba
 
 @appy.jit
 def kernel_block_oriented(a, b, c, N, BLOCK=256):
@@ -7,6 +8,17 @@ def kernel_block_oriented(a, b, c, N, BLOCK=256):
     for i in range(0, N, BLOCK):  
         vi = appy.vidx(i, BLOCK, bound=N)
         c[vi] = a[vi] + b[vi]
+
+@appy.jit
+def kernel_loop_no_simd(a, b, c, N):
+    #pragma parallel
+    for i in range(N):  
+        c[i] = a[i] + b[i]
+
+@numba.jit
+def kernel_numba(a, b, c, N):
+    for i in numba.prange(N):  
+        c[i] = a[i] + b[i]
 
 @appy.jit(auto_block=True)
 def kernel_tensor_oriented(a, b, c, N):
@@ -24,8 +36,16 @@ def test_vec_add():
             b = torch.randn(N, device='cuda', dtype=dtype)
             c_ref = torch.randn(N, device='cuda', dtype=dtype)
             kernel_torch(a, b, c_ref, N)
+
+            a_np = a.cpu().numpy()
+            b_np = b.cpu().numpy()
+            c_np = c_ref.cpu().numpy()
+            np_ms = appy.utils.bench(lambda: a_np + b_np)
+            nb_ms = appy.utils.bench(lambda: kernel_numba(a_np, b_np, c_np, N))
+            print(f'numpy: {np_ms:.4f} ms')
+            print(f'numba: {nb_ms:.4f} ms')
             
-            for f in [kernel_torch, kernel_block_oriented, kernel_tensor_oriented]:
+            for f in [kernel_torch, kernel_loop_no_simd, kernel_block_oriented, kernel_tensor_oriented]:
                 c = torch.empty_like(a)
                 f(a, b, c, N)
                 assert(torch.allclose(c, c_ref))
