@@ -183,6 +183,11 @@ class TritonKernelTransformer(ast.NodeTransformer):
         # This will modify `node`
         self.generic_visit(node)
 
+        dump(node)
+        if hasattr(node, 'pragma'):
+            print(node.pragma)
+            print(unparse(node))
+
         # Update if node is a store
         lhs = node.targets[0]
         is_atomic = False
