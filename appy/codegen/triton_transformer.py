@@ -16,7 +16,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
         return target, low, up, step
 
     def visit_For(self, node):
-        if hasattr(node, 'pragma'):
+        if hasattr(node, 'pragma') and 'parallel' in node.pragma:
             index_var = node.target
             low, up, step = node.iter.args
             self.grid.append(f'(({unparse(up)} - ({unparse(low)}) + {unparse(step)} - 1) // ({unparse(step)}))')

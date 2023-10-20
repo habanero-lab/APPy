@@ -7,6 +7,16 @@ from copy import deepcopy
 import appy.codegen.typesys as typesys
 from collections import OrderedDict
 
+class ReplaceWithSum(ast.NodeTransformer):
+    def visit_Assign(self, node):
+        if hasattr(node, 'reduce'):
+            assert node.reduce == '+'
+            assert isinstance(node.value, ast.BinOp)
+            newnode_s = f'{unparse(node.targets[0])} = sum({unparse(node.value.right)})'
+            return to_ast_node(newnode_s)
+        else:
+            return node
+
 class RewritePFor(ast.NodeTransformer):
     def __init__(self, module, options, arg_type_map):
         self.module = module
@@ -122,16 +132,22 @@ class RewritePFor(ast.NodeTransformer):
         return code
 
 
-    def visit_For(self, node):
+    def visit_For(self, node: ast.For):
         if hasattr(node, 'pragma'):
-            pragma = node.pragma
-            num_warps = 4
-            p = get_pragma_property(pragma, 'num_warps')            
-            if p:
-                num_warps = int(p)
-            
+            from .high_level_transforms.block_loop import BlockLoop
             from .high_level_transforms.rewrite_call import RenameTorchToTriton
             from .high_level_transforms.get_loaded_names import ExtractArguments
+
+            pragma = node.pragma
+            num_warps = 4
+            p = get_pragma_property(pragma, 'num_warps') 
+            if p:
+                num_warps = int(p)
+
+            node = BlockLoop().visit(node)
+            print(unparse(node))
+            #exit(1)
+            
             node = RenameTorchToTriton().visit(node)
             self.extracted_args = {}
             ExtractArguments(self.extracted_args).visit(node)
@@ -201,7 +217,8 @@ class RewritePFor(ast.NodeTransformer):
             new_nodes = [to_ast_node(meta_grid), to_ast_node(launch_stmt) ]
 
             if self.options.get('print_ptx'):
-                new_nodes.append(to_ast_node('print(fn.asm["ttgir"])'))
+                #new_nodes.append(to_ast_node('print(fn.asm["ttgir"])'))
+                new_nodes.append(to_ast_node('print(fn.asm["ptx"])'))
             return new_nodes
         else:
             self.generic_visit(node)

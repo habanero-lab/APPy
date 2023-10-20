@@ -7,16 +7,15 @@ class PragmaLinker(ast.NodeTransformer):
     def __init__(self):
         self.cur_loop_pragma = None
         self.cur_top_pragma = None
-        self.verbose = False
+        self.verbose = True
 
-    def visit_Comment(self, node):        
-        if node.value.startswith('#pragma parallel'):
-            self.cur_loop_pragma = node.value            
-            return None
-        elif node.value.startswith('#pragma '):
-            #assert '=' in node.value
-            self.cur_top_pragma = node.value
-            #print(self.cur_top_pragma)
+    def visit_Comment(self, node):
+        comment = node.value  
+        if comment.startswith('#pragma '):
+            if '=>' not in comment and 'atomic' not in comment:
+                self.cur_loop_pragma = node.value                
+            else:
+                self.cur_top_pragma = node.value
             return None
         else:
             return node

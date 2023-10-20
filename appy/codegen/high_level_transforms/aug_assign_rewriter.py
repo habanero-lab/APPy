@@ -12,4 +12,9 @@ class RewriteAugAssign(ast.NodeTransformer):
         if isinstance(leftcopy, ast.Subscript):
             leftcopy.ctx = ast.Load()
         newnode.value = ast.BinOp(left=leftcopy, op=node.op, right=node.value)
+
+        if isinstance(node.op, ast.Add):
+            newnode.reduce = '+'
+            #print('mark as + reduction')
+            #dump(newnode)
         return newnode
