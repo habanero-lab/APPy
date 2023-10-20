@@ -7,7 +7,7 @@ class PragmaLinker(ast.NodeTransformer):
     def __init__(self):
         self.cur_loop_pragma = None
         self.cur_top_pragma = None
-        self.verbose = True
+        self.verbose = False
 
     def visit_Comment(self, node):
         comment = node.value  

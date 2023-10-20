@@ -6,11 +6,10 @@ def kernel_block_oriented(a, b, N, BLOCK=512):
     '''
     The output array must be zero-initialized in order to do parallel reduction.
     '''
-    #pragma parallel
-    for i in range(0, N, BLOCK):  
-        vi = appy.vidx(i, BLOCK, bound=N)
+    #pragma parallel block(BLOCK)
+    for i in range(N):  
         #pragma atomic
-        b[0] += torch.sum(a[vi])
+        b[0] += a[i]
 
 #@appy.jit(auto_block=True)     # TODO: parallel reduction in TEs are not supported yet 
 def kernel_tensor_oriented(a, b, N):
