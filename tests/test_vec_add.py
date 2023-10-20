@@ -54,3 +54,25 @@ def test_vec_add():
 
 if __name__ == '__main__':
     test_vec_add()
+
+
+
+'''
+@appy.jit
+def loop_kernel(a, b, c, N):
+    #pragma parallel
+    for i in range(N):  
+        c[i] = a[i] + b[i]
+
+@appy.jit
+def loop_kernel(a, b, c, N, BN=256):
+    #pragma parallel
+    for i in range(0, N, BN):  
+        i = appy.vidx(i, BN, bound=N)
+        c[i] = a[i] + b[i]
+
+@appy.jit(auto_block=True)
+def tensor_kernel(a, b, c, N):
+    #pragma :N=>parallel
+    c[:N] = a[:N] + b[:N] 
+'''
