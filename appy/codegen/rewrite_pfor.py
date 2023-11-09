@@ -145,7 +145,7 @@ class RewritePFor(ast.NodeTransformer):
                 num_warps = int(p)
 
             node = BlockLoop().visit(node)
-            print(unparse(node))
+            #print(unparse(node))
             #exit(1)
             
             node = RenameTorchToTriton().visit(node)

@@ -1,7 +1,7 @@
 import ast_comments as ast
 from ast import unparse
 from appy.ast_utils import *
-
+from .utils import *
 
 class PragmaLinker(ast.NodeTransformer):
     def __init__(self):
@@ -9,13 +9,40 @@ class PragmaLinker(ast.NodeTransformer):
         self.cur_top_pragma = None
         self.verbose = False
 
+    def convert_simd_directive(self, pragma):
+        if ' simd' in pragma:
+            arg = get_pragma_property(pragma, 'simd')
+            if arg:
+                pragma = pragma.replace(' simd', ' block')
+            else:
+                # Compiler determines a block size
+                if 'reduction' in pragma:
+                    pragma = pragma.replace(' simd', ' block(512)')
+                else:
+                    pragma = pragma.replace(' simd', ' block(256)')
+        return pragma
+
+    def convert_le_prop(self, pragma):
+        if 'le(' in pragma:
+            #print(pragma)
+            i = pragma.find('le(') + len('le(')
+            size = ''
+            while pragma[i] != ')':
+                size += pragma[i]
+                i += 1
+            
+            pragma = pragma.replace(f'le({size})', f'block({size}),single_block')
+            #print(pragma)
+            
+        return pragma
+
     def visit_Comment(self, node):
         comment = node.value  
         if comment.startswith('#pragma '):
-            if '=>' not in comment and 'atomic' not in comment:
-                self.cur_loop_pragma = node.value                
+            if comment.startswith('#pragma parallel') or comment.startswith('#pragma simd'):
+                self.cur_loop_pragma = self.convert_simd_directive(node.value)
             else:
-                self.cur_top_pragma = node.value
+                self.cur_top_pragma = self.convert_le_prop(node.value)
             return None
         else:
             return node

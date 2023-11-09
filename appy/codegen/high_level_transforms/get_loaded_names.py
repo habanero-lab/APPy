@@ -10,7 +10,7 @@ class ExtractArguments(ast.NodeVisitor):
         self.stored_vars = []
         self.func_or_package_names = []
 
-    def visit_Subscript(self, node):
+    def visit_Subscript(self, node: ast.Subscript):
         if isinstance(node.value, ast.Name):            
             ndim = 1
             if isinstance(node.slice, ast.Tuple):
