@@ -1,35 +1,4 @@
-Annotated Parallelism for Python (APPy) is parallel programming model that allows you to parallelize your sequential loops or tensor expressions with annotations in the comments.
-
-APPy supports two programming models:
-
-- A block-oriented (Vanilla) programming model, where the user uses explicit loops and annotate the loops with OpenMP/OpenACC like pragmas. Unlike OpenMP where a loop iteration works on typically only one data element, in APPy, it's recommended to make each loop iteration work on a block of data at a time, e.g. 1 to 2048 elements. Depending on the specific device, 256 is a good starting point to explore various block sizes. The best block size is hardware-specific and will need to be tuned.
-- A tensor-oriented programming model, where the user is allowed to directly annotate tensor expressions. In the vanilla programming model, the user is restricted to work with a small block of data at a time, which can be cumbersome. The tensor oriented model allows users to directly work with tensors with arbitrary size and dimensions. 
-
-Expressing vector addition using the vanilla model is as follows:
-
-```python
-@jit
-def kernel_block_oriented(a, b, c, N, BLOCK=128):
-    #pragma parallel
-    for i in range(0, N, BLOCK):  
-        vi = appy.vidx(i, BLOCK, bound=N)
-        c[vi] = a[vi] + b[vi]
-```
-where `#pragma parallel` is equivalent to `#pragma parallel for` in OpenMP or OpenACC. Note that how each loop iteration works on `BLOCK` elements. Two key pieces are
-* Have a parallel loop (can be nested)
-* Work with 1-2048 elements per loop iteration
-
-
-Or use the tensor based pragmas:
-```python
-@appy.jit(auto_block=True)
-def kernel_tensor_oriented(a, b, c, N, BLOCK=128):
-    #pragma :N=>parallel
-    c[:N] = a[:N] + b[:N]
-```
-Each tensor expression must have all dimensions named explicitly using slices, e.g. `:N`. And in the annotation, each dimension must appear and be specified a set of possible properties. In the example above, there's only one dimension (`:N`), and its property is `parallel`, specified using syntax `dimension=>property1,property2,...`.
-
-The tensor oriented programming model is higher level than the block oriented model, and no longer requires the user to explicitly block the operation. Instead, the user can enable option `auto_block=True` to let the compiler automatically block the tensor operation. But the user do need to specify whether a dimension is parallel or not, at minimum. On top of that, the compiler also performs more automatic optimizations with the tensor oriented model.
+APPy (Annotated Parallelism for Python) enables users to parallelize generic Python loops and tensor expressions for execution on GPUs by simply adding compiler directives (annotations) to Python code. 
 
 # Install
 
@@ -43,75 +12,89 @@ pip install -e .
 python tests/test_vec_add.py
 ```
 
-# Notes
+# Loop-Oriented programming interface
+## Parallelization
+A loop can be parallelized by being annotated with `#pragma parallel for`, where the end of the loop acts as a synchronization point. Each loop iteration is said to be assigned to a *worker*, and the number of workers launched is always equal to the number of loop iterations, unless directive `#pragma parallel for single` is used, which launches only one worker that executes all iterations, e.g. due to loop-carried dependences. Each worker is scheduled to a single vector processor, and executes its instructions sequentially. 
+A parallel for-loop must be a for-range loop, and the number of loop iterations must be known at kernel launch time, i.e. no dynamic parallelism.
 
-* APPy requires the tensor arguments to be pytorch cuda tensors for now. So if you have
-numpy or cupy arrays, be sure to convert them to pytorch cuda tensors.
-* APPy only supports compiling basic element-wise and reduction operations. Higher level functions like `numpy.linalg.inv` are not supported.
-* Removing `@appy.jit` makes the function a normal Python function, which
-could be helpful for debugging.
-* The result of a reduction must not be used as a sub-expression.
+Tensors within the parallel region must already be a GPU tensor (data reside in the GPU memory), e.g. created using `cupy` or `pytorch` with data on the device. Such libraries also provide APIs to create a GPU tensor from a NumPy array.
 
-
-More examples.
-
-# Grid Reduction
+A vector addition example is shown below. Parallelize a for loop with APPy via `#pragma parallel for`. `#pragma ...` is a regular comment in Python, but will be parsed and treated as a directive by APPy.
 
 ```python
 @appy.jit
-def kernel(a, b, N, BLOCK=512):
-    #pragma parallel
-    for i in range(0, N, BLOCK):  
-        vi = appy.vidx(i, BLOCK, bound=N)
+def vector_add(A, B, C, N):
+    #pragma parallel for
+    for i in range(N):
+        C[i] = A[i] + B[i]
+```
+
+## Vectorization
+Although `#pragma parallel for` parallelizes a loop, maximum parallelism is achieved when the loop body is also vectorized, when applicable. APPy provides two high-level ways to achieve vectorization: 1) use tensor/array expressions (compiler generates a loop automatically); 2) annotate a loop with the `#pragma simd`, which divides the loop into smaller chunks.
+
+Vector addition example.
+
+```python
+@appy.jit
+def vector_add(A, B, C, N):
+    #pragma parallel for simd
+    for i in range(N):
+        C[i] = A[i] + B[i]
+```
+
+SpMV example. 
+
+```python
+@appy.jit
+def spmv(A_row, A_col, A_val, x, y, N):
+    #pragma parallel for
+    for i in range(N - 1):
+        y[i] = 0.0
+        #pragma simd
+        for j in range(A_row[i], A_row[1+i]):            
+            col = A_col[j]
+            y[i] += A_val[j] * x[col]
+```
+
+A loop that is not applicable for parallelization may be vectorizable. One example is the `j` loop in the SpMV example, where it has dynamic loop bounds.
+
+## Data Sharing
+APPy does not require the programmer to manually specify whether each variable is private or shared. Instead, it enforces syntactical difference between array and non-array variables, and use simple rules to infer the scope of the variables. Array variables are always followed by a square bracket, such as \ttt{A[vi]}, and the rest are non-array variables \footnote{These non-array variables act like vector registers in vector architecture, so they are not called ``scalars''.}. Array variables inside the parallel region are always considered shared (and their data reside in the global memory of the GPU). Non-array variables defined within the parallel region are considered private to each worker. Read-Only non-array variables are shared. APPy prohibits multiple reaching definitions from both inside and outside the parallel region of a non-array variable, which prevents writing into a shared non-array variable. To achieve such effects, the idiom is make the variable an array of size 1 (thus it has a global scope). 
+
+## Parallel reduction
+The only synchronization across workers (loop iterations) supported is atomically updating a memory location. 
+This can be achieved by either using ``assembly-level'' programming of the abstract machine via instruction \texttt{appy.atomic\_<op>}, or by annotating a statement with compiler directive \texttt{\#pragma atomic}. Note that within a worker, no synchronization is necessary even if it works on multiple elements.
+
+A parallel reduction example. 
+```python
+@appy.jit
+def vector_sum(A, s, N):
+    #pragma parallel for simd reduction
+    for i in range(N):
         #pragma atomic
-        b[0] += torch.sum(a[vi])
+        s[0] += A[i]
 ```
 
-
-# Stencils
-
-`heat_3d` (from polybench)
-```python
-@appy.jit(dim_info={'A': ('M', 'N', 'K'), 'B': ('M', 'N', 'K')}, auto_block=True)
-def kernel(TSTEPS, A, B):
-    M, N, K = A.shape
-    for t in range(1, TSTEPS):
-        #pragma 1:M-1=>parallel 1:N-1=>parallel 1:K-1=>parallel
-        B[1:-1, 1:-1,
-            1:-1] = (0.125 * (A[2:, 1:-1, 1:-1] - 2.0 * A[1:-1, 1:-1, 1:-1] +
-                                A[:-2, 1:-1, 1:-1]) + 0.125 *
-                    (A[1:-1, 2:, 1:-1] - 2.0 * A[1:-1, 1:-1, 1:-1] +
-                        A[1:-1, :-2, 1:-1]) + 0.125 *
-                    (A[1:-1, 1:-1, 2:] - 2.0 * A[1:-1, 1:-1, 1:-1] +
-                        A[1:-1, 1:-1, 0:-2]) + A[1:-1, 1:-1, 1:-1])
-
-        #pragma 1:M-1=>parallel 1:N-1=>parallel 1:K-1=>parallel
-        A[1:-1, 1:-1,
-            1:-1] = (0.125 * (B[2:, 1:-1, 1:-1] - 2.0 * B[1:-1, 1:-1, 1:-1] +
-                                B[:-2, 1:-1, 1:-1]) + 0.125 *
-                    (B[1:-1, 2:, 1:-1] - 2.0 * B[1:-1, 1:-1, 1:-1] +
-                        B[1:-1, :-2, 1:-1]) + 0.125 *
-                    (B[1:-1, 1:-1, 2:] - 2.0 * B[1:-1, 1:-1, 1:-1] +
-                        B[1:-1, 1:-1, 0:-2]) + B[1:-1, 1:-1, 1:-1])
-    return A, B
-```
-
-# Sum of Matrix-Vector Multiplication
-`gesummv` from polybench:
+# Tensor-Oriented programming interface 
+In addition to loops, APPy also allows users to use tensor/array expressions and the tensors can have arbitrary size. This often results in more natural and succinct program compared to the loop oriented version. 
 
 ```python
-@appy.jit(auto_block=True)
-def kernel(alpha, beta, A, B, x):
-    M, N = A.shape
-    alpha, beta = float(alpha), float(beta)
-    y = torch.empty([M], dtype=A.dtype, device=A.device)
-    y1 = torch.empty_like(y)
-    y2 = torch.empty_like(y)
-    #pragma :M=>parallel,block(2) :N=>reduce(sum:y1)
-    y1[:M] = torch.mv(alpha * A[:M, :N], x[:N])
-    #pragma :M=>parallel,block(2) :N=>reduce(sum:y2)
-    y2[:M] = torch.mv(beta * B[:M, :N], x[:N])
+@appy.jit(auto_simd=True)
+def gesummv(alpha, beta, A, B, x, y, tmp, M, N):
+    #pragma :M=>parallel :N=>reduction(sum:y)
+    y[:M] = mv(alpha * A[:M, :N], x[:N])
+    #pragma :M=>parallel :N=>reduction(sum:tmp)
+    tmp[:M] = mv(beta * B[:M, :N], x[:N])
     #pragma :M=>parallel
-    y[:M] = y1[:M] + y2[:M]
-    return y
+    y[:M] += tmp[:M]
+
+@appy.jit(auto_simd=True)
+def jacobi_2d_one_iteration(A, B, M, N):
+    #pragma 1:M-1=>parallel 1:N-1=>parallel
+    B[1:M-1, 1:N-1] = 0.2 * (A[1:M-1, 1:N-1] + A[1:M-1, :N-2] + 
+               A[1:M-1, 2:N] + A[2:M, 1:N-1] + A[0:M-2, 1:N-1])
+    #pragma 1:M-1=>parallel 1:N-1=>parallel
+    A[1:M-1, 1:N-1] = 0.2 * (B[1:M-1, 1:N-1] + B[1:M-1, :N-2] + 
+               B[1:M-1, 2:N] + B[2:M, 1:N-1] + B[0:M-2, 1:N-1])
 ```
+
