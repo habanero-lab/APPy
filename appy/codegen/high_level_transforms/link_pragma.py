@@ -17,7 +17,7 @@ class PragmaLinker(ast.NodeTransformer):
             else:
                 # Compiler determines a block size
                 if 'reduction' in pragma:
-                    pragma = pragma.replace(' simd', ' block(512)')
+                    pragma = pragma.replace(' simd', ' block(1024)')
                 else:
                     pragma = pragma.replace(' simd', ' block(256)')
         return pragma
@@ -39,6 +39,7 @@ class PragmaLinker(ast.NodeTransformer):
     def visit_Comment(self, node):
         comment = node.value  
         if comment.startswith('#pragma '):
+            comment = comment.replace('#pragma parallel for', '#pragma parallel')
             if comment.startswith('#pragma parallel') or comment.startswith('#pragma simd'):
                 self.cur_loop_pragma = self.convert_simd_directive(node.value)
             else:

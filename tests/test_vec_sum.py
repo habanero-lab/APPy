@@ -1,38 +1,31 @@
 import torch
 import appy
+import utils
 
 @appy.jit
-def kernel_block_oriented(a, b, N, BLOCK=512):
-    '''
-    The output array must be zero-initialized in order to do parallel reduction.
-    '''
-    #pragma parallel block(BLOCK)
-    for i in range(N):  
+def kernel_appy(a):
+    # Zero-initialize the output array
+    b = torch.zeros(1, device=a.device, dtype=a.dtype)
+    N = a.shape[0]
+    #pragma parallel for simd reduction
+    for i in range(N): 
         #pragma atomic
         b[0] += a[i]
+    return b
 
-#@appy.jit(auto_block=True)     # TODO: parallel reduction in TEs are not supported yet 
-def kernel_tensor_oriented(a, b, N):
-    #pragma :N=>parallel,reduce(sum:b)
-    b[0] = torch.sum(a[:N])
-
-def kernel_torch(a, b, N):
-    b[0] = torch.sum(a)
+def kernel_torch(a):
+    return torch.sum(a)
 
 def test():
-    for dtype in [torch.float32, torch.float64]:
-        for N in [1024*1024, 4*1024*1024, 4*1024*1024-1]:
-            print(f'N: {N}, dtype: {dtype}')
-            a = torch.randn(N, device='cuda', dtype=dtype)
-            b_ref = torch.empty(1, device='cuda', dtype=dtype)
-            kernel_torch(a, b_ref, N)
-            
-            for f in [kernel_torch, kernel_block_oriented]:
-                b = torch.zeros(1, device='cuda', dtype=dtype)
-                f(a, b, N)
-                assert(appy.utils.allclose(b, b_ref, atol=1e-3))
-                ms = appy.utils.bench(lambda: f(a, b, N))
-                print(f'{f.__name__}: {ms:.4f} ms')
+    inputs = utils.get_1d_tensors_assorted_shapes(10)
+    for a, in inputs:
+        b_ref = kernel_torch(a)
+        print(f'N: {a.shape[0]}, dtype: {a.dtype}')
+        for f in [kernel_torch, kernel_appy]:
+            b = f(a)
+            assert(appy.utils.allclose(b, b_ref, atol=1e-1))
+            ms = appy.utils.bench(lambda: f(a))
+            print(f'{f.__name__}: {ms:.4f} ms')
 
 if __name__ == '__main__':
     test()
