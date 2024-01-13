@@ -114,7 +114,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
             if self.verbose:
                 print(slice_map)
                 
-            if self.options.get('auto_block'):
+            if self.options.get('auto_block') or self.options.get('auto_simd'):
                 default_block = 'APPY_BLOCK'
                 last_slice = list(slice_map.keys())[-1]
                 if slice_map[last_slice]['block'] == 1:
