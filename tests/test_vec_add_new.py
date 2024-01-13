@@ -27,5 +27,4 @@ def test():
 
 
 if __name__ == '__main__':
-    #utils.get_1d_tensors_assorted_shapes(10)
     test()

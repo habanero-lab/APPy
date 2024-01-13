@@ -132,7 +132,6 @@ class TritonKernelTransformer(ast.NodeTransformer):
         for term, stride in zip(terms, strides):
             strided_terms.append(f'({term}) * {stride}')
         offset = ' + '.join(strided_terms)
-        #print(offset)
         return to_ast_expr(offset), mask
 
 
