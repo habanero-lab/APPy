@@ -19,6 +19,21 @@ def syncthreads():
 def max(a, axis=0):
     return torch.max(a, axis=axis)[0]
 
+def sum(a, axis=0):
+    return torch.sum(a, axis)
+
+def empty(*size, dtype):
+    return torch.empty(size, dtype=dtype, device='cuda')
+
+def zeros(*size, dtype):
+    return torch.zeros(size, dtype=dtype, device='cuda')
+
+def where(*args):
+    return torch.where(*args)
+
+def mean(args, axis=0):
+    return torch.mean(args, axis)
+
 def step(start, stepsize, bound=None):
     if bound:
         r = slice(start, min(bound, start+stepsize))

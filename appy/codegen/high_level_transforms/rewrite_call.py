@@ -5,35 +5,45 @@ from copy import deepcopy
 
 class RenameTorchToTriton(ast.NodeTransformer):
     def visit_Attribute(self, node: ast.Attribute):
+        # Format of node is {value}.{attr}
         if not isinstance(node.value, ast.Name):
             return node
 
-        if node.value.id == 'torch':      
-            if node.attr in ['tanh']:
+        if node.value.id == 'appy':
+            if node.attr in ['vidx', 'vindex']:
+                return node
+            elif node.attr in ['tanh', 'asin']:
                 node.value = new_attr_node(new_name_node('tl'), 'math')
             else:
                 node.value = new_name_node('tl')
 
-        elif node.value.id == 'appy' and node.attr not in ['vidx', 'vindex']:
-            node.value = new_name_node('tl')
+
+        # if node.value.id == 'torch':      
+        #     if node.attr in ['tanh']:
+        #         node.value = new_attr_node(new_name_node('tl'), 'math')
+        #     else:
+        #         node.value = new_name_node('tl')
+
+        # elif node.value.id == 'appy' and node.attr not in ['vidx', 'vindex']:
+        #     node.value = new_name_node('tl')
             
         return node
 
     def visit_Call(self, node: ast.Call):
-        if unparse(node).startswith('torch.mv('):
+        if unparse(node).startswith('appy.mv('):
             assert len(node.args) == 2            
             newnode = new_attr_call_node(
-                    'torch.sum', 
+                    'appy.sum', 
                     [new_mul_node(node.args[0], node.args[1])],
                     keywords={'axis': to_ast_expr('1')}
                 )
             newnode.lineno = node.lineno
             node = newnode
-        elif unparse(node).startswith('torch.dot('):
+        elif unparse(node).startswith('appy.dot('):
             # Rewrite 1D vector dot product
             assert len(node.args) == 2
             newnode = new_attr_call_node(
-                    'torch.sum', 
+                    'appy.sum', 
                     [new_mul_node(node.args[0], node.args[1])],
                 )
             newnode.lineno = node.lineno

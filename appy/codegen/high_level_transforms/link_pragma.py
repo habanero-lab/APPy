@@ -37,10 +37,14 @@ class PragmaLinker(ast.NodeTransformer):
         return pragma
 
     def visit_Comment(self, node):
-        comment = node.value  
+        comment = node.value.strip()
         if comment.startswith('#pragma '):
-            comment = comment.replace('#pragma parallel for', '#pragma parallel')
-            if comment.startswith('#pragma parallel') or comment.startswith('#pragma simd'):
+            if comment == '#pragma parallel':
+                comment += ' for'
+
+            if comment.startswith('#pragma parallel for') or \
+                comment.startswith('#pragma simd') or\
+                comment.startswith('#pragma sequential for'):
                 self.cur_loop_pragma = self.convert_simd_directive(node.value)
             else:
                 self.cur_top_pragma = self.convert_le_prop(node.value)
