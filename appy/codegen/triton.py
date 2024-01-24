@@ -1,7 +1,6 @@
 import os
 import re
 import torch
-import triton
 import textwrap
 import numpy as np
 from copy import deepcopy
@@ -38,11 +37,17 @@ class TritonBackend(object):
         '''
         ))
         self.arg_names = get_arg_names(self.func)
-        self.arg_types = [build_type_from_value(x) for x in arg_values]
+
         self.arg_type_map = {}
-        for name, type in zip(self.arg_names, self.arg_types):
-            self.arg_type_map[name] = type
+        for name, val in zip(self.arg_names, self.arg_values):
+            self.arg_type_map[name] = type(val)
+       
+        # self.arg_types = [type(x) for x in arg_values]
+        # self.arg_type_map = {}
+        # for name, type in zip(self.arg_names, self.arg_types):
+        #     self.arg_type_map[name] = type
         
+        # print('type defined now')
         self.kernel_count = 0
         self.var_count = 0
 

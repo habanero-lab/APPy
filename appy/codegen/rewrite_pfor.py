@@ -51,10 +51,13 @@ class RewritePFor(ast.NodeTransformer):
         return newargs
 
     def make_kernel_actual_arguments(self, arg_dim_map):
+        import numpy as np
         newargs = []
         for name, (ty, ndim) in arg_dim_map.items():
-            #print(name, val)
-            newargs.append(name)
+            if name in self.arg_type_map and self.arg_type_map[name] in [np.float64, np.float32]:
+                newargs.append(f'float({name})')
+            else:
+                newargs.append(name)
             if ndim > 0:
                 for d in range(ndim):
                     #newargs.append(f'{name}.size({d})')
@@ -177,6 +180,7 @@ class RewritePFor(ast.NodeTransformer):
             #print(self.options)
                               
             k_args = self.make_kernel_actual_arguments(self.extracted_args)
+            
             if self.options.get('tune'):  
                 configs = []
                 for key, values in self.options.get('tune').items():                          

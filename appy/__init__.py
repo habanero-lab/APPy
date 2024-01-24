@@ -22,17 +22,32 @@ def max(a, axis=0):
 def sum(a, axis=0):
     return torch.sum(a, axis)
 
-def empty(*size, dtype):
+def empty(size, dtype):
     return torch.empty(size, dtype=dtype, device='cuda')
 
-def zeros(*size, dtype):
+def zeros(size, dtype):
     return torch.zeros(size, dtype=dtype, device='cuda')
+
+def empty_like(a):
+    return torch.empty_like(a)
+
+def zeros_like(a):
+    return torch.zeros_like(a)
+
+def dot(a, b):
+    return torch.dot(a, b)
+
+def mv(a, b):
+    return torch.mv(a, b)
 
 def where(*args):
     return torch.where(*args)
 
 def mean(args, axis=0):
     return torch.mean(args, axis)
+
+def sqrt(a):
+    return torch.sqrt(a)
 
 def step(start, stepsize, bound=None):
     if bound:
