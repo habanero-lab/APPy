@@ -40,6 +40,9 @@ def dot(a, b):
 def mv(a, b):
     return torch.mv(a, b)
 
+def minimum(a, b):
+    return torch.minimum(a, b)
+
 def where(*args):
     return torch.where(*args)
 
