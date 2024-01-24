@@ -57,10 +57,10 @@ class RewriteSlice(ast.NodeTransformer):
         
 
 class RewriteTensorOperation(ast.NodeTransformer):
-    def __init__(self, options, arg_types):
+    def __init__(self, options, arg_val_map):
         self.verbose = False
         self.options = options
-        self.arg_types = arg_types
+        self.arg_val_map = arg_val_map
         self.tmp_var_count = 0
 
     def new_variable_name(self):
@@ -85,13 +85,15 @@ class RewriteTensorOperation(ast.NodeTransformer):
             ]
             target = to_ast_expr(acc_var)
         else:
-            import appy.codegen.typesys as typesys
+            #import appy.codegen.typesys as typesys
+            import torch
             dtype  = None
-            for e in self.arg_types.values():
-                if isinstance(e, typesys.Tensor):
-                    dtype = e.get_tl_dtype()
+            for e in self.arg_val_map.values():
+
+                if isinstance(e, torch.Tensor):
+                    dtype = 'tl.' + str(e.dtype).replace('torch.', '')
                     break
-            assert dtype != None
+            assert dtype != None, 'failed to get data type of the operation'
 
             prelogue = [
                 to_ast_node(f'{target_s} = float("{init_value}")'),
@@ -206,7 +208,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
                         # proper initial value. This requires dtype known.
                         # import appy.codegen.typesys as typesys
                         # dtype  = None
-                        # for e in self.arg_types.values():
+                        # for e in self.arg_val_map.values():
                         #     if isinstance(e, typesys.Tensor):
                         #         dtype = e.get_tl_dtype()
                         #         break

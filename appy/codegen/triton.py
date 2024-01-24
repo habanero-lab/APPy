@@ -38,11 +38,12 @@ class TritonBackend(object):
         ))
         self.arg_names = get_arg_names(self.func)
 
-        self.arg_type_map = {}
+        self.arg_val_map = {}
         for name, val in zip(self.arg_names, self.arg_values):
-            self.arg_type_map[name] = type(val)
+            self.arg_val_map[name] = val
        
-        # self.arg_types = [type(x) for x in arg_values]
+        #self.arg_types = [build_type_from_value(x) for x in arg_values]
+        
         # self.arg_type_map = {}
         # for name, type in zip(self.arg_names, self.arg_types):
         #     self.arg_type_map[name] = type
@@ -76,7 +77,7 @@ class TritonBackend(object):
         func = ConvertSeqLoop().visit(func)
         
         #func = InsertInitialization().visit(func) 
-        func = RewriteTensorOperation(self.options, self.arg_type_map).visit(func)
+        func = RewriteTensorOperation(self.options, self.arg_val_map).visit(func)
         #func = RenameTorchToTriton().visit(func)
         self.func = ast.fix_missing_locations(func)
         
@@ -94,7 +95,7 @@ class TritonBackend(object):
 
         #exit(1)
         from .rewrite_pfor import RewritePFor
-        launcher_func = RewritePFor(self.module, self.options, self.arg_type_map).visit(func)
+        launcher_func = RewritePFor(self.module, self.options, self.arg_val_map).visit(func)
         #launcher_func.decorator_list = []
     
         # lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)

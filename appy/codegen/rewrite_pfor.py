@@ -18,11 +18,11 @@ class ReplaceWithSum(ast.NodeTransformer):
             return node
 
 class RewritePFor(ast.NodeTransformer):
-    def __init__(self, module, options, arg_type_map):
+    def __init__(self, module, options, arg_val_map):
         self.module = module
         self.options = options
         self.kernel_count = 0
-        self.arg_type_map = arg_type_map
+        self.arg_val_map = arg_val_map
 
     def create_new_kernel_function(self):
         kernel_name = f'_kernel{self.kernel_count}'
@@ -54,7 +54,7 @@ class RewritePFor(ast.NodeTransformer):
         import numpy as np
         newargs = []
         for name, (ty, ndim) in arg_dim_map.items():
-            if name in self.arg_type_map and self.arg_type_map[name] in [np.float64, np.float32]:
+            if name in self.arg_val_map and type(self.arg_val_map[name]) in [np.float64, np.float32]:
                 newargs.append(f'float({name})')
             else:
                 newargs.append(name)
@@ -66,7 +66,7 @@ class RewritePFor(ast.NodeTransformer):
 
     def old_get_kernel_function_parameters(self):
         newargs = []
-        for name, val in self.arg_type_map.items():
+        for name, val in self.arg_val_map.items():
             #print(name, val)
             if isinstance(val, typesys.Constant):
                 newargs.append(name+': tl.constexpr')
@@ -81,7 +81,7 @@ class RewritePFor(ast.NodeTransformer):
 
     def old_get_kernel_function_arguments(self):
         newargs = []
-        for name, val in self.arg_type_map.items():
+        for name, val in self.arg_val_map.items():
             if isinstance(val, typesys.Tensor):
                 if val.ndim == 0:
                     newargs.append(f'{name}.item()')
