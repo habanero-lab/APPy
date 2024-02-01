@@ -1,27 +1,8 @@
 import torch
-from torch import arange
 from .jit import jit
 from .utils import *
-#from .config import configs
 
-parallel = None
-shared = None
-dx = 128
-dy = 1
-dz = 1
-
-def prange(start, end, step=1):
-    return arange(start, end, step)
-
-def syncthreads():
-    return
-
-def max(a, axis=0):
-    return torch.max(a, axis=axis)[0]
-
-def sum(a, axis=0):
-    return torch.sum(a, axis)
-
+# Array creation functions
 def empty(size, dtype):
     return torch.empty(size, dtype=dtype, device='cuda')
 
@@ -33,6 +14,10 @@ def empty_like(a):
 
 def zeros_like(a):
     return torch.zeros_like(a)
+
+# Math functions
+def sum(a, axis=0):
+    return torch.sum(a, axis)
 
 def dot(a, b):
     return torch.dot(a, b)
@@ -58,6 +43,10 @@ def exp(a):
 def log(a):
     return torch.log(a)
 
+def max(a, axis=0):
+    return torch.max(a, axis=axis)[0]
+
+# Special functions
 def step(start, stepsize, bound=None):
     if bound:
         r = slice(start, min(bound, start+stepsize))
@@ -71,7 +60,6 @@ def debug_barrier():
 def atomic_add(a, offset, b):
     a[offset] += b
 
-vindex = step
 vidx = step
 
 def get_matmul_configs(BM, BN, BK):
