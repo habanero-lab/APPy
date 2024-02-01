@@ -52,6 +52,12 @@ def mean(args, axis=0):
 def sqrt(a):
     return torch.sqrt(a)
 
+def exp(a):
+    return torch.exp(a)
+
+def log(a):
+    return torch.log(a)
+
 def step(start, stepsize, bound=None):
     if bound:
         r = slice(start, min(bound, start+stepsize))
