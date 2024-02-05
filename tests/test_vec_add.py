@@ -15,9 +15,9 @@ def kernel_loop_no_simd(a, b, c, N):
     for i in range(N):  
         c[i] = a[i] + b[i]
 
-@numba.jit
+@numba.jit(nopython=True)
 def kernel_numba(a, b, c, N):
-    for i in numba.prange(N):  
+    for i in numba.prange(N):
         c[i] = a[i] + b[i]
 
 @appy.jit(auto_block=True)
