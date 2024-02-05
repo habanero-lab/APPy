@@ -151,6 +151,10 @@ class TritonKernelTransformer(ast.NodeTransformer):
             if isinstance(node.value, ast.Subscript):
                 node.value = self.visit_Subscript(node.value)
             return node
+        #dump(node)
+        if '.shape[' in unparse(node):
+            print('"for .. in range(x.shape[0])" is not yet supported, please pass only variable names to loop bounds, e.g. "range(N)"')
+            exit(1)
 
         offset, mask = self.gen_subscript_offset(node)
         

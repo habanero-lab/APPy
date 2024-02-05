@@ -1,7 +1,6 @@
 import os
 import re
 import torch
-import triton
 import textwrap
 import numpy as np
 from copy import deepcopy
@@ -38,11 +37,18 @@ class TritonBackend(object):
         '''
         ))
         self.arg_names = get_arg_names(self.func)
-        self.arg_types = [build_type_from_value(x) for x in arg_values]
-        self.arg_type_map = {}
-        for name, type in zip(self.arg_names, self.arg_types):
-            self.arg_type_map[name] = type
+
+        self.arg_val_map = {}
+        for name, val in zip(self.arg_names, self.arg_values):
+            self.arg_val_map[name] = val
+       
+        #self.arg_types = [build_type_from_value(x) for x in arg_values]
         
+        # self.arg_type_map = {}
+        # for name, type in zip(self.arg_names, self.arg_types):
+        #     self.arg_type_map[name] = type
+        
+        # print('type defined now')
         self.kernel_count = 0
         self.var_count = 0
 
@@ -55,6 +61,7 @@ class TritonBackend(object):
         from .high_level_transforms.add_dim_to_slice import AddDimToSlice
         from .high_level_transforms.insert_barrier import InsertBarrier, RemoveBarrierInsideTE
         from .high_level_transforms.insert_initialization import InsertInitialization
+        from .high_level_transforms.convert_pragma_seq_for import ConvertSeqLoop
 
         func = self.func
         func.decorator_list = []
@@ -67,8 +74,10 @@ class TritonBackend(object):
         #print(unparse(func))
         #exit(1)
         func = PragmaLinker().visit(func)    
+        func = ConvertSeqLoop().visit(func)
+        
         #func = InsertInitialization().visit(func) 
-        func = RewriteTensorOperation(self.options, self.arg_type_map).visit(func)
+        func = RewriteTensorOperation(self.options, self.arg_val_map).visit(func)
         #func = RenameTorchToTriton().visit(func)
         self.func = ast.fix_missing_locations(func)
         
@@ -86,7 +95,7 @@ class TritonBackend(object):
 
         #exit(1)
         from .rewrite_pfor import RewritePFor
-        launcher_func = RewritePFor(self.module, self.options, self.arg_type_map).visit(func)
+        launcher_func = RewritePFor(self.module, self.options, self.arg_val_map).visit(func)
         #launcher_func.decorator_list = []
     
         # lf = ast.FunctionDef(name='kernel', args=self.func.args, body=[], decorator_list=[], lineno=self.func.lineno)

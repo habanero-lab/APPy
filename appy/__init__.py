@@ -1,24 +1,52 @@
 import torch
-from torch import arange
 from .jit import jit
 from .utils import *
-#from .config import configs
 
-parallel = None
-shared = None
-dx = 128
-dy = 1
-dz = 1
+# Array creation functions
+def empty(size, dtype):
+    return torch.empty(size, dtype=dtype, device='cuda')
 
-def prange(start, end, step=1):
-    return arange(start, end, step)
+def zeros(size, dtype):
+    return torch.zeros(size, dtype=dtype, device='cuda')
 
-def syncthreads():
-    return
+def empty_like(a):
+    return torch.empty_like(a)
+
+def zeros_like(a):
+    return torch.zeros_like(a)
+
+# Math functions
+def sum(a, axis=0):
+    return torch.sum(a, axis)
+
+def dot(a, b):
+    return torch.dot(a, b)
+
+def mv(a, b):
+    return torch.mv(a, b)
+
+def minimum(a, b):
+    return torch.minimum(a, b)
+
+def where(*args):
+    return torch.where(*args)
+
+def mean(args, axis=0):
+    return torch.mean(args, axis)
+
+def sqrt(a):
+    return torch.sqrt(a)
+
+def exp(a):
+    return torch.exp(a)
+
+def log(a):
+    return torch.log(a)
 
 def max(a, axis=0):
     return torch.max(a, axis=axis)[0]
 
+# Special functions
 def step(start, stepsize, bound=None):
     if bound:
         r = slice(start, min(bound, start+stepsize))
@@ -32,7 +60,6 @@ def debug_barrier():
 def atomic_add(a, offset, b):
     a[offset] += b
 
-vindex = step
 vidx = step
 
 def get_matmul_configs(BM, BN, BK):

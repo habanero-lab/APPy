@@ -18,11 +18,11 @@ class ReplaceWithSum(ast.NodeTransformer):
             return node
 
 class RewritePFor(ast.NodeTransformer):
-    def __init__(self, module, options, arg_type_map):
+    def __init__(self, module, options, arg_val_map):
         self.module = module
         self.options = options
         self.kernel_count = 0
-        self.arg_type_map = arg_type_map
+        self.arg_val_map = arg_val_map
 
     def create_new_kernel_function(self):
         kernel_name = f'_kernel{self.kernel_count}'
@@ -51,10 +51,13 @@ class RewritePFor(ast.NodeTransformer):
         return newargs
 
     def make_kernel_actual_arguments(self, arg_dim_map):
+        import numpy as np
         newargs = []
         for name, (ty, ndim) in arg_dim_map.items():
-            #print(name, val)
-            newargs.append(name)
+            if name in self.arg_val_map and type(self.arg_val_map[name]) in [np.float64, np.float32]:
+                newargs.append(f'float({name})')
+            else:
+                newargs.append(name)
             if ndim > 0:
                 for d in range(ndim):
                     #newargs.append(f'{name}.size({d})')
@@ -63,7 +66,7 @@ class RewritePFor(ast.NodeTransformer):
 
     def old_get_kernel_function_parameters(self):
         newargs = []
-        for name, val in self.arg_type_map.items():
+        for name, val in self.arg_val_map.items():
             #print(name, val)
             if isinstance(val, typesys.Constant):
                 newargs.append(name+': tl.constexpr')
@@ -78,7 +81,7 @@ class RewritePFor(ast.NodeTransformer):
 
     def old_get_kernel_function_arguments(self):
         newargs = []
-        for name, val in self.arg_type_map.items():
+        for name, val in self.arg_val_map.items():
             if isinstance(val, typesys.Tensor):
                 if val.ndim == 0:
                     newargs.append(f'{name}.item()')
@@ -177,6 +180,7 @@ class RewritePFor(ast.NodeTransformer):
             #print(self.options)
                               
             k_args = self.make_kernel_actual_arguments(self.extracted_args)
+            
             if self.options.get('tune'):  
                 configs = []
                 for key, values in self.options.get('tune').items():                          

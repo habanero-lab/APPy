@@ -30,7 +30,7 @@ class BlockLoop(ast.NodeTransformer):
             assert node.reduce == '+'
             assert isinstance(node.value, ast.BinOp)
             lhs = unparse(node.targets[0])
-            node.value.right = to_ast_expr(f'torch.sum({unparse(node.value.right)})')            
+            node.value.right = to_ast_expr(f'appy.sum({unparse(node.value.right)})')            
             return node
         else:
             return node
