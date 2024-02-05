@@ -7,7 +7,7 @@ import inspect
 import ast_comments as ast
 import importlib.util
 from pathlib import Path
-from appy.codegen.triton import TritonBackend
+from appy.codegen.triton_backend import TritonBackend
 
 # import appy.config as config
 
