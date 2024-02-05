@@ -25,7 +25,7 @@ def get_random_1d_tensors(
                 else:
                     tup.append(torch.randn(N, device=device, dtype=dtype))
             tensors.append(tup)
-        print(tensors)
+    
     return tensors
 
 

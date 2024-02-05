@@ -1,6 +1,3 @@
-import os
-import re
-import torch
 import textwrap
 import numpy as np
 from copy import deepcopy
@@ -29,8 +26,6 @@ class TritonBackend(object):
             import triton
             import triton.language as tl
             from triton.language import debug_barrier
-            import appy
-            from appy import vidx, vindex
 
             def init_to_zero(name):
                 return lambda nargs: nargs[name].zero_()
