@@ -3,10 +3,10 @@ import numpy as np
 from copy import deepcopy
 import ast_comments as ast
 from ast_comments import unparse
-from .typesys import build_type_from_value, get_tl_dtype_from_str
-from .typesys import Tensor as TensorType
-from .typesys import Constant as ConstantType
-from ..ast_utils import *
+from appy.codegen.typesys import build_type_from_value, get_tl_dtype_from_str
+from appy.codegen.typesys import Tensor as TensorType
+from appy.codegen.typesys import Constant as ConstantType
+from appy.ast_utils import *
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values, **options):
@@ -48,15 +48,15 @@ class TritonBackend(object):
         self.var_count = 0
 
     def codegen(self):
-        from .high_level_transforms.range_rewriter import RewriteRange
-        from .high_level_transforms.rewrite_call import RenameTorchToTriton
-        from .high_level_transforms.link_pragma import PragmaLinker
-        from .high_level_transforms.aug_assign_rewriter import RewriteAugAssign
-        from .high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
-        from .high_level_transforms.add_dim_to_slice import AddDimToSlice
-        from .high_level_transforms.insert_barrier import InsertBarrier, RemoveBarrierInsideTE
-        from .high_level_transforms.insert_initialization import InsertInitialization
-        from .high_level_transforms.convert_pragma_seq_for import ConvertSeqLoop
+        from ..high_level_transforms.range_rewriter import RewriteRange
+        from ..high_level_transforms.rewrite_call import RenameTorchToTriton
+        from ..high_level_transforms.link_pragma import PragmaLinker
+        from ..high_level_transforms.aug_assign_rewriter import RewriteAugAssign
+        from ..high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
+        from ..high_level_transforms.add_dim_to_slice import AddDimToSlice
+        from ..high_level_transforms.insert_barrier import InsertBarrier, RemoveBarrierInsideTE
+        from ..high_level_transforms.insert_initialization import InsertInitialization
+        from ..high_level_transforms.convert_pragma_seq_for import ConvertSeqLoop
 
         func = self.func
         func.decorator_list = []

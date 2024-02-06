@@ -2,7 +2,7 @@ import textwrap
 import torch
 from ast import unparse
 from appy.ast_utils import *
-from .high_level_transforms.utils import *
+from ..high_level_transforms.utils import *
 from copy import deepcopy
 import appy.codegen.typesys as typesys
 from collections import OrderedDict
@@ -137,9 +137,9 @@ class RewritePFor(ast.NodeTransformer):
 
     def visit_For(self, node: ast.For):
         if hasattr(node, 'pragma'):
-            from .high_level_transforms.block_loop import BlockLoop
-            from .high_level_transforms.rewrite_call import RenameTorchToTriton
-            from .high_level_transforms.get_loaded_names import ExtractArguments
+            from ..high_level_transforms.block_loop import BlockLoop
+            from ..high_level_transforms.rewrite_call import RenameTorchToTriton
+            from ..high_level_transforms.get_loaded_names import ExtractArguments
 
             pragma = node.pragma
             num_warps = 4
@@ -170,7 +170,7 @@ class RewritePFor(ast.NodeTransformer):
             #exit(1)
                     
 
-            from appy.codegen.gen_device_code import TritonKernelTransformer
+            from .gen_device_code import TritonKernelTransformer
             grid = []
             kernel_code = TritonKernelTransformer(grid).visit(node)                 
             kf = self.create_new_kernel_function()
