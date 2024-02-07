@@ -19,7 +19,7 @@ class PragmaLinker(ast.NodeTransformer):
                 if 'reduction' in pragma:
                     pragma = pragma.replace(' simd', ' block(1024)')
                 else:
-                    pragma = pragma.replace(' simd', ' block(256)')
+                    pragma = pragma.replace(' simd', ' block(512)')
         return pragma
 
     def convert_le_prop(self, pragma):
