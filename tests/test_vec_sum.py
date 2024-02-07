@@ -5,7 +5,7 @@ import utils
 @appy.jit
 def kernel_appy(a):
     # Zero-initialize the output array
-    b = torch.zeros(1, device=a.device, dtype=a.dtype)
+    b = appy.zeros(1, dtype=a.dtype)
     N = a.shape[0]
     #pragma parallel for simd
     for i in range(N): 
