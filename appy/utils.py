@@ -1,4 +1,5 @@
 import numpy as np
+import cupy
 import torch
 import torch.utils.benchmark as torchbench
 
@@ -18,10 +19,12 @@ def bench(fn):
 
 def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):
     assert type(a) == type(b)
-    
     if isinstance(a, np.ndarray):
         f = np.allclose
         max = np.max
+    if isinstance(a, cupy.ndarray):
+        f = cupy.allclose
+        max = cupy.max
     elif isinstance(b, torch.Tensor):
         f = torch.allclose
         max = torch.max

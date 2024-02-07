@@ -1,16 +1,15 @@
 import torch
-
+from dlpack import asdlpack
 
 def get_random_1d_tensors(
     num_tuples,
     tuple_size=1,
-    lib="torch",
+    lib=None,
     shape_low_bound=1024,
     shape_up_bound=128 * 1024 * 1024,
     dtypes=[torch.float32, torch.float64, torch.int32],
     device="cuda",
 ):
-    assert lib == "torch"
     shapes = sorted(torch.randint(shape_low_bound, shape_up_bound, size=(num_tuples,)))
     # print(shapes)
     tensors = []
@@ -24,6 +23,11 @@ def get_random_1d_tensors(
                     )
                 else:
                     tup.append(torch.randn(N, device=device, dtype=dtype))
+                    
+            for i in range(len(tup)):
+                if lib != None:
+                    tup[i] = lib.from_dlpack(asdlpack(tup[i]))
+
             if len(tup) == 1:
                 tensors.append(tup[0])
             else:

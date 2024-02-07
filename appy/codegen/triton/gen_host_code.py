@@ -54,14 +54,16 @@ class RewritePFor(ast.NodeTransformer):
         import numpy as np
         newargs = []
         for name, (ty, ndim) in arg_dim_map.items():
-            if name in self.arg_val_map and type(self.arg_val_map[name]) in [np.float64, np.float32]:
-                newargs.append(f'float({name})')
-            else:
-                newargs.append(name)
+            arg = name
+            if ty == 'tensor':
+                arg = f'torch.from_dlpack(asdlpack({name}))'
+            elif name in self.arg_val_map and type(self.arg_val_map[name]) in [np.float64, np.float32]:
+                arg = f'float({name})'
+            newargs.append(arg)
             if ndim > 0:
                 for d in range(ndim):
                     #newargs.append(f'{name}.size({d})')
-                    newargs.append(f'{name}.stride({d})')
+                    newargs.append(f'torch.from_dlpack(asdlpack({name})).stride({d})')
         return newargs
 
     def old_get_kernel_function_parameters(self):

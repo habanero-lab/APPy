@@ -35,9 +35,10 @@ def compile(fn, args, dump_code=0, verbose=False, **options):
         if dump_code:
             print(module)
         filename = f"{appy_kernel_dir}/{fn.__name__}.py"
-        Path(filename).write_text(module)
-
-    subprocess.run(["black", filename], capture_output=True, text=True)
+        Path(filename).write_text(module, encoding='utf-8')
+    
+    #subprocess.run(["black", filename], capture_output=True, text=True)
+    subprocess.run(["black", filename], capture_output=True)
     # exit(1)
     spec = importlib.util.spec_from_file_location("module.name", filename)
     foo = importlib.util.module_from_spec(spec)
