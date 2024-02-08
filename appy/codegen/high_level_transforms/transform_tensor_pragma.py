@@ -249,7 +249,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
 
                     if loop_epilogue:
                         for stmt in loop_epilogue:
-                            dump(stmt)
+                            #dump(stmt)
                             parent.body.append(RewriteSlice(slice_to_var).visit(stmt))  
                     parent = loop
 
