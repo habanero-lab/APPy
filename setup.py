@@ -5,6 +5,6 @@ setup(
     version='0.1',
     packages=['appy'],
     install_requires=[
-        'torch', 'ast-comments', 'pydlpack'
+        'torch', 'ast-comments',
     ],
 )

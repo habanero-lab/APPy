@@ -2,12 +2,20 @@ import torch
 from .jit import jit
 from .utils import *
 
+tensorlib = 'torch'  # Possible options are: 'torch', 'cupy'
+
 # Array creation functions
 def empty(size, dtype):
-    return torch.empty(size, dtype=dtype, device='cuda')
+    if tensorlib == 'torch':
+        return torch.empty(size, dtype=dtype, device='cuda')
+    elif tensorlib == 'cupy':
+        return cupy.empty(size, dtype=dtype)
 
 def zeros(size, dtype):
-    return torch.zeros(size, dtype=dtype, device='cuda')
+    if tensorlib == 'torch':
+        return torch.zeros(size, dtype=dtype, device='cuda')
+    elif tensorlib == 'cupy':
+        return cupy.zeros(size, dtype=dtype)
 
 def empty_like(a):
     return torch.empty_like(a)
@@ -61,6 +69,7 @@ def atomic_add(a, offset, b):
     a[offset] += b
 
 vidx = step
+
 
 def get_matmul_configs(BM, BN, BK):
     return [

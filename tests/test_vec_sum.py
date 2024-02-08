@@ -18,7 +18,7 @@ def kernel_torch(a):
 
 def test():
     # TODO: torch.float32 has large results different
-    inputs = utils.get_random_1d_tensors(5, dtypes=[torch.float64])
+    inputs = utils.get_random_1d_tensors(5, dtypes=['float64'])
     for a in inputs:
         b_ref = kernel_torch(a)
         print(f'N: {a.shape[0]}, dtype: {a.dtype}')

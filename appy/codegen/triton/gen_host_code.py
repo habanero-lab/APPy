@@ -1,6 +1,6 @@
 import textwrap
-import torch
 from ast import unparse
+import appy
 from appy.ast_utils import *
 from ..high_level_transforms.utils import *
 from copy import deepcopy
@@ -55,15 +55,17 @@ class RewritePFor(ast.NodeTransformer):
         newargs = []
         for name, (ty, ndim) in arg_dim_map.items():
             arg = name
-            if ty == 'tensor':
-                arg = f'torch.from_dlpack(asdlpack({name}))'
-            elif name in self.arg_val_map and type(self.arg_val_map[name]) in [np.float64, np.float32]:
+            if name in self.arg_val_map and type(self.arg_val_map[name]) in [np.float64, np.float32]:
                 arg = f'float({name})'
+            if appy.tensorlib == 'cupy' and ty == 'tensor':
+                arg = f'torch.as_tensor({name}, device="cuda")'
             newargs.append(arg)
             if ndim > 0:
                 for d in range(ndim):
-                    #newargs.append(f'{name}.size({d})')
-                    newargs.append(f'torch.from_dlpack(asdlpack({name})).stride({d})')
+                    if appy.tensorlib == 'cupy':
+                        newargs.append(f'torch.as_tensor({name}, device="cuda").stride({d})')
+                    else:
+                        newargs.append(f'{name}.stride({d})')
         return newargs
 
     def old_get_kernel_function_parameters(self):
