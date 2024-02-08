@@ -1,6 +1,7 @@
 import textwrap
 from ast import unparse
 import appy
+import cupy
 from appy.ast_utils import *
 from ..high_level_transforms.utils import *
 from copy import deepcopy
@@ -52,17 +53,18 @@ class RewritePFor(ast.NodeTransformer):
 
     def make_kernel_actual_arguments(self, arg_dim_map):
         import numpy as np
+        
         newargs = []
         for name, (ty, ndim) in arg_dim_map.items():
             arg = name
             if name in self.arg_val_map and type(self.arg_val_map[name]) in [np.float64, np.float32]:
                 arg = f'float({name})'
-            if appy.tensorlib == 'cupy' and ty == 'tensor':
+            if appy.tensorlib == cupy and ty == 'tensor':
                 arg = f'torch.as_tensor({name}, device="cuda")'
             newargs.append(arg)
             if ndim > 0:
                 for d in range(ndim):
-                    if appy.tensorlib == 'cupy':
+                    if appy.tensorlib == cupy:
                         newargs.append(f'torch.as_tensor({name}, device="cuda").stride({d})')
                     else:
                         newargs.append(f'{name}.stride({d})')

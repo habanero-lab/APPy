@@ -1,58 +1,57 @@
 import torch
+import cupy
 from .jit import jit
 from .utils import *
 
-tensorlib = 'torch'  # Possible options are: 'torch', 'cupy'
+torch.set_default_device('cuda')
+tensorlib = torch  # Possible options are: torch, cupy
 
 # Array creation functions
 def empty(size, dtype):
-    if tensorlib == 'torch':
-        return torch.empty(size, dtype=dtype, device='cuda')
-    elif tensorlib == 'cupy':
-        return cupy.empty(size, dtype=dtype)
+    return tensorlib.empty(size, dtype=dtype)
 
 def zeros(size, dtype):
-    if tensorlib == 'torch':
-        return torch.zeros(size, dtype=dtype, device='cuda')
-    elif tensorlib == 'cupy':
-        return cupy.zeros(size, dtype=dtype)
+    return tensorlib.zeros(size, dtype=dtype)
 
 def empty_like(a):
-    return torch.empty_like(a)
+    return tensorlib.empty_like(a)
 
 def zeros_like(a):
-    return torch.zeros_like(a)
+    return tensorlib.zeros_like(a)
 
 # Math functions
 def sum(a, axis=0):
-    return torch.sum(a, axis)
+    return tensorlib.sum(a, axis)
 
 def dot(a, b):
-    return torch.dot(a, b)
+    return tensorlib.dot(a, b)
 
 def mv(a, b):
-    return torch.mv(a, b)
+    return tensorlib.mv(a, b)
 
 def minimum(a, b):
-    return torch.minimum(a, b)
+    return tensorlib.minimum(a, b)
 
 def where(*args):
-    return torch.where(*args)
+    return tensorlib.where(*args)
 
 def mean(args, axis=0):
-    return torch.mean(args, axis)
+    return tensorlib.mean(args, axis)
 
 def sqrt(a):
-    return torch.sqrt(a)
+    return tensorlib.sqrt(a)
 
 def exp(a):
-    return torch.exp(a)
+    return tensorlib.exp(a)
 
 def log(a):
-    return torch.log(a)
+    return tensorlib.log(a)
 
 def max(a, axis=0):
-    return torch.max(a, axis=axis)[0]
+    if tensorlib == torch:
+        return tensorlib.max(a, axis=axis)[0]
+    elif tensorlib == cupy:
+        return tensorlib.max(a, axis=axis)
 
 # Special functions
 def step(start, stepsize, bound=None):
