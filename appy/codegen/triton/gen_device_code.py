@@ -1,4 +1,3 @@
-#import ast_comments as ast
 import ast
 from ast import unparse
 from appy.ast_utils import *
