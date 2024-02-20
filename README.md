@@ -14,10 +14,10 @@ python tests/test_vec_add.py
 
 # Loop-Oriented programming interface
 ## Parallelization
-A loop can be parallelized by being annotated with `#pragma parallel for`, where the end of the loop acts as a synchronization point. Each loop iteration is said to be assigned to a *worker*, and the number of workers launched is always equal to the number of loop iterations, unless directive `#pragma parallel for single` is used, which launches only one worker that executes all iterations, e.g. due to loop-carried dependences. Each worker is scheduled to a single vector processor, and executes its instructions sequentially. 
+A loop can be parallelized by being annotated with `#pragma parallel for`, where the end of the loop acts as a synchronization point. Each loop iteration is said to be assigned to a *worker*, and the number of workers launched is always equal to the number of loop iterations, unless directive `#pragma sequential for` is used, which launches only one worker that executes all iterations, e.g. due to loop-carried dependences. Each worker is scheduled to a single vector processor, and executes its instructions sequentially. 
 A parallel for-loop must be a for-range loop, and the number of loop iterations must be known at kernel launch time, i.e. no dynamic parallelism.
 
-Tensors within the parallel region must already be a GPU tensor (data reside in the GPU memory), e.g. created using `cupy` or `pytorch` with data on the device. Such libraries also provide APIs to create a GPU tensor from a NumPy array.
+Tensors within the parallel region must already be a GPU tensor (data reside in the GPU memory), and currently `cupy` and `pytorch` are supported. Such libraries also provide APIs to create a GPU tensor from a NumPy array.
 
 A vector addition example is shown below. Parallelize a for loop with APPy via `#pragma parallel for`. `#pragma ...` is a regular comment in Python, but will be parsed and treated as a directive by APPy.
 

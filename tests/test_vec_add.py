@@ -1,4 +1,3 @@
-import torch
 import appy
 import utils
 
@@ -6,7 +5,7 @@ import utils
 @appy.jit
 def kernel_appy(a, b):
     N = a.shape[0]
-    c = torch.empty_like(a)
+    c = appy.empty_like(a)
     #pragma parallel for simd
     for i in range(N):
         c[i] = a[i] + b[i]
