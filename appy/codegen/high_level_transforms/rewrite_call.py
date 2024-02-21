@@ -3,7 +3,7 @@ from ast import unparse
 from appy.ast_utils import *
 from copy import deepcopy
 
-class RenameTorchToTriton(ast.NodeTransformer):
+class RewriteAPPyCall(ast.NodeTransformer):
     def visit_Attribute(self, node: ast.Attribute):
         # Format of node is {value}.{attr}
         if not isinstance(node.value, ast.Name):

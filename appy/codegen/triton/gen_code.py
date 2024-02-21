@@ -50,7 +50,7 @@ class TritonBackend(object):
 
     def codegen(self):
         from ..high_level_transforms.range_rewriter import RewriteRange
-        from ..high_level_transforms.rewrite_call import RenameTorchToTriton
+        from ..high_level_transforms.rewrite_call import RewriteAPPyCall
         from ..high_level_transforms.link_pragma import PragmaLinker
         from ..high_level_transforms.aug_assign_rewriter import RewriteAugAssign
         from ..high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
@@ -67,18 +67,14 @@ class TritonBackend(object):
             dim_info = self.options.get('dim_info')
             func = AddDimToSlice(dim_info).visit(func)
 
-        #print(unparse(func))
-        #exit(1)
         func = PragmaLinker().visit(func)    
         func = ConvertSeqLoop().visit(func)
         
         #func = InsertInitialization().visit(func) 
         func = RewriteTensorOperation(self.options, self.arg_val_map).visit(func)
-        #func = RenameTorchToTriton().visit(func)
         self.func = ast.fix_missing_locations(func)
-        
-
         func = PragmaLinker().visit(func)
+
         if self.options.get('no_barrier_after_write'):
             pass
         else:

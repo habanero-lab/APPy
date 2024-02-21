@@ -144,7 +144,7 @@ class RewritePFor(ast.NodeTransformer):
     def visit_For(self, node: ast.For):
         if hasattr(node, 'pragma'):
             from ..high_level_transforms.block_loop import BlockLoop
-            from ..high_level_transforms.rewrite_call import RenameTorchToTriton
+            from ..high_level_transforms.rewrite_call import RewriteAPPyCall
             from ..high_level_transforms.get_loaded_names import ExtractArguments
 
             pragma = node.pragma
@@ -154,10 +154,8 @@ class RewritePFor(ast.NodeTransformer):
                 num_warps = int(p)
 
             node = BlockLoop().visit(node)
-            #print(unparse(node))
-            #exit(1)
-            
-            node = RenameTorchToTriton().visit(node)
+            node = RewriteAPPyCall().visit(node)            
+
             self.extracted_args = {}
             ExtractArguments(self.extracted_args).visit(node)
             
