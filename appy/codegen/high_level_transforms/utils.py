@@ -19,7 +19,8 @@ def parse_pragma(pragma):
         key, value = item.split('=>')            
         props = {'parallel': False, 'block': 1, 'single_block': False, 'reduce': None}
         for prop in value.split(','):
-            
+            # Check if the property has an optional value, if so map it to the value, 
+            # otherwise map it to True
             match = re.search(r'\((.*?)\)', prop)
             if match:
                 arg = match.groups()[0]
