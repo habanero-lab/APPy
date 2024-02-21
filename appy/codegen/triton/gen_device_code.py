@@ -202,7 +202,9 @@ class TritonKernelTransformer(ast.NodeTransformer):
             value_to_be_stored = node.value
             if is_atomic:                                
                 if is_add(node.value):
-                    assert(unparse(node.value.left) == unparse(lhs).replace('store', 'load'))
+                    #print(unparse(node.value.left))
+                    #print(unparse(lhs))
+                    assert(unparse(node.value.left).replace(', other=0', '') == unparse(lhs).replace('store', 'load'))
                     value_to_be_stored = node.value.right
                     lhs.func.attr = 'atomic_add'
                     

@@ -11,7 +11,7 @@ def slice_to_tuple(s):
 
 def parse_pragma(pragma):
     d = OrderedDict()
-    s = pragma.replace('#pragma', '')
+    s = pragma.replace('#pragma', '').replace('simd', 'block')
     for item in s.split(' '):
         if item == '':
             continue
