@@ -56,7 +56,7 @@ class TritonBackend(object):
         from ..high_level_transforms.transform_tensor_pragma import RewriteTensorOperation
         from ..high_level_transforms.add_dim_to_slice import AddDimToSlice
         from ..high_level_transforms.insert_barrier import InsertBarrier, RemoveBarrierInsideTE
-        from ..high_level_transforms.insert_initialization import InsertInitialization
+        #from ..high_level_transforms.insert_initialization import InsertInitialization
         from ..high_level_transforms.convert_pragma_seq_for import ConvertSeqLoop
 
         func = self.func

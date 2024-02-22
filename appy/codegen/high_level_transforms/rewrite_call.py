@@ -35,7 +35,7 @@ class RewriteAPPyCall(ast.NodeTransformer):
             newnode = new_attr_call_node(
                     'appy.sum', 
                     [new_mul_node(node.args[0], node.args[1])],
-                    keywords={'axis': to_ast_expr('1')}
+                    #keywords={'axis': to_ast_expr('1')}
                 )
             newnode.lineno = node.lineno
             node = newnode
