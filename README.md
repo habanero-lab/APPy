@@ -1,4 +1,4 @@
-APPy (Annotated Parallelism for Python) enables users to parallelize generic Python loops and tensor expressions for execution on GPUs by simply adding compiler directives (annotations) to Python code. 
+APPy (Annotated Parallelism for Python) enables users to parallelize generic Python loops and tensor expressions for execution on GPUs by simply adding compiler directives (annotations) to Python code. The foundation of APPy is described in [APPy: Annotated Parallelism for Python on GPUs](https://dl.acm.org/doi/10.1145/3640537.3641575). 
 
 # Install
 
@@ -97,3 +97,5 @@ def jacobi_2d_one_iteration(A, B, M, N):
                B[1:M-1, 2:N] + B[2:M, 1:N-1] + B[0:M-2, 1:N-1])
 ```
 
+# Unsupported operations
+Within an APPy parallel region, only elementary mathematical function and reduction functions are supported. Other operations including higher-level functions such as matrix inversion, shuffling functions such as sorting are not supported (will not compile).
