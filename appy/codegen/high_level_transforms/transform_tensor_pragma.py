@@ -113,6 +113,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
             slice_to_var = {}
             pragma = node.pragma
             slice_map = parse_pragma(pragma)
+            #print(slice_map)
             if self.verbose:
                 print(slice_map)
                 
@@ -165,6 +166,7 @@ class RewriteTensorOperation(ast.NodeTransformer):
                     # Make index vectorized if step size is > 1
                     # `index_var` is reused
                     if step != 1:
+                    #if True:
                         vidx_stmt = new_assign_node(
                                 new_name_node(index_var),
                                 new_call_node(

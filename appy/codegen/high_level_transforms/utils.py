@@ -26,6 +26,8 @@ def parse_pragma(pragma):
                 arg = match.groups()[0]
                 prop_name = prop.split('(')[0]
                 props[prop_name] = arg
+                if arg.isdigit():
+                    props[prop_name] = int(arg)
             else:
                 props[prop] = True
         

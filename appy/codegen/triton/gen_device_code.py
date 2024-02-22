@@ -110,14 +110,16 @@ class TritonKernelTransformer(ast.NodeTransformer):
             strides.append(stride_str)
             masks.append(mask)
                 
+        # TODO: to refactor
         # If there are more than 1 slice in elements, broadcast is needed
-        assert np.sum(is_elt_slice) in [0, 1, 2]
+        assert np.sum(is_elt_slice) in [0, 1, 2], np.sum(is_elt_slice)
         if np.sum(is_elt_slice) == 2:
             bcasts = ('[:,None]', '[None,:]')
             for i, bcast in zip(np.nonzero(is_elt_slice)[0], bcasts):
                 terms[i] = f'({terms[i]})' + bcast
 
         masks = list(filter(lambda x: x!=None, masks))
+        # TODO: to refactor
         if len(masks) == 0:
             mask = None
         elif len(masks) == 1:
@@ -159,7 +161,10 @@ class TritonKernelTransformer(ast.NodeTransformer):
         
         base = node.value
         if isinstance(node.ctx, ast.Load):
-            return to_ast_expr(f'tl.load({base.id} + {unparse(offset)}, mask={mask})')
+            if mask == None:
+                return to_ast_expr(f'tl.load({base.id} + {unparse(offset)}, mask={mask})')
+            else:
+                return to_ast_expr(f'tl.load({base.id} + {unparse(offset)}, mask={mask}, other=0)')
         elif isinstance(node.ctx, ast.Store):
             return to_ast_expr(f'tl.store({base.id} + {unparse(offset)}, mask={mask})')
         else:
