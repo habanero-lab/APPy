@@ -19,6 +19,12 @@ def empty_like(a):
 def zeros_like(a):
     return tensorlib.zeros_like(a)
 
+def randn(*size, dtype='float64'):
+    a = cupy.random.randn(*size).astype(dtype)
+    if tensorlib == torch:
+        a = torch.as_tensor(a)
+    return a
+
 # Math functions
 def sum(a, axis=0):
     return tensorlib.sum(a, axis)

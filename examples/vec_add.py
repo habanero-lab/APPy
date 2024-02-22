@@ -1,7 +1,11 @@
 import appy
 
+# APPy tensors are `torch` tensors by default. Uncomment the 
+# following lines to make APPy work with (and return) `cupy` tensors.
+#import cupy
+#appy.tensorlib = cupy
 
-@appy.jit
+@appy.jit  # Comment this line to run the function in the Python interpter (debug mode)
 def kernel_appy(a, b):
     N = a.shape[0]
     c = appy.empty_like(a)
