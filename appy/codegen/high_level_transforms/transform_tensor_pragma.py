@@ -123,9 +123,10 @@ class RewriteTensorOperation(ast.NodeTransformer):
                 if slice_map[last_slice]['block'] == 1:
                     if self.verbose:
                         print(f'update the `block` property for slice {last_slice} to `{default_block}`')
-                    slice_map[last_slice]['block'] = f'{default_block}'
-                    self.options.setdefault('tune', {})
-                    self.options['tune'][f'{default_block}'] = (1024, 512, 256, 128)
+                    slice_map[last_slice]['block'] = f'512'
+                    #slice_map[last_slice]['block'] = f'{default_block}'
+                    #self.options.setdefault('tune', {})
+                    #self.options['tune'][f'{default_block}'] = (1024, 512, 256, 128)
 
             for slice,properties in slice_map.items():
                 low, up = slice

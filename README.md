@@ -68,7 +68,7 @@ A parallel reduction example.
 ```python
 @appy.jit
 def vector_sum(A, s, N):
-    #pragma parallel for simd reduction
+    #pragma parallel for simd
     for i in range(N):
         #pragma atomic
         s[0] += A[i]
@@ -80,9 +80,9 @@ In addition to loops, APPy also allows users to use tensor/array expressions and
 ```python
 @appy.jit(auto_simd=True)
 def gesummv(alpha, beta, A, B, x, y, tmp, M, N):
-    #pragma :M=>parallel :N=>reduction(sum:y)
+    #pragma :M=>parallel :N=>reduce(sum)
     y[:M] = mv(alpha * A[:M, :N], x[:N])
-    #pragma :M=>parallel :N=>reduction(sum:tmp)
+    #pragma :M=>parallel :N=>reduce(sum)
     tmp[:M] = mv(beta * B[:M, :N], x[:N])
     #pragma :M=>parallel
     y[:M] += tmp[:M]
