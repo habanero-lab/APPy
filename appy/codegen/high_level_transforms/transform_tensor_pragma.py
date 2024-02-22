@@ -193,7 +193,10 @@ class RewriteTensorOperation(ast.NodeTransformer):
                     loop_prelogue = None      
                     loop_epilogue = None      
                     if properties['reduce']:
-                        reduce_op = properties['reduce']                                            
+                        if ':' in properties['reduce']:
+                            reduce_op, reduce_tensor = properties['reduce'].split(':')
+                        else:
+                            reduce_op = properties['reduce']
                         assert isinstance(node.targets[0], (ast.Name,ast.Subscript))
                         # if isinstance(node.targets[0], ast.Subscript):
                         #     #self.options.setdefault('init_hook', [])                        
