@@ -35,8 +35,8 @@ def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):
         diff = a - b
         # print(torch.where(diff != 0))
         # print(diff[diff != 0])
-        print(a)
-        print(b)
+        print(a[0])
+        print(b[0])
         print('max diff:', max(diff))
 
     return f(a, b, rtol, atol)

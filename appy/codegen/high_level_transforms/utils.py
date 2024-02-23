@@ -13,7 +13,7 @@ def parse_pragma(pragma):
     d = OrderedDict()
     s = pragma.replace('#pragma', '').replace('simd', 'block')
     for item in s.split(' '):
-        if item == '':
+        if '=>' not in item:
             continue
         
         key, value = item.split('=>')            

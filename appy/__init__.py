@@ -25,6 +25,12 @@ def randn(*size, dtype='float64'):
         a = torch.as_tensor(a)
     return a
 
+def randint(low, high=None, size=None, dtype='l'):
+    a = cupy.random.randint(low, high, size, dtype)
+    if tensorlib == torch:
+        a = torch.as_tensor(a)
+    return a
+
 # Math functions
 def sum(a, axis=0):
     return tensorlib.sum(a, axis)
