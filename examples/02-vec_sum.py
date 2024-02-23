@@ -23,7 +23,7 @@ def kernel_lib(a):
 
 def test():
     for N in [10000, 100000, 1000000, 10000000]:
-        a = appy.randn(N, dtype='float32')
+        a = appy.randn(N, dtype='float64')
         c_ref = kernel_lib(a)
         print(f"N: {a.shape[0]}, dtype: {a.dtype}")
         for f in [kernel_lib, kernel_appy]:
