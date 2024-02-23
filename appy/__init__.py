@@ -33,7 +33,7 @@ def dot(a, b):
     return tensorlib.dot(a, b)
 
 def mv(a, b):
-    return tensorlib.mv(a, b)
+    return a @ b
 
 def minimum(a, b):
     return tensorlib.minimum(a, b)
