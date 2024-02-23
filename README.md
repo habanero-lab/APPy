@@ -1,4 +1,4 @@
-APPy (Annotated Parallelism for Python) enables users to parallelize generic Python loops and tensor expressions for execution on GPUs by simply adding compiler directives (annotations) to Python code. The foundation of APPy is described in [APPy: Annotated Parallelism for Python on GPUs](https://dl.acm.org/doi/10.1145/3640537.3641575). 
+APPy (Annotated Parallelism for Python) enables users to parallelize generic Python loops and tensor expressions for execution on GPUs by adding OpenMP-like compiler directives (annotations) to Python code. The foundation of APPy is described in [APPy: Annotated Parallelism for Python on GPUs](https://dl.acm.org/doi/10.1145/3640537.3641575). 
 
 # Install
 
@@ -6,10 +6,12 @@ APPy (Annotated Parallelism for Python) enables users to parallelize generic Pyt
 pip install -e .
 ```
 
+Note that due to APPy generates [Triton](https://github.com/openai/triton/tree/main) code under the hood, it requires a Linux platform with an NVIDIA GPU (Compute Capability 7.0+).
+
 # Quick Start
 
 ```bash
-python tests/test_vec_add.py
+python examples/01-vec_add.py
 ```
 
 # Loop-Oriented programming interface
