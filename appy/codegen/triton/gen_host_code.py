@@ -45,7 +45,7 @@ class RewritePFor(ast.NodeTransformer):
             else:
                 newargs.append(name)
 
-            if ndim > 0:
+            if ndim > 1:
                 for d in range(ndim):
                     #newargs.append(f'{name}_shape_{d}')
                     newargs.append(f'{name}_stride_{d}')        
@@ -62,7 +62,7 @@ class RewritePFor(ast.NodeTransformer):
             if appy.tensorlib == cupy and ty == 'tensor':
                 arg = f'torch.as_tensor({name}, device="cuda")'
             newargs.append(arg)
-            if ndim > 0:
+            if ndim > 1:
                 for d in range(ndim):
                     if appy.tensorlib == cupy:
                         newargs.append(f'torch.as_tensor({name}, device="cuda").stride({d})')
