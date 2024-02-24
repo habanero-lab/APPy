@@ -9,13 +9,13 @@ def kernel_appy(A_data, A_indptr, A_indices, x, M, N):
     y = appy.empty(M, dtype=x.dtype)
     #pragma parallel for
     for i in range(M):
-        start, end = A_indptr[i], A_indptr[1+i]
+        start, end = A_indptr[i], A_indptr[i+1]
         y[i] = 0.0
         #pragma simd
         for j in range(start, end):
-            col = A_indices[j]
-            y[i] += A_data[j] * x[col]
-            #acc += A_data[j] * x[A_indices[j]]
+            #col = A_indices[j]
+            #y[i] += A_data[j] * x[col]
+            y[i] += A_data[j] * x[A_indices[j]]
     return y
 
 

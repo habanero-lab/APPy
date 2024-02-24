@@ -9,6 +9,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
         self.grid = grid
         self.block_dim = 0
         self.vindices = {}
+        self.range_bound = {}
 
     def get_params_from_loop(node: ast.For):
         target = node.target
@@ -40,7 +41,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
             self.generic_visit(node)
             return node
 
-    def gen_subscript_offset(self, subscript: ast.Subscript):
+    def gen_subscript_offset_deprecated(self, subscript: ast.Subscript):
         assert isinstance(subscript, ast.Subscript)
         slice = subscript.slice
         tensor = subscript.value.id
@@ -135,7 +136,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
         return to_ast_expr(offset), mask
 
 
-    def visit_Subscript(self, node: ast.Subscript):
+    def visit_Subscript_deprecated(self, node: ast.Subscript):
         '''
         Visit a subscript and return a `tl.load` or `tl.store` depending on the ctx.
 
@@ -156,7 +157,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
             print('"for .. in range(x.shape[0])" is not yet supported, please pass only variable names to loop bounds, e.g. "range(N)"')
             exit(1)
 
-        offset, mask = self.gen_subscript_offset(node)
+        offset, mask = self.gen_subscript_offset_deprecated(node)
         
         base = node.value
         if isinstance(node.ctx, ast.Load):
@@ -168,6 +169,71 @@ class TritonKernelTransformer(ast.NodeTransformer):
             return to_ast_expr(f'tl.store({base.id} + {unparse(offset)}, mask={mask})')
         else:
             assert False
+
+    def visit_Subscript(self, node: ast.Subscript):
+        '''
+        Visit a subscript and return a `tl.load` or `tl.store` depending on the ctx.
+        '''
+        if unparse(node.slice) in ['(:, None)', '(None, :)']:
+            if isinstance(node.value, ast.Subscript):
+                node.value = self.visit_Subscript(node.value)
+            return node
+
+        if '.shape[' in unparse(node):
+            print('"for .. in range(x.shape[0])" is not yet supported, please pass only variable names to loop bounds, e.g. "range(N)"')
+            exit(1)
+
+        self.range_bound = {}  # clear the map before visiting the slices/indices
+        self.generic_visit(node)  
+        assert len(self.range_bound.items()) <= 1, '2d slicing is not supported'
+        base = node.value
+        if isinstance(node.ctx, ast.Load):
+            tl_call = 'tl.load'
+        elif isinstance(node.ctx, ast.Store):
+            tl_call = 'tl.store' 
+        else:
+            assert False
+        # Example: A[i], A[0]    
+        if not isinstance(node.slice, ast.Tuple):
+            offset = node.slice
+            mask = None
+            if offset in self.range_bound:
+                mask = to_ast_expr(f'{unparse(offset)} < {unparse(self.range_bound[offset])}')
+            addr = new_add_node(base, offset)
+            
+        else:
+            # Example: A[i, j], A[0, i]
+            addr = base
+            mask = None
+            for i,offset in enumerate(node.slice.elts):
+                if offset in self.range_bound:
+                    mask = to_ast_expr(f'{unparse(offset)} < {unparse(self.range_bound[offset])}')
+                addr = new_add_node(addr, new_mul_node(offset, new_name_node(f'{base.id}_stride_{i}')))
+
+        if mask:
+            newnode = new_attr_call_node(
+                tl_call, 
+                [addr],
+                keywords={'mask': mask}
+            )
+        else:
+            newnode = new_attr_call_node(
+                tl_call,
+                [addr], 
+            )
+        #print(unparse(newnode))
+        return newnode
+
+    def visit_Name(self, node: ast.Name):
+        if node.id not in self.vindices:
+            return node
+
+        # Process range variables
+        start, step, bound = self.vindices[node.id]
+        offset = to_ast_expr(f'({unparse(start)} + tl.arange(0, {unparse(step)}))')
+        if bound:
+            self.range_bound[offset] = bound
+        return offset
 
     def visit_Assign(self, node: ast.Assign):
         #ast.NodeTransformer.generic_visit(self, node)
