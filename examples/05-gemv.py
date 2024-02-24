@@ -6,7 +6,9 @@ import appy
 def kernel_appy(alpha, A, x):
     M, N = A.shape
     y = appy.empty(M, dtype=A.dtype)
-    y[:M] = alpha * appy.mv(A[:M, :N], x[:N])
+    ## parallel reduction in tensor-oriented model is not supported yet
+    #pragma :M=>parallel :N=>reduce(sum)
+    y[:M] = appy.mv(alpha * A[:M, :N], x[:N])
     return y
 
 
