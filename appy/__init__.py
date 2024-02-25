@@ -31,6 +31,12 @@ def randint(low, high=None, size=None, dtype='l'):
         a = torch.as_tensor(a)
     return a
 
+def copy(a):
+    if tensorlib == torch:
+        return torch.clone(a)
+    elif tensorlib == cupy:
+        return cupy.copy(a)
+
 # Math functions
 def sum(a, axis=0):
     return tensorlib.sum(a, axis)
