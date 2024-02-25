@@ -1,12 +1,26 @@
 import textwrap
 import numpy as np
 from copy import deepcopy
-import ast_comments as ast
+import ast
 from ast_comments import unparse
 from appy.codegen.typesys import build_type_from_value, get_tl_dtype_from_str
 from appy.codegen.typesys import Tensor as TensorType
 from appy.codegen.typesys import Constant as ConstantType
 from appy.ast_utils import *
+
+class FuncTransformer(ast.NodeTransformer):
+    def __init__(self) -> None:
+        self.new_shape_vars = []
+
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        self.generic_visit(node)
+        # Prepend statements in self.new_shape_vars into the function body
+        
+    def visit_For(self, node: ast.For):
+        # if node.iter is like "range(a.shape[..])"
+        # 1. replace "a.shape[..]" with string "_appy_a_shape_.."
+        # 2. append new stmt "_appy_a_shape_.. = a.shape[..]" to self.new_shape_vars
+        pass
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values, **options):
