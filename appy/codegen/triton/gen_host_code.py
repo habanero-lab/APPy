@@ -70,37 +70,6 @@ class RewritePFor(ast.NodeTransformer):
                         newargs.append(f'{name}.stride({d})')
         return newargs
 
-    def old_get_kernel_function_parameters(self):
-        newargs = []
-        for name, val in self.arg_val_map.items():
-            #print(name, val)
-            if isinstance(val, typesys.Constant):
-                newargs.append(name+': tl.constexpr')
-            elif isinstance(val, typesys.Tensor):
-                newargs.append(name)
-                for d in range(val.ndim):
-                    newargs.append(f'{name}_shape_{d}')
-                    newargs.append(f'{name}_stride_{d}')
-            else:
-                newargs.append(name)
-        return newargs
-
-    def old_get_kernel_function_arguments(self):
-        newargs = []
-        for name, val in self.arg_val_map.items():
-            if isinstance(val, typesys.Tensor):
-                if val.ndim == 0:
-                    newargs.append(f'{name}.item()')
-                else:
-                    newargs.append(name)
-                    for d in range(val.ndim):
-                        newargs.append(f'{name}.size({d})')
-                        newargs.append(f'{name}.stride({d})')
-                
-            else:
-                newargs.append(name)
-        return newargs
-
     def make_triton_configs(self, configs, init_hook):    
         keys = []
         for name, (ty, ndim) in self.extracted_args.items():
