@@ -9,9 +9,8 @@ import appy
 def kernel_appy(a):
     ## Zero-initialize the output array
     b = appy.zeros(1, dtype=a.dtype)
-    N = a.shape[0]
     #pragma parallel for simd
-    for i in range(N): 
+    for i in range(a.shape[0]): 
         #pragma atomic
         b[0] += a[i]
     return b

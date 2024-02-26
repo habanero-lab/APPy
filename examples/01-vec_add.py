@@ -5,12 +5,11 @@ import appy
 #import cupy
 #appy.tensorlib = cupy
 
-@appy.jit  # Comment this line to run the function in the Python interpter (debug mode)
+@appy.jit(dump_final_appy=True)  # Comment this line to run the function in the Python interpter (debug mode)
 def kernel_appy(a, b):
-    N = a.shape[0]
     c = appy.empty_like(a)
     #pragma parallel for simd
-    for i in range(N):
+    for i in range(a.shape[0]):
         c[i] = a[i] + b[i]
     return c
 

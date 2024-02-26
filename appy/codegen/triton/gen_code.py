@@ -8,19 +8,35 @@ from appy.codegen.typesys import Tensor as TensorType
 from appy.codegen.typesys import Constant as ConstantType
 from appy.ast_utils import *
 
-class FuncTransformer(ast.NodeTransformer):
+class RewriteForRange(ast.NodeTransformer):
     def __init__(self) -> None:
-        self.new_shape_vars = []
+        self.var_count = 0
 
-    def visit_FunctionDef(self, node: ast.FunctionDef):
-        self.generic_visit(node)
-        # Prepend statements in self.new_shape_vars into the function body
+    def get_new_var(self):
+        new_var = f'__rewrite_for_range_var{self.var_count}'
+        self.var_count += 1
+        return new_var
         
     def visit_For(self, node: ast.For):
-        # if node.iter is like "range(a.shape[..])"
-        # 1. replace "a.shape[..]" with string "_appy_a_shape_.."
-        # 2. append new stmt "_appy_a_shape_.. = a.shape[..]" to self.new_shape_vars
-        pass
+        new_stmts = []
+        if isinstance(node.iter, ast.Call) and node.iter.func.id == 'range':
+            new_args = []
+            for arg in node.iter.args:
+                if not isinstance(arg, (ast.Name, ast.Constant)):
+                    new_var = self.get_new_var()
+                    new_args.append(new_name_node(new_var))                
+                    new_stmts.append(
+                        new_assign_node(
+                            new_name_node(new_var, ctx=ast.Store()),
+                            arg,
+                            lineno=node.lineno
+                        )
+                    )                
+                else:
+                    new_args.append(arg)
+            node.iter.args = new_args
+        return new_stmts, node
+
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values, **options):
@@ -75,6 +91,7 @@ class TritonBackend(object):
 
         func = self.func
         func.decorator_list = []
+        func = RewriteForRange().visit(func)
         func = RewriteAugAssign().visit(func)
         func = RewriteRange().visit(func)        
         if self.options.get('dim_info'):
