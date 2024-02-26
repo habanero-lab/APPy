@@ -8,15 +8,6 @@ from copy import deepcopy
 import appy.codegen.typesys as typesys
 from collections import OrderedDict
 
-class ReplaceWithSum(ast.NodeTransformer):
-    def visit_Assign(self, node):
-        if hasattr(node, 'reduce'):
-            assert node.reduce == '+'
-            assert isinstance(node.value, ast.BinOp)
-            newnode_s = f'{unparse(node.targets[0])} = sum({unparse(node.value.right)})'
-            return to_ast_node(newnode_s)
-        else:
-            return node
 
 class RewritePFor(ast.NodeTransformer):
     def __init__(self, module, options, arg_val_map):

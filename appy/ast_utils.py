@@ -123,3 +123,10 @@ def append_new_argument(f: ast.FunctionDef, arg_name: str, annotation=None):
     appender = ArgumentAppender(arg_name, annotation)
     new_function = appender.visit(f)
     return new_function
+
+def is_array_access(node):
+    return isinstance(node, ast.Subscript)
+
+def get_array_name(node: ast.Subscript):
+    assert is_array_access(node)
+    return node.value.id
