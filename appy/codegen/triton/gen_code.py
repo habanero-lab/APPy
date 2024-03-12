@@ -89,6 +89,7 @@ class TritonBackend(object):
         #from ..high_level_transforms.insert_initialization import InsertInitialization
         from ..high_level_transforms.convert_pragma_seq_for import ConvertSeqLoop
         from ..high_level_transforms.select_num_warps import SelectNumWarps
+        from ..high_level_transforms.hoist_acc import HoistAccumulators
 
         func = self.func
         func.decorator_list = []
@@ -102,6 +103,7 @@ class TritonBackend(object):
         func = PragmaLinker().visit(func)    
         func = ConvertSeqLoop().visit(func)
         func = SelectNumWarps().visit(func)
+        func = HoistAccumulators().visit(func)
         
         #func = InsertInitialization().visit(func) 
         func = RewriteTensorOperation(self.options, self.arg_val_map).visit(func)

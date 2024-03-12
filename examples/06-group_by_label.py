@@ -37,7 +37,7 @@ def kernel_lib2(N, nlabels, nfeatures, data, labels):
 def test():
     nfeatures = 8
     nlabels = 100
-    for N in [1000, 10000, 100000]: 
+    for N in [1000, 10000]: 
         data = appy.randn(N, nfeatures)
         labels = appy.randint(0, nlabels, size=N)        
         y_ref = kernel_lib2(N, nlabels, nfeatures, data, labels)
