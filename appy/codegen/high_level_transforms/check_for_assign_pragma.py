@@ -36,7 +36,7 @@ class InspectAssign(ast.NodeVisitor):
                 #print(pragma)
                 node.pragma = pragma
                 return
-            assert False, f"Please specify a pragma for the slice: {unparse(node)}"
+            assert False, f"Please specify a pragma for slice: {unparse(node)}"
            
 
 class CheckAssignPragma(ast.NodeTransformer):
