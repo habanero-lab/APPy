@@ -1,4 +1,12 @@
-APPy (Annotated Parallelism for Python) enables users to parallelize generic Python loops and tensor expressions for execution on GPUs by adding OpenMP-like compiler directives (annotations) to Python code. The foundation of APPy is described in [APPy: Annotated Parallelism for Python on GPUs](https://dl.acm.org/doi/10.1145/3640537.3641575). 
+APPy (Annotated Parallelism for Python) enables users to parallelize generic Python loops and tensor expressions for execution on GPUs by adding OpenMP-like compiler directives (annotations) to Python code. With APPy, parallelizing a Python for loop on the GPU can be as simple as adding a `#pragma parallel for` before the loop, like the following:
+
+```python
+#pragma parallel for
+for i in range(N):
+    C[i] = A[i] + B[i]
+```
+
+The APPy compiler will recognize the pragma, JIT-compile the loop to GPU code, and execute the loop on the GPU. A detailed description of APPy can be found in [APPy: Annotated Parallelism for Python on GPUs](https://dl.acm.org/doi/10.1145/3640537.3641575). This document provides a quick guide to get started. 
 
 # Install
 
