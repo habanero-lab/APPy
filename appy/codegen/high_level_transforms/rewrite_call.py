@@ -9,7 +9,7 @@ class RewriteAPPyCall(ast.NodeTransformer):
         if not isinstance(node.value, ast.Name):
             return node
 
-        if node.value.id == 'appy':
+        if node.value.id in ['appy', 'torch', 'cupy']:
             if node.attr in ['vidx', 'vindex']:
                 return node
             elif node.attr in ['tanh', 'asin']:
