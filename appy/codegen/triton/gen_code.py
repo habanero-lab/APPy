@@ -90,6 +90,7 @@ class TritonBackend(object):
         from ..high_level_transforms.convert_pragma_seq_for import ConvertSeqLoop
         from ..high_level_transforms.select_num_warps import SelectNumWarps
         from ..high_level_transforms.hoist_acc import HoistAccumulators
+        from ..high_level_transforms.check_for_assign_pragma import CheckAssignPragma
 
         func = self.func
         func.decorator_list = []
@@ -102,6 +103,7 @@ class TritonBackend(object):
 
         func = PragmaLinker().visit(func)    
         func = ConvertSeqLoop().visit(func)
+        func = CheckAssignPragma(self.arg_val_map).visit(func)
         func = SelectNumWarps().visit(func)
         func = HoistAccumulators().visit(func)
         

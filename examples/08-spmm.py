@@ -4,16 +4,14 @@ import cupyx
 import torch
 
 
-@appy.jit(auto_simd=True)
+@appy.jit(auto_simd=True, dump_final_appy=True)
 def kernel_appy0(A_data, A_indptr, A_indices, B, N, K):
     y = appy.empty([N, K], dtype=B.dtype)
     #pragma parallel for
     for i in range(N):
         start, end = A_indptr[i], A_indptr[i+1]
-        #pragma :K=>le(128)
         y[i, :K] = 0
         for j in range(start, end):
-            #pragma :K=>le(128)
             y[i, :K] += A_data[j] * B[A_indices[j], :K]
     return y
 
@@ -42,7 +40,7 @@ def kernel_lib(A, B):
 
 def test():
     N = 20000
-    K = 100
+    K = 200
     for sparsity in [0.0001, 0.0004, 0.001, 0.004, 0.01, 0.04, 0.1]:    
         A = cupyx.scipy.sparse.random(N, N, sparsity).tocsr()
         B = cupy.random.randn(N, K)

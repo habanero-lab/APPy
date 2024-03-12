@@ -103,6 +103,8 @@ def get_type_sig(*args):
     for arg in args:
         if isinstance(arg, torch.Tensor):
             sigs.append(f"<{arg.dtype}*{arg.dim()}>")
+        elif isinstance(arg, int):
+            sigs.append(f"{arg}")
         else:
             sigs.append(f"{type(arg)}")
     return ",".join(sigs)
