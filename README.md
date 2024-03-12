@@ -31,6 +31,14 @@ def vector_add(A, B, C, N):
         C[i] = A[i] + B[i]
 ```
 
+## APPy's Machine Model
+A key design of APPy is that it assumes a simple abstract machine model, i.e. a multi-vector processor, instead of directly exposing the complex GPU architecture to the programmer. In this multi-vector processor, there are 2 layers of parallelism: 1) each vector processor is able to do vector processing (SIMD); 2) different vector processors run independently and simultaneously (MIMD). Pragma `#pragma parallel for` corresponds to the MIMD parallelism, which is also referred to as parallelization. The SIMD parallelism is referred to as vectorization, as described in more detail in the next section. Maximum parallelism is achieved with the loop is both parallelized and vectorized.
+
+<p align="center">
+  <img src="https://github.com/habanero-lab/APPy/assets/7697776/6425b55c-4148-4bac-9eae-e0fbab3cfa31" width=50% height=50%>
+</p>
+
+
 ## Vectorization
 Although `#pragma parallel for` parallelizes a loop, maximum parallelism is achieved when the loop body is also vectorized, when applicable. APPy provides two high-level ways to achieve vectorization: 1) use tensor/array expressions (compiler generates a loop automatically); 2) annotate a loop with the `#pragma simd`, which divides the loop into smaller chunks.
 
