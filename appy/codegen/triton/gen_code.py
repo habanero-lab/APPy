@@ -97,6 +97,7 @@ class TritonBackend(object):
         func = RewriteForRange().visit(func)
         func = RewriteAugAssign().visit(func)
         func = RewriteRange().visit(func)        
+        #func = RewriteAPPyCall().visit(func)  # This will also rewrite non-kernel code
         if self.options.get('dim_info'):
             dim_info = self.options.get('dim_info')
             func = AddDimToSlice(dim_info).visit(func)

@@ -71,6 +71,10 @@ def max(a, axis=0):
     elif tensorlib == cupy:
         return tensorlib.max(a, axis=axis)
 
+# Other array functions
+def flip(a, axis=None):
+    return tensorlib.flip(a, axis)
+
 # Special functions
 def step(start, stepsize, bound=None):
     if bound:
