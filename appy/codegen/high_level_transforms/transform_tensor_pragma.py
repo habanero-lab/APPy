@@ -11,7 +11,7 @@ random.seed(0)
 
 def get_init_val_for_reduction(r):
     if r == 'sum':
-        return 0
+        return 0.0
     elif r == 'max':
         return float('-inf')
     elif r == 'min':
@@ -23,11 +23,21 @@ class RewriteSlice(ast.NodeTransformer):
         self.map = map
 
     def visit_Slice(self, node):
+        #print('visit Slice', unparse(node), hasattr(node, 'flip'))
         low, up = slice_to_tuple(unparse(node))
         if (low, up) in self.map:
             var = self.map[(low, up)]
-            return new_name_node(var)
+            if not hasattr(node, 'flip'):
+                return new_name_node(var)
+            else:
+                # Example
+                # flip(0:N) => N-1::-1 
+                # flip(1:N) => N-1:0:-1
+                #print('found a flip:', unparse(node))
+                assert int(low) == 0, f'Only support flip on slices starting with 0'
+                return to_ast_expr(f'-{var}+{up}-1')
         else:
+            assert not hasattr(node, 'flip'), f'unsupported: {unparse(node)}'
             var = None
             off = 0
             for key in self.map:
@@ -96,7 +106,8 @@ class RewriteTensorOperation(ast.NodeTransformer):
             assert dtype != None, 'failed to get data type of the operation'
 
             prelogue = [
-                to_ast_node(f'{target_s} = float("{init_value}")'),
+                #to_ast_node(f'{target_s} = float("{init_value}")'),
+                to_ast_node(f'{target_s} = {init_value}'),
                 to_ast_node(f'{target_s} = {target_s}.to({dtype})'),
             ]
             epilogue = None
@@ -104,6 +115,10 @@ class RewriteTensorOperation(ast.NodeTransformer):
 
     def visit_Assign(self, node):        
         if hasattr(node, 'pragma') and '=>' in node.pragma:
+            # Perform pre-passes before lowering to loops
+            from .rewrite_call import RewriteAPPyCall
+            node = RewriteAPPyCall().visit(node)
+
             module = ast.Module(body=[])
             parent = module
             init_hook = None            

@@ -57,6 +57,14 @@ class RewriteAPPyCall(ast.NodeTransformer):
                 node.args[2],
             ]
             node.args = new_args
+        elif unparse(node.func) in ['appy.flip']:
+            # Convert "appy.flip(A[..])" to "A[..]", and add a new attr "flip" to its slice
+            assert len(node.args) == 1
+            #dump(node)
+            assert isinstance(node.args[0], ast.Subscript) and isinstance(node.args[0].slice, ast.Slice)
+            node = node.args[0]
+            node.slice.flip = True
+            
         
         self.generic_visit(node)
         return node
