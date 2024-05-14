@@ -10,7 +10,7 @@ def kernel_appy(N, nlabels, nfeatures, data, labels):
     #pragma parallel for
     for i in range(N):
         l = labels[i]
-        #pragma atomic :nfeatures=>le(128)
+        #pragma atomic
         out[l, :nfeatures] += data[i, :nfeatures]
         #pragma atomic
         count[l] += 1
@@ -35,9 +35,9 @@ def kernel_lib2(N, nlabels, nfeatures, data, labels):
 
 
 def test():
-    nfeatures = 8
+    nfeatures = 300
     nlabels = 100
-    for N in [1000, 10000]: 
+    for N in [1000, 4000]: 
         data = appy.randn(N, nfeatures)
         labels = appy.randint(0, nlabels, size=N)        
         y_ref = kernel_lib2(N, nlabels, nfeatures, data, labels)

@@ -35,6 +35,9 @@ def parse_pragma(pragma):
     
     return d
 
+def get_default_block_size():
+    return 256
+
 def get_pragma_property(pragma, property_name):
     match = re.search(r' ' + property_name + r'\((.*?)\)', pragma)
     if match:
@@ -42,3 +45,17 @@ def get_pragma_property(pragma, property_name):
         return p
     else:
         return None
+
+def has_tensor_pragma(node):
+    if not hasattr(node, 'pragma'):
+        return False
+    else:
+        pragma = node.pragma
+        return '=>' in pragma
+
+def has_atomic_pragma(node):
+    if not hasattr(node, 'pragma'):
+        return False
+    else:
+        pragma = node.pragma
+        return '#pragma atomic' in pragma
