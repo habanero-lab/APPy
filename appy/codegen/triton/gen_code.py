@@ -8,35 +8,6 @@ from appy.codegen.typesys import Tensor as TensorType
 from appy.codegen.typesys import Constant as ConstantType
 from appy.ast_utils import *
 
-class RewriteForRange(ast.NodeTransformer):
-    def __init__(self) -> None:
-        self.var_count = 0
-
-    def get_new_var(self):
-        new_var = f'__rewrite_for_range_var{self.var_count}'
-        self.var_count += 1
-        return new_var
-        
-    def visit_For(self, node: ast.For):
-        new_stmts = []
-        if isinstance(node.iter, ast.Call) and node.iter.func.id == 'range':
-            new_args = []
-            for arg in node.iter.args:
-                if not isinstance(arg, (ast.Name, ast.Constant)):
-                    new_var = self.get_new_var()
-                    new_args.append(new_name_node(new_var))                
-                    new_stmts.append(
-                        new_assign_node(
-                            new_name_node(new_var, ctx=ast.Store()),
-                            arg,
-                            lineno=node.lineno
-                        )
-                    )                
-                else:
-                    new_args.append(arg)
-            node.iter.args = new_args
-        return new_stmts, node
-
 
 class TritonBackend(object):
     def __init__(self, ast_tree, arg_values, **options):
@@ -91,10 +62,11 @@ class TritonBackend(object):
         from ..high_level_transforms.select_num_warps import SelectNumWarps
         from ..high_level_transforms.hoist_acc import HoistAccumulators
         from ..high_level_transforms.check_for_assign_pragma import CheckAssignPragma
+        from ..high_level_transforms.insert_before_loop import InsertRangeVar
 
         func = self.func
         func.decorator_list = []
-        func = RewriteForRange().visit(func)
+        func = InsertRangeVar().visit(func)
         func = RewriteAugAssign().visit(func)
         func = RewriteRange().visit(func)        
         #func = RewriteAPPyCall().visit(func)  # This will also rewrite non-kernel code
