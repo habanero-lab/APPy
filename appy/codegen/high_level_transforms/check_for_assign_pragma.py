@@ -44,7 +44,8 @@ class InspectAssign(ast.NodeVisitor):
                 node.pragma = pragma
                 return
         else:
-            assert False, f"Please specify a pragma for slice: {unparse(node)}"
+            if not has_tensor_pragma(node):
+                assert False, f"Please specify a pragma for slice: {unparse(node)}"
            
 
 class CheckAssignPragma(ast.NodeTransformer):
