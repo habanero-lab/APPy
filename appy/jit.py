@@ -110,38 +110,3 @@ def get_type_sig(*args):
     return ",".join(sigs)
 
 
-def _jit(fn):
-    def inner(*args):
-        key = f"{fn}+{get_type_sig(*args)}"
-
-        if key not in compiled:
-            compiled[key] = compile(fn, args)
-        return compiled[key](*args)
-
-    inner.__name__ = fn.__name__
-    return inner
-
-
-def jit(fn=None, dump_code=None, verbose=None, **options):
-    if fn:
-        return _jit(fn)
-    else:
-        # if dump_code != None:
-        #     config.configs['dump_code'] = dump_code
-        # if verbose != None:
-        #     config.configs['verbose'] = verbose
-
-        # print('return arg version')
-        def jit_with_args(fn1):
-            def inner(*args):
-                key = f"{fn1}+{get_type_sig(*args)}"
-                if key not in compiled:
-                    compiled[key] = compile(
-                        fn1, args, dump_code=dump_code, verbose=verbose, **options
-                    )
-                return compiled[key](*args)
-
-            inner.__name__ = fn1.__name__
-            return inner
-
-        return jit_with_args

@@ -1,5 +1,9 @@
 import ast_comments as ast
 import inspect
+from pathlib import Path
+import subprocess
+import importlib
+import sys
 from appy.codegen.triton.gen_code import TritonBackend
 
 libname = 'torch'  # can be either 'torch' or 'cupy'
@@ -11,12 +15,12 @@ def compile_from_src(src, **options):
     module = backend.codegen()
     return module
 
-def compile(fn, dump_code=False, verbose=False):
+def compile(fn, args, dump_code=False, verbose=False, **options):
     '''
     Compile an annotated function and returns a new function that executes GPU kernels
     '''
     source_code = inspect.getsource(fn)
-    module = compile_from_src(source_code)  # module includes both host and device code
+    module = compile_from_src(source_code, **options)  # module includes both host and device code
     if dump_code:
         print(module)
     filename = f".appy_kernels/{fn.__name__}.py"
@@ -33,6 +37,58 @@ def compile(fn, dump_code=False, verbose=False):
         print("[jit] Done compiling")
     compiled = getattr(foo, fn.__name__)
     return compiled
+
+
+def _jit(fn):
+    def inner(*args):
+        key = f"{fn}+{get_type_sig(*args)}"
+
+        if key not in compiled:
+            compiled[key] = compile(fn, args)
+        return compiled[key](*args)
+
+    inner.__name__ = fn.__name__
+    return inner
+
+compiled_funcs = {}
+
+def jit(fn=None, dump_code=None, verbose=None, **options):
+    if fn:
+        return _jit(fn)
+    else:
+        # if dump_code != None:
+        #     config.configs['dump_code'] = dump_code
+        # if verbose != None:
+        #     config.configs['verbose'] = verbose
+
+        # print('return arg version')
+        def jit_with_args(fn1):
+            def inner(*args):
+                key = f"{fn1}+{get_type_sig(*args)}"
+                if key not in compiled_funcs:
+                    compiled_funcs[key] = compile(
+                        fn1, args, dump_code=dump_code, verbose=verbose, **options
+                    )
+                return compiled_funcs[key](*args)
+
+            inner.__name__ = fn1.__name__
+            return inner
+
+        return jit_with_args
+
+def is_type_torch_tensor(v):
+    return f"{type(v).__module__}.{type(v).__name__}" == "torch.Tensor"
+
+def get_type_sig(*args):
+    sigs = []
+    for arg in args:
+        if is_type_torch_tensor(arg):
+            sigs.append(f"<{arg.dtype}*{arg.dim()}>")
+        elif isinstance(arg, int):
+            sigs.append(f"{arg}")
+        else:
+            sigs.append(f"{type(arg)}")
+    return ",".join(sigs)
 
 # Special functions
 def step(start, stepsize, bound=None):
