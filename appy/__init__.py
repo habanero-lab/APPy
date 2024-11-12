@@ -5,8 +5,8 @@ import subprocess
 import importlib
 import sys
 from appy.codegen.triton.gen_code import TritonBackend
+from . import config
 
-libname = 'torch'  # can be either 'torch' or 'cupy'
 
 def compile_from_src(src, **options):
     tree = ast.parse(src)

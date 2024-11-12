@@ -3,6 +3,7 @@ import numpy as np
 from copy import deepcopy
 import ast
 from ast_comments import unparse
+import appy
 from appy.codegen.typesys import build_type_from_value, get_tl_dtype_from_str
 from appy.codegen.typesys import Tensor as TensorType
 from appy.codegen.typesys import Constant as ConstantType
@@ -21,7 +22,7 @@ class TritonBackend(object):
             assert isinstance(keyword_arg, ast.Constant)
             self.arg_values.append(keyword_arg.value)
         
-        self.module = ast.parse(textwrap.dedent('''
+        imports = textwrap.dedent('''
             import numpy as np
             import torch
             import triton
@@ -31,8 +32,12 @@ class TritonBackend(object):
 
             def init_to_zero(name):
                 return lambda nargs: nargs[name].zero_()
-        '''
-        ))
+        ''')
+
+        if appy.config.tensorlib == 'cupy':
+            imports = 'import cupy\n' + imports
+
+        self.module = ast.parse(imports)
         self.arg_names = get_arg_names(self.func)
 
         self.arg_val_map = {}
