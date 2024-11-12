@@ -54,7 +54,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
         else:
             elts = [slice]
         import numpy as np
-        is_elt_slice = np.zeros(len(elts))
+        is_elt_slice = [0] * len(elts) # np.zeros(len(elts))
         terms = []
         strides = []
         masks = []
@@ -112,10 +112,11 @@ class TritonKernelTransformer(ast.NodeTransformer):
                 
         # TODO: to refactor
         # If there are more than 1 slice in elements, broadcast is needed
-        assert np.sum(is_elt_slice) in [0, 1, 2], np.sum(is_elt_slice)
-        if np.sum(is_elt_slice) == 2:
+        assert sum(is_elt_slice) in [0, 1, 2], sum(is_elt_slice)
+        if sum(is_elt_slice) == 2:
             bcasts = ('[:,None]', '[None,:]')
-            for i, bcast in zip(np.nonzero(is_elt_slice)[0], bcasts):
+            nonzero_indices = [i for i in range(len(is_elt_slice)) if is_elt_slice[i]]
+            for i, bcast in zip(nonzero_indices, bcasts):
                 terms[i] = f'({terms[i]})' + bcast
 
         masks = list(filter(lambda x: x!=None, masks))

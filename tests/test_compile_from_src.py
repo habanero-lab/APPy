@@ -28,7 +28,18 @@ def f2(A_data, A_indptr, A_indices, x, M, N):
             y[i] += A_data[j] * x[A_indices[j]]
     return y
 
-for f in [f0, f1, f2]:
+def f3(A, B):
+    M, N = A.shape
+    for t in range(1, 10):
+        #pragma 1:M-1=>parallel 1:N-1=>parallel
+        B[1:M-1, 1:N-1] = 0.2 * (A[1:M-1, 1:N-1] + A[1:M-1, :N-2] + A[1:M-1, 2:N] +
+                                A[2:M, 1:N-1] + A[0:M-2, 1:N-1])
+        #pragma 1:M-1=>parallel 1:N-1=>parallel
+        A[1:M-1, 1:N-1] = 0.2 * (B[1:M-1, 1:N-1] + B[1:M-1, :N-2] + B[1:M-1, 2:N] +
+                                B[2:M, 1:N-1] + B[0:M-2, 1:N-1])
+    return A, B
+
+for f in [f0, f1, f2, f3]:
     src = inspect.getsource(f)
     newcode = appy.compile_from_src(src)
     print(newcode)
