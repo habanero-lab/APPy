@@ -42,12 +42,10 @@ class RewritePFor(ast.NodeTransformer):
         return newargs
 
     def make_kernel_actual_arguments(self, arg_dim_map):
-        import numpy as np
-        
         newargs = []
         for name, (ty, ndim) in arg_dim_map.items():
             arg = name
-            if name in self.arg_val_map and type(self.arg_val_map[name]) in [np.float64, np.float32]:
+            if name in self.arg_val_map and appy.get_type_str(self.arg_val_map[name]) in ["numpy.float64", "numpy.float32"]:
                 arg = f'float({name})'
             if appy.config.tensorlib == 'cupy' and ty == 'tensor':
                 arg = f'torch.as_tensor({name}, device="cuda")'

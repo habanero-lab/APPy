@@ -76,13 +76,17 @@ def jit(fn=None, dump_code=None, verbose=None, **options):
 
         return jit_with_args
 
-def is_type_torch_tensor(v):
-    return f"{type(v).__module__}.{type(v).__name__}" == "torch.Tensor"
+
+def get_type_str(v):
+    return f"{type(v).__module__}.{type(v).__name__}"
+
+def is_type(v, ty):
+    return get_type_str(v) == ty
 
 def get_type_sig(*args):
     sigs = []
     for arg in args:
-        if is_type_torch_tensor(arg):
+        if is_type(arg, "torch.Tensor"):
             sigs.append(f"<{arg.dtype}*{arg.dim()}>")
         elif isinstance(arg, int):
             sigs.append(f"{arg}")
