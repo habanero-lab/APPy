@@ -39,18 +39,18 @@ def compile(fn, args, dump_code=False, verbose=False, **options):
     return compiled
 
 
+compiled_funcs = {}
+
 def _jit(fn):
     def inner(*args):
         key = f"{fn}+{get_type_sig(*args)}"
 
-        if key not in compiled:
-            compiled[key] = compile(fn, args)
-        return compiled[key](*args)
+        if key not in compiled_funcs:
+            compiled_funcs[key] = compile(fn, args)
+        return compiled_funcs[key](*args)
 
     inner.__name__ = fn.__name__
     return inner
-
-compiled_funcs = {}
 
 def jit(fn=None, dump_code=None, verbose=None, **options):
     if fn:
