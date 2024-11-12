@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import importlib
 import sys
+import black
 from appy.codegen.triton.gen_code import TritonBackend
 from . import config
 
@@ -13,6 +14,7 @@ def compile_from_src(src, **options):
     args = {}
     backend = TritonBackend(tree, args, **options)
     module = backend.codegen()
+    module = black.format_str(module, mode=black.Mode())
     return module
 
 def compile(fn, args, dump_code=False, verbose=False, **options):
