@@ -1,4 +1,3 @@
-import torch
 
 class Tensor(object):
     def __init__(self, dtype, ndim, shape=None):
@@ -19,9 +18,10 @@ class Constant(object):
 
 
 def build_type_from_value(v):
-    if isinstance(v, torch.Tensor):
+    if f"{type(v).__module__}.{type(v).__name__}" == 'torch.Tensor':
+    #if isinstance(v, torch.Tensor):
         ty = Tensor(v.dtype, v.dim())
-    elif isinstance(v, int) or isinstance(v, float) or isinstance(v, torch.dtype):
+    elif isinstance(v, int) or isinstance(v, float) or f"{type(v).__module__}.{type(v).__name__}" == 'torch.dtype':
         ty = Constant(type(v), v)
     return ty
    

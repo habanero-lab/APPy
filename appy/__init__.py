@@ -1,79 +1,38 @@
-import torch
-import cupy
-from .jit import jit
-from .utils import *
+import ast_comments as ast
+import inspect
+from appy.codegen.triton.gen_code import TritonBackend
 
-torch.set_default_device('cuda')
-tensorlib = torch  # Possible options are: torch, cupy
+libname = 'torch'  # can be either 'torch' or 'cupy'
 
-# Array creation functions
-def empty(size, dtype):
-    return tensorlib.empty(size, dtype=dtype)
+def compile_from_src(src, **options):
+    tree = ast.parse(src)
+    args = {}
+    backend = TritonBackend(tree, args, **options)
+    module = backend.codegen()
+    return module
 
-def zeros(size, dtype):
-    return tensorlib.zeros(size, dtype=dtype)
-
-def empty_like(a):
-    return tensorlib.empty_like(a)
-
-def zeros_like(a):
-    return tensorlib.zeros_like(a)
-
-def randn(*size, dtype='float64'):
-    a = cupy.random.randn(*size).astype(dtype)
-    if tensorlib == torch:
-        a = torch.as_tensor(a)
-    return a
-
-def randint(low, high=None, size=None, dtype='l'):
-    a = cupy.random.randint(low, high, size, dtype)
-    if tensorlib == torch:
-        a = torch.as_tensor(a)
-    return a
-
-def copy(a):
-    if tensorlib == torch:
-        return torch.clone(a)
-    elif tensorlib == cupy:
-        return cupy.copy(a)
-
-# Math functions
-def sum(a, axis=0):
-    return tensorlib.sum(a, axis)
-
-def dot(a, b):
-    return tensorlib.dot(a, b)
-
-def mv(a, b):
-    return a @ b
-
-def minimum(a, b):
-    return tensorlib.minimum(a, b)
-
-def where(*args):
-    return tensorlib.where(*args)
-
-def mean(args, axis=0):
-    return tensorlib.mean(args, axis)
-
-def sqrt(a):
-    return tensorlib.sqrt(a)
-
-def exp(a):
-    return tensorlib.exp(a)
-
-def log(a):
-    return tensorlib.log(a)
-
-def max(a, axis=0):
-    if tensorlib == torch:
-        return tensorlib.max(a, axis=axis)[0]
-    elif tensorlib == cupy:
-        return tensorlib.max(a, axis=axis)
-
-# Array manipulation functions
-def flip(a, axis=None):
-    return tensorlib.flip(a, axis)
+def compile(fn, dump_code=False, verbose=False):
+    '''
+    Compile an annotated function and returns a new function that executes GPU kernels
+    '''
+    source_code = inspect.getsource(fn)
+    module = compile_from_src(source_code)  # module includes both host and device code
+    if dump_code:
+        print(module)
+    filename = f".appy_kernels/{fn.__name__}.py"
+    Path(filename).write_text(module, encoding='utf-8')
+    
+    #subprocess.run(["black", filename], capture_output=True, text=True)
+    subprocess.run(["black", filename], capture_output=True)
+    # exit(1)
+    spec = importlib.util.spec_from_file_location("module.name", filename)
+    foo = importlib.util.module_from_spec(spec)
+    sys.modules["module.name"] = foo
+    spec.loader.exec_module(foo)
+    if verbose:
+        print("[jit] Done compiling")
+    compiled = getattr(foo, fn.__name__)
+    return compiled
 
 # Special functions
 def step(start, stepsize, bound=None):
