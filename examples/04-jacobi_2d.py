@@ -1,6 +1,9 @@
+import torch
 import appy
 import copy
+from appy.utils import allclose, bench
 
+torch.set_default_device('cuda')
 
 @appy.jit(auto_simd=True)
 def kernel_appy(A, B):
@@ -26,16 +29,16 @@ def kernel_lib(A, B):
 
 def test():
     for N in [1000, 4000]:
-        A = appy.randn(N, N)
-        B = appy.randn(N, N)
+        A = torch.randn(N, N)
+        B = torch.randn(N, N)
         A_ref, B_ref = kernel_lib(copy.deepcopy(A), copy.deepcopy(B))
         print(f"shape: {A.shape}, dtype: {A.dtype}")
         for f in [kernel_lib, kernel_appy]:
             A_, B_ = f(copy.deepcopy(A), copy.deepcopy(B))
-            assert appy.utils.allclose(A_, A_ref, atol=1e-6)
+            assert allclose(A_, A_ref, atol=1e-6)
             #A_copy, B_copy = copy.deepcopy(A), copy.deepcopy(B)
             #ms = appy.utils.bench(lambda: f(A_copy, B_copy))
-            ms = appy.utils.bench(lambda: f(copy.deepcopy(A), copy.deepcopy(B)))
+            ms = bench(lambda: f(copy.deepcopy(A), copy.deepcopy(B)))
             print(f"{f.__name__}: {ms:.4f} ms")
 
 
