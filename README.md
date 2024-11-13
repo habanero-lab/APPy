@@ -8,6 +8,8 @@ for i in range(N):
 
 The APPy compiler will recognize the pragma, JIT-compile the loop to GPU code, and execute the loop on the GPU. A detailed description of APPy can be found in [APPy: Annotated Parallelism for Python on GPUs](https://dl.acm.org/doi/10.1145/3640537.3641575). This document provides a quick guide to get started. 
 
+News: A web-based version of APPy (https://tongzhou80.github.io/appy-web/index.html) is now available to quickly try APPy online and view the generated code!
+
 # Install
 
 ```bash
