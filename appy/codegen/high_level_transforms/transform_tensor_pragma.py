@@ -1,5 +1,6 @@
 
 from ast import unparse
+import appy
 from appy.ast_utils import *
 import random
 import re
@@ -132,7 +133,8 @@ class RewriteTensorOperation(ast.NodeTransformer):
             if self.verbose:
                 print(slice_map)
                 
-            if self.options.get('auto_block') or self.options.get('auto_simd'):
+            #if self.options.get('auto_block') or self.options.get('auto_simd'):
+            if self.options.get('auto_block') or appy.config.auto_simd:
                 default_block = 'APPY_BLOCK'
                 last_slice = list(slice_map.keys())[-1]
                 if slice_map[last_slice]['block'] == 1:

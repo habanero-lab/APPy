@@ -7,7 +7,7 @@ class InsertRangeVar(ast.NodeTransformer):
         self.var_count = 0
 
     def get_new_var(self):
-        new_var = f'__rewrite_for_range_var{self.var_count}'
+        new_var = f'__range_var{self.var_count}'
         self.var_count += 1
         return new_var
         
