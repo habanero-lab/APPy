@@ -27,7 +27,6 @@ class TritonBackend(object):
             import triton
             import triton.language as tl
             from triton.language import debug_barrier
-            import appy
 
             def init_to_zero(name):
                 return lambda nargs: nargs[name].zero_()
