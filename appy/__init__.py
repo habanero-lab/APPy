@@ -26,6 +26,7 @@ def compile(fn, args, dump_code=False, verbose=False, **options):
     if dump_code:
         print(module)
     filename = f".appy_kernels/{fn.__name__}.py"
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
     Path(filename).write_text(module, encoding='utf-8')
     
     #subprocess.run(["black", filename], capture_output=True, text=True)

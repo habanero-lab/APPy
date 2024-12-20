@@ -12,6 +12,7 @@ class InsertRangeVar(ast.NodeTransformer):
         return new_var
         
     def visit_For(self, node: ast.For):
+        self.generic_visit(node)
         new_stmts = []
         if isinstance(node.iter, ast.Call) and node.iter.func.id == 'range':
             new_args = []
