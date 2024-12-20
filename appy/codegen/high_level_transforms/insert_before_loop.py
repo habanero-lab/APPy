@@ -30,5 +30,5 @@ class InsertRangeVar(ast.NodeTransformer):
                 else:
                     new_args.append(arg)
             node.iter.args = new_args
-        return new_stmts, node
+        return *new_stmts, node
 
