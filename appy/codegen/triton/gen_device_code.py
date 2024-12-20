@@ -230,11 +230,14 @@ class TritonKernelTransformer(ast.NodeTransformer):
             return node
 
         # Process range variables
-        start, step, bound = self.vindices[node.id]
-        offset = to_ast_expr(f'({unparse(start)} + tl.arange(0, {unparse(step)}))')
-        if bound:
-            self.range_bound[offset] = bound
-        return offset
+        if isinstance(node.ctx, ast.Load):
+            start, step, bound = self.vindices[node.id]
+            offset = to_ast_expr(f'({unparse(start)} + tl.arange(0, {unparse(step)}))')
+            if bound:
+                self.range_bound[offset] = bound
+            return offset
+        else:
+            return node
 
     def visit_Assign(self, node: ast.Assign):
         #ast.NodeTransformer.generic_visit(self, node)
