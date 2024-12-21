@@ -1,5 +1,6 @@
 import torch
 import appy
+import appy.utils 
 
 torch.set_default_device('cuda')
 

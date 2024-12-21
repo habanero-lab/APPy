@@ -1,5 +1,6 @@
 import torch
 import appy
+import appy.utils 
 # import cupy
 # appy.tensorlib = cupy
 
