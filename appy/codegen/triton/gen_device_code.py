@@ -38,6 +38,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
 
             return node.body
         else:
+            self.vindices = {}   # vindices are per loop based
             self.generic_visit(node)
             return node
 
