@@ -1,12 +1,14 @@
+import torch
 import appy
 # import cupy
 # appy.tensorlib = cupy
 
+torch.set_default_device('cuda')
 
 @appy.jit(auto_simd=True)
 def kernel_appy(N, nlabels, nfeatures, data, labels):
-    out = appy.zeros([nlabels, nfeatures], dtype=data.dtype)
-    count = appy.zeros(nlabels, dtype=data.dtype)
+    out = torch.zeros([nlabels, nfeatures], dtype=data.dtype)
+    count = torch.zeros(nlabels, dtype=data.dtype)
     #pragma parallel for
     for i in range(N):
         l = labels[i]
@@ -18,8 +20,8 @@ def kernel_appy(N, nlabels, nfeatures, data, labels):
     
 
 def kernel_lib1(N, nlabels, nfeatures, data, labels):
-    out = appy.zeros([nlabels, nfeatures], dtype=data.dtype)
-    count = appy.zeros(nlabels, dtype=data.dtype)
+    out = torch.zeros([nlabels, nfeatures], dtype=data.dtype)
+    count = torch.zeros(nlabels, dtype=data.dtype)
     for i in range(N):
         l = labels[i]
         out[l] += data[i]
@@ -28,18 +30,18 @@ def kernel_lib1(N, nlabels, nfeatures, data, labels):
 
 
 def kernel_lib2(N, nlabels, nfeatures, data, labels):
-    out = appy.empty([nlabels, nfeatures], dtype=data.dtype)
+    out = torch.empty([nlabels, nfeatures], dtype=data.dtype)
     for i in range(nlabels):
         out[i] = data[labels == i].mean(axis=0)
     return out
 
 
 def test():
-    nfeatures = 300
-    nlabels = 100
-    for N in [1000, 4000]: 
-        data = appy.randn(N, nfeatures)
-        labels = appy.randint(0, nlabels, size=N)        
+    nfeatures = 30
+    nlabels = 10
+    for N in [1000]: 
+        data = torch.randn(N, nfeatures)
+        labels = torch.randint(0, nlabels, size=(N,))        
         y_ref = kernel_lib2(N, nlabels, nfeatures, data, labels)
         for f in [kernel_lib1, kernel_lib2, kernel_appy]:
             y = f(N, nlabels, nfeatures, data, labels)

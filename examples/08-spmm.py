@@ -2,10 +2,11 @@ import appy
 import cupyx
 import torch
 
+torch.set_default_device('cuda')
 
 @appy.jit(auto_simd=True)
 def kernel_appy(A_data, A_indptr, A_indices, B, M, N):
-    y = appy.empty([M, N], dtype=B.dtype)
+    y = torch.empty([M, N], dtype=B.dtype)
     #pragma parallel for
     for i in range(M):
         start, end = A_indptr[i], A_indptr[i+1]
@@ -20,7 +21,7 @@ def kernel_lib(A, B):
 
 
 def test():
-    M = K = 20000
+    M = K = 10000
     N = 256
     print(f'Computing SpMM: A ({M}x{K}, sparse) @ B ({K}x{N}, dense)')
     #for sparsity in [0.0001, 0.0004, 0.001, 0.004, 0.01, 0.04, 0.1]:    

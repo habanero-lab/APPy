@@ -7,7 +7,7 @@ import sys
 import black
 from appy.codegen.triton.gen_code import TritonBackend
 from . import config
-
+from . import utils
 
 def compile_from_src(src, **options):
     tree = ast.parse(src)

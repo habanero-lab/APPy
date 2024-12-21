@@ -1,10 +1,12 @@
+import torch
 import appy
 
+torch.set_default_device('cuda')
 
 @appy.jit  
 def kernel_appy1(a, mask):
     ## Zero-initialize the output array
-    b = appy.zeros(1, dtype=a.dtype)
+    b = torch.zeros(1, dtype=a.dtype)
     N = a.shape[0]
     #pragma parallel for
     for i in range(N):
@@ -17,12 +19,12 @@ def kernel_appy1(a, mask):
 @appy.jit  
 def kernel_appy2(a, mask):
     ## Zero-initialize the output array
-    b = appy.zeros(1, dtype=a.dtype)
+    b = torch.zeros(1, dtype=a.dtype)
     N = a.shape[0]
     #pragma parallel for simd
     for i in range(N):
         #pragma atomic
-        b[0] += appy.where(mask[i], a[i], 0.0)
+        b[0] += torch.where(mask[i], a[i], 0.0)
     return b
 
 
@@ -32,8 +34,8 @@ def kernel_lib(a, mask):
 
 def test():
     for N in [10000, 100000, 1000000, 10000000]:
-        a = appy.randn(N)
-        mask = appy.randint(0, 2, size=N) > 0
+        a = torch.randn(N)
+        mask = torch.randint(0, 2, size=(N,)) > 0
         c_ref = kernel_lib(a, mask)
         print(f"N: {a.shape[0]}, dtype: {a.dtype}")
         for f in [kernel_lib, kernel_appy1, kernel_appy2]:

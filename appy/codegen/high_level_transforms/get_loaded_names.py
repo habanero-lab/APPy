@@ -37,7 +37,7 @@ class ExtractArguments(ast.NodeVisitor):
 
     def visit_Name(self, node):   
         id = node.id     
-        if id.startswith('_top_var') or id.startswith('__range_var'):
+        if id.startswith('_top_var'):# or id.startswith('__range_var'):
             return
 
         if isinstance(node.ctx, ast.Store):
