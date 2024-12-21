@@ -1,13 +1,11 @@
-import ast_comments as ast
-import inspect
-from pathlib import Path
-import subprocess
-import importlib
 import sys
+import inspect
+import ast_comments as ast
+import importlib
+from pathlib import Path
 import black
 from appy.codegen.triton.gen_code import TritonBackend
 from . import config
-from . import utils
 
 def compile_from_src(src, **options):
     tree = ast.parse(src)
@@ -28,10 +26,6 @@ def compile(fn, args, dump_code=False, verbose=False, **options):
     filename = f".appy_kernels/{fn.__name__}.py"
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
     Path(filename).write_text(module, encoding='utf-8')
-    
-    #subprocess.run(["black", filename], capture_output=True, text=True)
-    subprocess.run(["black", filename], capture_output=True)
-    # exit(1)
     spec = importlib.util.spec_from_file_location("module.name", filename)
     foo = importlib.util.module_from_spec(spec)
     sys.modules["module.name"] = foo
