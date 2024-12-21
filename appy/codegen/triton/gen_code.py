@@ -20,20 +20,19 @@ class TritonBackend(object):
         for keyword_arg in self.func.args.defaults:
             assert isinstance(keyword_arg, ast.Constant)
             self.arg_values.append(keyword_arg.value)
-        
-        imports = textwrap.dedent('''
-            import numpy as np
-            import torch
-            import triton
-            import triton.language as tl
-            from triton.language import debug_barrier
 
-            def init_to_zero(name):
-                return lambda nargs: nargs[name].zero_()
-        ''')
+        imports = textwrap.dedent(f'''
+                    import numpy as np
+                    import torch
+                    import {appy.config.tensorlib}
+                    from {appy.config.tensorlib} import empty, zeros
+                    import triton
+                    import triton.language as tl
+                    from triton.language import debug_barrier
 
-        if appy.config.tensorlib == 'cupy':
-            imports = 'import cupy\n' + imports
+                    def init_to_zero(name):
+                        return lambda nargs: nargs[name].zero_()
+                ''')
 
         self.module = ast.parse(imports)
         self.arg_names = get_arg_names(self.func)
