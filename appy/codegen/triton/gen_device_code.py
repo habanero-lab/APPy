@@ -67,19 +67,12 @@ class TritonKernelTransformer(ast.NodeTransformer):
             assert False
         # Example: A[i], A[0]    
         if not isinstance(node.slice, ast.Tuple):
-            offset = node.slice
-            mask = None
-            if offset in self.range_bound:
-                mask = to_ast_expr(f'{unparse(offset)} < {unparse(self.range_bound[offset])}')
-            addr = new_add_node(base, offset)
-            
+            offset = node.slice            
+            addr = new_add_node(base, offset)            
         else:
             # Example: A[i, j], A[0, i]
             addr = base
-            mask = None
-            for i,offset in enumerate(node.slice.elts):
-                if offset in self.range_bound:
-                    mask = to_ast_expr(f'{unparse(offset)} < {unparse(self.range_bound[offset])}')
+            for i,offset in enumerate(node.slice.elts):                
                 addr = new_add_node(addr, new_mul_node(offset, new_name_node(f'{base.id}_stride_{i}')))
 
         if hasattr(node, 'mask'):
