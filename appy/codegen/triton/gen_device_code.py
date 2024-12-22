@@ -46,11 +46,6 @@ class TritonKernelTransformer(ast.NodeTransformer):
         '''
         Visit a subscript and return a `tl.load` or `tl.store` depending on the ctx.
         '''
-        print('tz:')
-        # dump the node and its mask if it has attr "mask"
-        if hasattr(node, 'mask'):
-            print(unparse(node))
-            print(node.mask)
         if unparse(node.slice) in ['(:, None)', '(None, :)']:
             if isinstance(node.value, ast.Subscript):
                 node.value = self.visit_Subscript(node.value)

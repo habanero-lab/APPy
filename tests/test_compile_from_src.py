@@ -53,6 +53,7 @@ def f4(A_indptr, A_indices, A_data, A_shape, B_indptr, B_indices, B_data, B_shap
         #pragma simd
         for j in range(0, __dB_shape_1, 1):
             __dB[i, j] = 0
+        #pragma simd
         for __pB_i in range(B_indptr[i], B_indptr[i + 1], 1):
             j = B_indices[__pB_i]
             __dB[i, j] = __dB[i, j] + B_data[__pB_i] * 1 # target_indices: ['i', 'j']
