@@ -26,12 +26,22 @@ class MaskPropagation(ast.NodeTransformer):
 
     def visit_Subscript(self, node: ast.Subscript):
         self.generic_visit(node)
-        # if one of the slices has attribute "mask", then the whole expression is masked
-        # more than one slice having a mask is not yet supported
-        if hasattr(node.slice, 'mask'):
-            node.mask = node.slice.mask
-            # print a message about this subscript having a mask now
-            # print(f'{unparse(node)} has mask: {node.mask}')
+        # If the slice is not a tuple, make it a tuple
+        elts = []
+        if not isinstance(node.slice, ast.Tuple):
+            elts = [node.slice]
+        else:
+            elts = node.slice.elts
+        
+        # More than one elements having mask is not yet supported, check that
+        if len([elt for elt in elts if hasattr(elt, 'mask')]) > 1:
+            print(f'{unparse(node)} has more than one element with mask, this is not yet supported')
+            raise NotImplementedError
+
+        # If one of the slices has attribute "mask", then the whole expression is masked
+        for elt in elts:
+            if hasattr(elt, 'mask'):
+                node.mask = elt.mask
         return node
 
     def visit_Assign(self, node: ast.Assign):
@@ -46,18 +56,16 @@ class MaskPropagation(ast.NodeTransformer):
 
 
 class AttachMaskInfo(ast.NodeTransformer):
-    def __init__(self):
-        self.masked_vars = {}
-
     def visit_For(self, node: ast.For):
         self.generic_visit(node)
+        masked_vars = {}
         for child in node.body:
             if isinstance(child, ast.Assign):
                 if ast.unparse(child.value).startswith('vidx('):
                     args = child.value.args
                     target = child.targets[0].id
-                    self.masked_vars[target] = f'{unparse(args[0])} + tl.arange(0, {unparse(args[1])}) < {unparse(args[2])}'
-        visitor = MaskPropagation(self.masked_vars)
+                    masked_vars[target] = f'{unparse(args[0])} + tl.arange(0, {unparse(args[1])}) < {unparse(args[2])}'
+        visitor = MaskPropagation(masked_vars)
         visitor.visit(node)
         return node
 
