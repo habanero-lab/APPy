@@ -24,6 +24,19 @@ class MaskPropagation(ast.NodeTransformer):
             node.mask = self.masked_vars[node.id]
         return node
 
+    def visit_BinOp(self, node: ast.BinOp):
+        self.generic_visit(node)
+        masks = []
+        for op in [node.left, node.right]:
+            if hasattr(op, 'mask'):
+                masks.append(op.mask)
+        if len(masks) == 2:
+            assert masks[0] == masks[1]
+            node.mask = masks[0]
+        elif len(masks) == 1:
+            node.mask = masks[0]
+        return node
+
     def visit_Subscript(self, node: ast.Subscript):
         self.generic_visit(node)
         # If the slice is not a tuple, make it a tuple

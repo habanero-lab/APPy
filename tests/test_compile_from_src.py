@@ -72,7 +72,7 @@ def f4(A_indptr, A_indices, A_data, A_shape, B_indptr, B_indices, B_data, B_shap
     return __ret
 
 
-for f in [f4]:
+for f in [f3]:
     src = inspect.getsource(f)
     newcode = appy.compile_from_src(src)
     print(newcode)
