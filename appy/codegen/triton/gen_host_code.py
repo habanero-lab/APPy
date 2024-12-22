@@ -101,6 +101,7 @@ class RewritePFor(ast.NodeTransformer):
     def visit_For(self, node: ast.For):
         if hasattr(node, 'pragma'):
             from ..high_level_transforms.block_loop import BlockLoop
+            from ..high_level_transforms.attach_mask_info import AttachMaskInfo
             from ..high_level_transforms.rewrite_call import RewriteAPPyCall
             from ..high_level_transforms.get_loaded_names import ExtractArguments
 
@@ -111,6 +112,7 @@ class RewritePFor(ast.NodeTransformer):
                 num_warps = int(p)
 
             node = BlockLoop().visit(node)
+            node = AttachMaskInfo().visit(node)
             node = RewriteAPPyCall().visit(node)            
 
             self.extracted_args = {}

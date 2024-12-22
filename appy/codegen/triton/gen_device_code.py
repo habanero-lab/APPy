@@ -46,6 +46,11 @@ class TritonKernelTransformer(ast.NodeTransformer):
         '''
         Visit a subscript and return a `tl.load` or `tl.store` depending on the ctx.
         '''
+        print('tz:')
+        # dump the node and its mask if it has attr "mask"
+        if hasattr(node, 'mask'):
+            print(unparse(node))
+            print(node.mask)
         if unparse(node.slice) in ['(:, None)', '(None, :)']:
             if isinstance(node.value, ast.Subscript):
                 node.value = self.visit_Subscript(node.value)
@@ -82,11 +87,11 @@ class TritonKernelTransformer(ast.NodeTransformer):
                     mask = to_ast_expr(f'{unparse(offset)} < {unparse(self.range_bound[offset])}')
                 addr = new_add_node(addr, new_mul_node(offset, new_name_node(f'{base.id}_stride_{i}')))
 
-        if mask:
+        if hasattr(node, 'mask'):
             newnode = new_attr_call_node(
                 tl_call, 
                 [addr],
-                keywords={'mask': mask}
+                keywords={'mask': to_ast_expr(node.mask)}
             )
         else:
             newnode = new_attr_call_node(

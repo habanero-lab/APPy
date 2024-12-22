@@ -21,10 +21,9 @@ def f2(A_data, A_indptr, A_indices, x, M, N):
     y = torch.empty(M, dtype=x.dtype)
     #pragma parallel for
     for i in range(M):
-        start, end = A_indptr[i], A_indptr[i+1]
         y[i] = 0.0
         #pragma simd
-        for j in range(start, end):
+        for j in range(A_indptr[i], A_indptr[i+1]):
             y[i] += A_data[j] * x[A_indices[j]]
     return y
 
@@ -39,7 +38,7 @@ def f3(A, B):
                                 B[2:M, 1:N-1] + B[0:M-2, 1:N-1])
     return A, B
 
-for f in [f0, f1, f2, f3]:
+for f in [f2]:
     src = inspect.getsource(f)
     newcode = appy.compile_from_src(src)
     print(newcode)
