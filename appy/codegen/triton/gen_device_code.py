@@ -9,7 +9,6 @@ class TritonKernelTransformer(ast.NodeTransformer):
         self.grid = grid
         self.block_dim = 0
         self.vindices = {}
-        self.range_bound = {}
 
     def get_params_from_loop(node: ast.For):
         target = node.target
@@ -55,9 +54,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
             print('"for .. in range(x.shape[0])" is not yet supported, please pass only variable names to loop bounds, e.g. "range(N)"')
             exit(1)
 
-        self.range_bound = {}  # clear the map before visiting the slices/indices
         self.generic_visit(node)  
-        assert len(self.range_bound.items()) <= 1, '2d slicing is not supported'
         base = node.value
         if isinstance(node.ctx, ast.Load):
             tl_call = 'tl.load'
@@ -97,8 +94,6 @@ class TritonKernelTransformer(ast.NodeTransformer):
         if isinstance(node.ctx, ast.Load):
             start, step, bound = self.vindices[node.id]
             offset = to_ast_expr(f'({unparse(start)} + tl.arange(0, {unparse(step)}))')
-            if bound:
-                self.range_bound[offset] = bound
             return offset
         else:
             return node
