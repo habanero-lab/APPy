@@ -28,6 +28,7 @@ class TritonBackend(object):
                     from {appy.config.tensorlib} import empty, zeros
                     import triton
                     import triton.language as tl
+                    from triton.language.extra import libdevice
                     from triton.language import debug_barrier
 
                     def init_to_zero(name):
