@@ -19,6 +19,8 @@ def compile(fn, args, dump_code=False, verbose=False, **options):
     '''
     Compile an annotated function and returns a new function that executes GPU kernels
     '''
+    if options.get('lib', 'torch') == 'cupy':
+        config.tensorlib = 'cupy'
     source_code = inspect.getsource(fn)
     module = compile_from_src(source_code, **options)  # module includes both host and device code
     if dump_code:
@@ -108,20 +110,20 @@ def atomic_add(a, offset, b):
 vidx = step
 
 
-def get_matmul_configs(BM, BN, BK):
-    return [
-        {BM: 128, BN: 256, BK: 32, 'num_stages': 3, 'num_warps': 8},
-        {BM: 256, BN: 128, BK: 32, 'num_stages': 3, 'num_warps': 8},
-        {BM: 256, BN: 64, BK: 32, 'num_stages': 4, 'num_warps': 8},
-        {BM: 64, BN: 256, BK: 32, 'num_stages': 4, 'num_warps': 8},
-        {BM: 128, BN: 128, BK: 32, 'num_stages': 4, 'num_warps': 8},
+# def get_matmul_configs(BM, BN, BK):
+#     return [
+#         {BM: 128, BN: 256, BK: 32, 'num_stages': 3, 'num_warps': 8},
+#         {BM: 256, BN: 128, BK: 32, 'num_stages': 3, 'num_warps': 8},
+#         {BM: 256, BN: 64, BK: 32, 'num_stages': 4, 'num_warps': 8},
+#         {BM: 64, BN: 256, BK: 32, 'num_stages': 4, 'num_warps': 8},
+#         {BM: 128, BN: 128, BK: 32, 'num_stages': 4, 'num_warps': 8},
 
 
-        {BM: 256, BN: 64, BK: 32, 'num_stages': 4, 'num_warps': 4},
-        {BM: 64, BN: 256, BK: 32, 'num_stages': 4, 'num_warps': 4},
-        {BM: 128, BN: 128, BK: 32, 'num_stages': 4, 'num_warps': 4},
-        {BM: 128, BN: 64, BK: 32, 'num_stages': 4, 'num_warps': 4},
-        {BM: 64, BN: 128, BK: 32, 'num_stages': 4, 'num_warps': 4},
-        {BM: 128, BN: 32, BK: 32, 'num_stages': 4, 'num_warps': 4},
-        {BM: 64, BN: 32, BK: 32, 'num_stages': 5, 'num_warps': 2},
-    ]
+#         {BM: 256, BN: 64, BK: 32, 'num_stages': 4, 'num_warps': 4},
+#         {BM: 64, BN: 256, BK: 32, 'num_stages': 4, 'num_warps': 4},
+#         {BM: 128, BN: 128, BK: 32, 'num_stages': 4, 'num_warps': 4},
+#         {BM: 128, BN: 64, BK: 32, 'num_stages': 4, 'num_warps': 4},
+#         {BM: 64, BN: 128, BK: 32, 'num_stages': 4, 'num_warps': 4},
+#         {BM: 128, BN: 32, BK: 32, 'num_stages': 4, 'num_warps': 4},
+#         {BM: 64, BN: 32, BK: 32, 'num_stages': 5, 'num_warps': 2},
+#     ]

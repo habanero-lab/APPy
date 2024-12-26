@@ -8,7 +8,7 @@ torch.set_default_device('cuda')
 @appy.jit(auto_simd=True)
 def kernel_appy(A, B):
     M, N = A.shape
-    for t in range(1, 10):
+    for t in range(1, 30):
         #pragma 1:M-1=>parallel 1:N-1=>parallel
         B[1:M-1, 1:N-1] = 0.2 * (A[1:M-1, 1:N-1] + A[1:M-1, :N-2] + A[1:M-1, 2:N] +
                                 A[2:M, 1:N-1] + A[0:M-2, 1:N-1])
@@ -19,7 +19,7 @@ def kernel_appy(A, B):
 
 
 def kernel_lib(A, B):
-    for t in range(1, 10):        
+    for t in range(1, 30):        
         B[1:-1, 1:-1] = 0.2 * (A[1:-1, 1:-1] + A[1:-1, :-2] + A[1:-1, 2:] +
                                A[2:, 1:-1] + A[:-2, 1:-1])
         A[1:-1, 1:-1] = 0.2 * (B[1:-1, 1:-1] + B[1:-1, :-2] + B[1:-1, 2:] +

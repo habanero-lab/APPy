@@ -9,11 +9,11 @@ class RewriteAPPyCall(ast.NodeTransformer):
         if not isinstance(node.value, ast.Name):
             return node
 
-        if node.value.id in ['appy', 'torch', 'cupy']:
+        if node.value.id in ['appy', 'torch', 'cupy', 'np']:
             if node.attr in ['vidx', 'vindex']:
                 return node
-            elif node.attr in ['tanh', 'asin']:
-                node.value = new_attr_node(new_name_node('tl'), 'math')
+            elif node.attr in ['tanh', 'sinh', 'cosh']:
+                node.value = new_name_node('libdevice')
             else:
                 node.value = new_name_node('tl')
 
