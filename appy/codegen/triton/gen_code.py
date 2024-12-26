@@ -23,7 +23,6 @@ class TritonBackend(object):
 
         imports = textwrap.dedent(f'''
                     import numpy as np
-                    import torch
                     import {appy.config.tensorlib}
                     from {appy.config.tensorlib} import empty, zeros
                     import triton
