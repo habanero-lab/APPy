@@ -33,6 +33,8 @@ class TritonBackend(object):
                     def init_to_zero(name):
                         return lambda nargs: nargs[name].zero_()
                 ''')
+        if appy.config.tensorlib != 'torch':
+            imports += 'import torch\n'
 
         self.module = ast.parse(imports)
         self.arg_names = get_arg_names(self.func)

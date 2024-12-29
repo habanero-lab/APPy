@@ -113,8 +113,8 @@ class TritonKernelTransformer(ast.NodeTransformer):
                 if 'bound' in keywords:
                     bound = keywords['bound']
             self.vindices[lhs.id] = (start, stepsize, bound)
-
             return None
+            #node.value = to_ast_expr(f'{unparse(start)} + tl.arange(0, {unparse(stepsize)})')
 
         # This will modify `node`
         self.generic_visit(node)
