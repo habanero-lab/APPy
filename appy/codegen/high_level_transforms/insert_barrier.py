@@ -3,13 +3,42 @@ from ast import unparse
 from appy.ast_utils import *
 from copy import deepcopy
 
+
+class CollectTensorAccessInfo(ast.NodeVisitor):
+    def __init__(self):
+        self.read_tensors = {}
+        self.write_tensors = {}
+
+    def visit_Subscript(self, node: ast.Subscript):
+        if isinstance(node.value, ast.Name):
+            if isinstance(node.ctx, ast.Load):
+                if node.value.id not in self.read_tensors:
+                    self.read_tensors[node.value.id] = set()
+                self.read_tensors[node.value.id].add(ast.unparse(node.slice))
+            elif isinstance(node.ctx, ast.Store):
+                if node.value.id not in self.write_tensors:
+                    self.write_tensors[node.value.id] = set()
+                self.write_tensors[node.value.id].add(ast.unparse(node.slice))
+
+
 class AddBarrierToMemAccess(ast.NodeTransformer):
+    def __init__(self, elide_tensors):
+        self.elide_tensors = elide_tensors
+
     def visit_Assign(self, node: ast.Assign):        
-        if isinstance(node.targets[0], ast.Subscript) and not hasattr(node, 'no_sync'):
-            #dump(node)
-            return to_ast_node('tl.debug_barrier()'), node, to_ast_node('tl.debug_barrier()')
+        target = node.targets[0]
+        if isinstance(target, ast.Subscript):
+            if target.value.id in self.elide_tensors:
+                #print(f'[DEBUG] tensor {target.value.id} is elided')
+                return node
+            elif not hasattr(node, 'no_sync'):
+                #print(f'[DEBUG] node is marked as no_sync')
+                return node
+            else:
+                return to_ast_node('tl.debug_barrier()'), node, to_ast_node('tl.debug_barrier()')
         else:
             return node
+
 
 class RemoveBarrierCall(ast.NodeTransformer):
     def __init__(self, removed):
@@ -21,14 +50,31 @@ class RemoveBarrierCall(ast.NodeTransformer):
         else:
             self.removed.append(node)
 
+
 class InsertBarrier(ast.NodeTransformer):
     def visit_For(self, node: ast.For):
         if not hasattr(node, 'pragma'):
             self.generic_visit(node)            
         else:
             assert '#pragma parallel' in node.pragma
-            AddBarrierToMemAccess().visit(node)
+            visitor = CollectTensorAccessInfo()
+            visitor.visit(node)
+            elide_tensors = set()
+            for t in visitor.write_tensors:
+                write_indices = visitor.write_tensors[t]
+                # If the tensor is only written and never read, elide it
+                if t not in visitor.read_tensors:
+                    elide_tensors.add(t)
+                else:
+                    # If the tensor is only written with one index and only 
+                    # read with one index, and the indices are the same, elide it
+                    read_indices = visitor.read_tensors[t]
+                    if len(write_indices) == 1 and len(read_indices) == 1:
+                        if write_indices == read_indices:
+                            elide_tensors.add(t)
+            AddBarrierToMemAccess(elide_tensors).visit(node)
         return node
+
 
 class RemoveBarrierInsideTE(ast.NodeTransformer):
     def visit_For(self, node: ast.For):
