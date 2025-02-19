@@ -3,27 +3,11 @@ from ast import unparse
 from appy.ast_utils import *
 from copy import deepcopy
 
-class AppendBarrierToWrite(ast.NodeTransformer):
-    # def visit_For(self, node: ast.For):
-        # newbody = []
-        # for s in node.body:
-        #     newbody.append(s)
-        #     if isinstance(s, ast.Assign) and isinstance(s.targets[0], ast.Subscript):
-        #         newbody += [to_ast_node('tl.debug_barrier()')]
-            
-        #     if isinstance(s, ast.For):
-        #         if hasattr(s, 'from_tensor_expr'):
-        #             newbody += [to_ast_node('tl.debug_barrier()')]
-        #         else:
-
-        # node.body = newbody
-        # return node
-
+class AddBarrierToMemAccess(ast.NodeTransformer):
     def visit_Assign(self, node: ast.Assign):        
         if isinstance(node.targets[0], ast.Subscript) and not hasattr(node, 'no_sync'):
-            #print('to insert after write')
             #dump(node)
-            return node, to_ast_node('tl.debug_barrier()')
+            return to_ast_node('tl.debug_barrier()'), node, to_ast_node('tl.debug_barrier()')
         else:
             return node
 
@@ -43,7 +27,7 @@ class InsertBarrier(ast.NodeTransformer):
             self.generic_visit(node)            
         else:
             assert '#pragma parallel' in node.pragma
-            AppendBarrierToWrite().visit(node)
+            AddBarrierToMemAccess().visit(node)
         return node
 
 class RemoveBarrierInsideTE(ast.NodeTransformer):
@@ -84,11 +68,11 @@ class RemoveBarrierInsideTE(ast.NodeTransformer):
 #             if hasattr(node, 'from_tensor_expr'):
 #                 return node
 #             else:
-#                 AppendBarrierToWrite().visit(node)
+#                 AddBarrierToMemAccess().visit(node)
 #                 return node            
 #         else:            
 #             if hasattr(node, 'from_tensor_expr'):
 #                 return [node, to_ast_node('tl.debug_barrier()')]
 #             else:
-#                 AppendBarrierToWrite().visit(node)
+#                 AddBarrierToMemAccess().visit(node)
 #                 return node
