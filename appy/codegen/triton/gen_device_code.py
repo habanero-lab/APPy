@@ -97,6 +97,16 @@ class TritonKernelTransformer(ast.NodeTransformer):
             return offset
         else:
             return node
+        
+    def visit_Call(self, node: ast.Call):
+        self.generic_visit(node)
+        # If the arg of `tl.sum` is masked, convert it to `tl.sum(tl.where(arg.mask, arg, 0))`
+        if unparse(node).startswith('tl.sum('):
+            if hasattr(node.args[0], 'mask'):
+                arg = node.args[0]
+                node.args[0] = to_ast_expr(f'tl.where({arg.mask}, {unparse(arg)}, 0)')
+                print(f'converted to: {unparse(node)}')
+        return node
 
     def visit_Assign(self, node: ast.Assign):
         #ast.NodeTransformer.generic_visit(self, node)
