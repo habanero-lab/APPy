@@ -21,13 +21,19 @@ def compile(fn, args, dump_code=False, verbose=False, **options):
     '''
     if options.get('lib', 'torch') == 'cupy':
         config.tensorlib = 'cupy'
-    source_code = inspect.getsource(fn)
-    module = compile_from_src(source_code, **options)  # module includes both host and device code
-    if dump_code:
-        print(module)
-    filename = f".appy_kernels/{fn.__name__}.py"
-    Path(filename).parent.mkdir(parents=True, exist_ok=True)
-    Path(filename).write_text(module, encoding='utf-8')
+    
+    if options.get('use_file'):
+        # Use an existing compiled file
+        filename = options.get('use_file')
+    else:
+        source_code = inspect.getsource(fn)
+        module = compile_from_src(source_code, **options)  # module includes both host and device code
+        if dump_code:
+            print(module)
+        filename = f".appy_kernels/{fn.__name__}.py"
+        Path(filename).parent.mkdir(parents=True, exist_ok=True)
+        Path(filename).write_text(module, encoding='utf-8')
+
     spec = importlib.util.spec_from_file_location("module.name", filename)
     foo = importlib.util.module_from_spec(spec)
     sys.modules["module.name"] = foo
