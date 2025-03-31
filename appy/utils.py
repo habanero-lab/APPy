@@ -5,7 +5,6 @@ def bench(fn):
     t0 = torchbench.Timer(
         stmt='fn()',
         globals={'fn': fn},
-        num_threads=torch.get_num_threads()
     )
     N = 20
     one_run = t0.timeit(1).mean
@@ -21,7 +20,7 @@ def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):
         import numpy as np
         f = np.allclose
         max = np.max
-    if f"{type(a).__module__}.{type(a).__name__}" == 'cupy.ndarray':
+    elif f"{type(a).__module__}.{type(a).__name__}" == 'cupy.ndarray':
         import cupy
         f = cupy.allclose
         max = cupy.max
@@ -29,7 +28,7 @@ def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):
         f = torch.allclose
         max = torch.max
     else:
-        assert False
+        assert False, 'Unsupported type'
 
     if not f(a, b, rtol, atol) and verbose:
         diff = a - b
