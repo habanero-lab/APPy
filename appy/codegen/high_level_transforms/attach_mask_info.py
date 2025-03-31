@@ -32,9 +32,15 @@ class MaskPropagation(ast.NodeTransformer):
                 masks.append(op.mask)
         if len(masks) == 2:
             assert masks[0] == masks[1]
+
+        if len(masks) >= 1:
             node.mask = masks[0]
-        elif len(masks) == 1:
-            node.mask = masks[0]
+        return node
+    
+    def visit_UnaryOp(self, node: ast.UnaryOp):
+        self.generic_visit(node)
+        if hasattr(node.operand, 'mask'):
+            node.mask = node.operand.mask
         return node
 
     def visit_Subscript(self, node: ast.Subscript):
