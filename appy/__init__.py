@@ -11,9 +11,9 @@ def compile_from_src(src, **options):
     tree = ast.parse(src)
     args = {}
     backend = TritonBackend(tree, args, **options)
-    module = backend.codegen()
+    func, module = backend.codegen()
     module = black.format_str(module, mode=black.Mode())
-    return module
+    return func, module
 
 def compile(fn, args, dump_code=False, verbose=False, **options):
     '''
@@ -27,21 +27,22 @@ def compile(fn, args, dump_code=False, verbose=False, **options):
         filename = options.get('use_file')
     else:
         source_code = inspect.getsource(fn)
-        module = compile_from_src(source_code, **options)  # module includes both host and device code
+        func, module = compile_from_src(source_code, **options)  # module includes both host and device code
         if dump_code:
             print(module)
-        filename = f".appy_kernels/{fn.__name__}.py"
+        filename = f".appy_kernels/{fn.__name__}_appy_module.py"
         Path(filename).parent.mkdir(parents=True, exist_ok=True)
         Path(filename).write_text(module, encoding='utf-8')
 
-    spec = importlib.util.spec_from_file_location("module.name", filename)
+    # Dynamically import the appy module
+    module_name = f'{fn.__name__}_appy_module'
+    spec = importlib.util.spec_from_file_location(module_name, filename)
     foo = importlib.util.module_from_spec(spec)
-    sys.modules["module.name"] = foo
+    sys.modules[module_name] = foo
     spec.loader.exec_module(foo)
     if verbose:
         print("[jit] Done compiling")
-    compiled = getattr(foo, fn.__name__)
-    return compiled
+    return func
 
 
 compiled_funcs = {}
