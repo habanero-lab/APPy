@@ -22,6 +22,7 @@ class TritonBackend(object):
             self.arg_values.append(keyword_arg.value)
 
         imports = textwrap.dedent(f'''
+                    import numpy as np
                     import {appy.config.tensorlib}
                     from {appy.config.tensorlib} import empty, zeros
                     import triton
@@ -102,7 +103,8 @@ class TritonBackend(object):
         # Perform host and device code generation
         # RewritePFor rewrites the original function and also generates a triton kernel
         from .gen_host_code import RewritePFor
-        func = RewritePFor(func, self.module, self.options, self.arg_val_map).visit(func)
+        launcher_func = RewritePFor(self.module, self.options, self.arg_val_map).visit(func)
         #launcher_func.decorator_list = []
         m = self.module
-        return func, ast.unparse(m)
+        m.body += [launcher_func]
+        return ast.unparse(m)

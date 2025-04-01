@@ -9,8 +9,7 @@ from collections import OrderedDict
 
 
 class RewritePFor(ast.NodeTransformer):
-    def __init__(self, func, module, options, arg_val_map):
-        self.func = func
+    def __init__(self, module, options, arg_val_map):
         self.module = module
         self.options = options
         self.kernel_count = 0
@@ -187,19 +186,7 @@ class RewritePFor(ast.NodeTransformer):
             if self.options.get('print_ptx'):
                 #new_nodes.append(to_ast_node('print(fn.asm["ttgir"])'))
                 new_nodes.append(to_ast_node('print(fn.asm["ptx"])'))
-            # Generate a new function that contains these new_nodes and add to self.module
-            # The arguments of the new function should be self.extracted_args
-            # Then return a call to the new function
-            
-            new_func = ast.parse(textwrap.dedent(f'''
-                def launch{kf.name}({", ".join(self.extracted_args)}):
-                    pass
-            ''')).body[0]
-            new_func.body = new_nodes
-            self.module.body.append(new_func)
-            module_name = f'{self.func.name}_appy_module'
-            new_call = to_ast_node(f'{module_name}.launch{kf.name}({",".join(self.extracted_args)})')
-            return new_call
+            return new_nodes
         else:
             self.generic_visit(node)
             return node

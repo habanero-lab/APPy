@@ -1,6 +1,5 @@
 import appy
 import inspect
-import ast
 
 def f0(a, b):
     c = torch.empty_like(a)
@@ -75,6 +74,5 @@ def f4(A_indptr, A_indices, A_data, A_shape, B_indptr, B_indices, B_data, B_shap
 
 for f in [f1]:
     src = inspect.getsource(f)
-    newcode, module = appy.compile_from_src(src)
-    print(ast.unparse(newcode))
-    print(module)
+    newcode = appy.compile_from_src(src)
+    print(newcode)
