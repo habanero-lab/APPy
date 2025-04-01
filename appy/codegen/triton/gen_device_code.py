@@ -105,7 +105,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
             if hasattr(node.args[0], 'mask'):
                 arg = node.args[0]
                 node.args[0] = to_ast_expr(f'tl.where({arg.mask}, {unparse(arg)}, 0)')
-                print(f'converted to: {unparse(node)}')
+                #print(f'converted to: {unparse(node)}')
         return node
 
     def visit_Assign(self, node: ast.Assign):
