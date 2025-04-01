@@ -115,21 +115,26 @@ def atomic_add(a, offset, b):
 
 vidx = step
 
+# Data transfer functions
+def to_gpu(a):
+    import torch
+    if f"{type(a).__module__}.{type(a).__name__}" == 'numpy.ndarray':
+        return torch.from_numpy(a).to('cuda')
+    elif type(a) == torch.Tensor:
+        return a.to('cuda')
+    elif type(a) == list:
+        return torch.tensor(a).to('cuda')
+    elif type(a) in [int, float]:
+        return a
+    else:
+        assert False, "Unsupported type to transfer to GPU"
 
-# def get_matmul_configs(BM, BN, BK):
-#     return [
-#         {BM: 128, BN: 256, BK: 32, 'num_stages': 3, 'num_warps': 8},
-#         {BM: 256, BN: 128, BK: 32, 'num_stages': 3, 'num_warps': 8},
-#         {BM: 256, BN: 64, BK: 32, 'num_stages': 4, 'num_warps': 8},
-#         {BM: 64, BN: 256, BK: 32, 'num_stages': 4, 'num_warps': 8},
-#         {BM: 128, BN: 128, BK: 32, 'num_stages': 4, 'num_warps': 8},
-
-
-#         {BM: 256, BN: 64, BK: 32, 'num_stages': 4, 'num_warps': 4},
-#         {BM: 64, BN: 256, BK: 32, 'num_stages': 4, 'num_warps': 4},
-#         {BM: 128, BN: 128, BK: 32, 'num_stages': 4, 'num_warps': 4},
-#         {BM: 128, BN: 64, BK: 32, 'num_stages': 4, 'num_warps': 4},
-#         {BM: 64, BN: 128, BK: 32, 'num_stages': 4, 'num_warps': 4},
-#         {BM: 128, BN: 32, BK: 32, 'num_stages': 4, 'num_warps': 4},
-#         {BM: 64, BN: 32, BK: 32, 'num_stages': 5, 'num_warps': 2},
-#     ]
+def to_cpu(a):
+    import torch
+    if type(a) == torch.Tensor:
+        if a.ndim == 0:
+            return a.item()
+        else:
+            return a.to('cpu').numpy()
+    else:
+        return a
