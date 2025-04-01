@@ -68,6 +68,7 @@ class TritonBackend(object):
         from ..high_level_transforms.check_for_assign_pragma import CheckAssignPragma
         from ..high_level_transforms.insert_before_loop import InsertRangeVar
 
+        # Perform high-level transformations
         func = self.func
         func.decorator_list = []
         func = InsertRangeVar().visit(func)
@@ -99,7 +100,8 @@ class TritonBackend(object):
             print('dump final APPy code:')            
             print(ast.unparse(func))
 
-        #exit(1)
+        # Perform host and device code generation
+        # RewritePFor rewrites the original function and also generates a triton kernel
         from .gen_host_code import RewritePFor
         launcher_func = RewritePFor(self.module, self.options, self.arg_val_map).visit(func)
         #launcher_func.decorator_list = []

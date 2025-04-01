@@ -1,8 +1,6 @@
 import ast
 from ast import unparse
 from appy.ast_utils import *
-import random
-import re
 
 class TritonKernelTransformer(ast.NodeTransformer):
     def __init__(self, grid):
