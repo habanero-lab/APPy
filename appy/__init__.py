@@ -15,7 +15,7 @@ def compile_from_src(src, **options):
     module = black.format_str(module, mode=black.Mode())
     return func, module
 
-def compile(fn, args, dump_code=False, verbose=False, **options):
+def compile_fn(fn, args, dump_code=False, verbose=False, **options):
     '''
     Compile an annotated function and returns a new function that executes GPU kernels
     '''
@@ -52,7 +52,7 @@ def _jit(fn):
         key = f"{fn}+{get_type_sig(*args)}"
 
         if key not in compiled_funcs:
-            compiled_funcs[key] = compile(fn, args)
+            compiled_funcs[key] = compile_fn(fn, args)
         return compiled_funcs[key](*args)
 
     inner.__name__ = fn.__name__
@@ -72,7 +72,7 @@ def jit(fn=None, dump_code=None, verbose=None, **options):
             def inner(*args):
                 key = f"{fn1}+{get_type_sig(*args)}"
                 if key not in compiled_funcs:
-                    compiled_funcs[key] = compile(
+                    compiled_funcs[key] = compile_fn(
                         fn1, args, dump_code=dump_code, verbose=verbose, **options
                     )
                 return compiled_funcs[key](*args)
