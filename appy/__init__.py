@@ -38,6 +38,15 @@ def compile(fn, args, dump_code=False, verbose=False, **options):
     foo = importlib.util.module_from_spec(spec)
     sys.modules["module.name"] = foo
     spec.loader.exec_module(foo)
+
+    # Note: stack[1] is `inner`, and stack[2] is the user code caller
+    frame = inspect.stack()[2].frame
+
+    # Add the missing globals into the new module
+    for k, v in frame.f_globals.items():
+        if k not in foo.__dict__:
+            foo.__dict__[k] = v
+    
     if verbose:
         print("[jit] Done compiling")
     compiled = getattr(foo, fn.__name__)
@@ -49,7 +58,6 @@ compiled_funcs = {}
 def _jit(fn):
     def inner(*args):
         key = f"{fn}+{get_type_sig(*args)}"
-
         if key not in compiled_funcs:
             compiled_funcs[key] = compile(fn, args)
         return compiled_funcs[key](*args)
