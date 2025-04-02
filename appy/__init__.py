@@ -40,10 +40,10 @@ def compile(fn, args, dump_code=False, verbose=False, **options):
     spec.loader.exec_module(foo)
 
     # Note: stack[1] is `inner`, and stack[2] is the user code caller
-    frame = inspect.stack()[2].frame
-
+    user_globals = inspect.stack()[2].frame.f_globals
+    
     # Add the missing globals into the new module
-    for k, v in frame.f_globals.items():
+    for k, v in user_globals.items():
         if k not in foo.__dict__:
             foo.__dict__[k] = v
     
