@@ -35,21 +35,21 @@ def compile(fn, args, dump_code=False, verbose=False, **options):
         Path(filename).write_text(module, encoding='utf-8')
 
     spec = importlib.util.spec_from_file_location("module.name", filename)
-    foo = importlib.util.module_from_spec(spec)
-    sys.modules["module.name"] = foo
-    spec.loader.exec_module(foo)
+    m = importlib.util.module_from_spec(spec)
+    sys.modules["module.name"] = m
+    spec.loader.exec_module(m)
 
     # Note: stack[1] is `inner`, and stack[2] is the user code caller
     user_globals = inspect.stack()[2].frame.f_globals
     
     # Add the missing globals into the new module
     for k, v in user_globals.items():
-        if k not in foo.__dict__:
-            foo.__dict__[k] = v
+        if k not in m.__dict__:
+            m.__dict__[k] = v
     
     if verbose:
         print("[jit] Done compiling")
-    compiled = getattr(foo, fn.__name__)
+    compiled = getattr(m, fn.__name__)
     return compiled
 
 
