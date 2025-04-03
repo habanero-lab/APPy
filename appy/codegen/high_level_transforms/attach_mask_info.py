@@ -2,18 +2,6 @@ import ast
 from appy.ast_utils import *
 from ast import unparse
 
-class ScanLoop(ast.NodeTransformer):
-    def __init__(self):
-        self.masked_vars = {}
-
-    def visit_Assign(self, node: ast.Assign):
-        if ast.unparse(node.value).startswith('vidx('):
-            dump_code(node)
-            dump(node)
-            args = node.value.args
-            self.masked_vars[node.targets[0].id] = f'{unparse(args[0])} + tl.arange(0, {unparse(args[1])}) < {unparse(args[2])}'
-
-        return node
 
 class MaskPropagation(ast.NodeTransformer):
     def __init__(self, masked_vars):
@@ -83,7 +71,9 @@ class AttachMaskInfo(ast.NodeTransformer):
                 if ast.unparse(child.value).startswith('vidx('):
                     args = child.value.args
                     target = child.targets[0].id
-                    masked_vars[target] = f'{unparse(args[0])} + tl.arange(0, {unparse(args[1])}) < {unparse(args[2])}'
+                    shape = unparse(args[1])
+                    mask = f'{unparse(args[0])} + tl.arange(0, {unparse(args[1])}) < {unparse(args[2])}'
+                    masked_vars[target] = (shape, mask)
         visitor = MaskPropagation(masked_vars)
         visitor.visit(node)
         return node

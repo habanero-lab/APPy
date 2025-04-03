@@ -74,7 +74,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
             newnode = new_attr_call_node(
                 tl_call, 
                 [addr],
-                keywords={'mask': to_ast_expr(node.mask)}
+                keywords={'mask': to_ast_expr(node.mask[1])}
             )
         else:
             newnode = new_attr_call_node(
@@ -102,7 +102,7 @@ class TritonKernelTransformer(ast.NodeTransformer):
         if unparse(node).startswith('tl.sum('):
             if hasattr(node.args[0], 'mask'):
                 arg = node.args[0]
-                node.args[0] = to_ast_expr(f'tl.where({arg.mask}, {unparse(arg)}, 0)')
+                node.args[0] = to_ast_expr(f'tl.where({arg.mask[1]}, {unparse(arg)}, 0)')
                 #print(f'converted to: {unparse(node)}')
         return node
 
