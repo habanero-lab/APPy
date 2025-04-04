@@ -71,8 +71,68 @@ def f4(A_indptr, A_indices, A_data, A_shape, B_indptr, B_indices, B_data, B_shap
             __ret[i, j] = __ret[i, j] + C_data[__pC_i] # target_indices: ['i', 'j']
     return __ret
 
+def f5(n, alpha, dx, dt, u, u_tmp):
+    r = alpha * dt / (dx * dx)
+    r2 = 1.0 - 4.0 * r
 
-for f in [f1]:
+    #pragma parallel for                                                                                                              
+    for i in range(n):
+        #pragma simd                                                                                                                  
+        for j in range(n):
+            u_tmp[i, j] = (
+                r2 * u[i, j] + 
+                r * torch.where(i<n-1, u[i+1, j], 0.0) +
+                r * torch.where(i>0, u[i-1, j], 0.0) +
+                r * torch.where(j<n-1, u[i, j+1], 0.0) +
+                r * torch.where(j>0, u[i, j-1], 0.0)
+            )
+
+
+def f6(a, b):
+    '''
+    The `to` and `from` clause are used to move array data between host 
+    and device (from the viewpoint of the host). Scalar variables are
+    passed to the GPU kernel with firstprivate property, unless explicitly
+    specified in the `global` clause (see the next example). 
+    '''
+    c = np.empty_like(a)
+    #pragma parallel for simd to(a,b) tofrom(c)
+    for i in range(a.shape[0]):
+        c[i] = a[i] + b[i]
+    return c
+
+def f7(a):
+    '''
+    The global clause moves a scalar variable to the GPU global memory,
+    and copies it back after the parallel region exits.
+    '''
+    b = 0.0
+    #pragma parallel for simd to(a) global(b)
+    for i in range(a.shape[0]): 
+        #pragma atomic
+        b += a[i]
+    return b
+
+def f8(a):
+    '''
+    Use appy.to_gpu() and appy.from_gpu() to move array data to and from the GPU
+    manually. When the manual data movement is used, the `to` and `from` clauses
+    will also need to reflect that, e.g. empty list.
+
+    Also appy.target = 'numpy' will just disable the compilation, and run everything
+    as is as a regular NumPy program. appy.target = 'numba' will replace the parallel
+    for loop with `numba.prange` and import numba.
+    '''
+    c = np.empty_like(a)
+    a, b, c = appy.to_gpu(a, b, c)
+    #pragma parallel for simd to() from()
+    for i in range(a.shape[0]):
+        c[i] = a[i] + b[i]
+    c = appy.from_gpu(c)
+    return c
+
+
+for f in [f5]:
     src = inspect.getsource(f)
     newcode = appy.compile_from_src(src)
     print(newcode)
