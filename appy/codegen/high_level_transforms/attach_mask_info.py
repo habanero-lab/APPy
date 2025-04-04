@@ -30,12 +30,6 @@ class MaskPropagation(ast.NodeTransformer):
         if hasattr(node.operand, 'mask'):
             node.mask = node.operand.mask
         return node
-    
-    def visit_IfExp(self, node: ast.IfExp):
-        self.generic_visit(node)
-        if hasattr(node.body, 'mask'):
-            node.orelse.mask = node.body.mask
-        return node
 
     def visit_Subscript(self, node: ast.Subscript):
         self.generic_visit(node)
@@ -77,7 +71,7 @@ class AttachMaskInfo(ast.NodeTransformer):
                 if ast.unparse(child.value).startswith('vidx('):
                     args = child.value.args
                     target = child.targets[0].id
-                    shape = f'({unparse(args[1])},)'
+                    shape = unparse(args[1])
                     mask = f'{unparse(args[0])} + tl.arange(0, {unparse(args[1])}) < {unparse(args[2])}'
                     masked_vars[target] = (shape, mask)
         visitor = MaskPropagation(masked_vars)
