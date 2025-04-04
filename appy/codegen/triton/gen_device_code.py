@@ -104,6 +104,18 @@ class TritonKernelTransformer(ast.NodeTransformer):
                 arg = node.args[0]
                 node.args[0] = to_ast_expr(f'tl.where({arg.mask[1]}, {unparse(arg)}, 0)')
                 #print(f'converted to: {unparse(node)}')
+        # If the call is float64, or float32
+        if unparse(node).startswith('float64(') or unparse(node).startswith('float32('):
+            dtype = node.func.id
+            assert isinstance(node.args[0], (ast.Name, ast.Constant))
+            if isinstance(node.args[0], ast.Name):
+                return to_ast_expr(f'{node.args[0].id}.to(tl.{dtype})')
+            elif isinstance(node.args[0], ast.Constant):
+                if hasattr(node, 'mask'):
+                    shape = node.mask[0]
+                    return to_ast_expr(f'tl.full({shape}, {node.args[0].value}, dtype=tl.{dtype})')
+                else:
+                    return to_ast_expr(f'tl.full((1,), {node.args[0].value}, dtype=tl.{dtype})')
         return node
 
     def visit_Assign(self, node: ast.Assign):
