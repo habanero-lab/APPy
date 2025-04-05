@@ -22,7 +22,6 @@ class TritonBackend(object):
             self.arg_values.append(keyword_arg.value)
 
         imports = textwrap.dedent(f'''
-                    import numpy as np
                     import {appy.config.tensorlib}
                     from {appy.config.tensorlib} import empty, zeros
                     import triton
