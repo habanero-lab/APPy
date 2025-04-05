@@ -9,17 +9,16 @@ from appy.utils import allclose, bench
 
 @appy.jit  # Comment this line to run the function in the Python interpter (debug mode)
 def kernel_appy(a):
-    ## Zero-initialize the output array
-    b = torch.zeros(1, dtype=a.dtype)
-    #pragma parallel for simd
+    b = 0.0
+    #pragma parallel for simd global(b)
     for i in range(a.shape[0]): 
         #pragma atomic
-        b[0] += a[i]
+        b += a[i]
     return b
 
 
 def kernel_lib(a):
-    return a.sum()
+    return a.sum().item()
 
 
 def test():
