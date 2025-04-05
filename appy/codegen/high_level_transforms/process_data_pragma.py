@@ -22,9 +22,8 @@ class ProcessDataPragma(ast.NodeTransformer):
         pass
 
     def visit_For(self, node: ast.For):    
+        self.generic_visit(node)
         if hasattr(node, 'pragma_dict'):
-            print(node.pragma)
-            print(node.pragma_dict)
             d = node.pragma_dict
             if d.get('global', None):
                 global_scalars = d['global']
@@ -43,5 +42,4 @@ class ProcessDataPragma(ast.NodeTransformer):
                 ReplaceScalars(global_scalars).visit(node)
                 return to_gpu_stmts + [node] + from_gpu_stmts
         
-        self.generic_visit(node)
         return node
