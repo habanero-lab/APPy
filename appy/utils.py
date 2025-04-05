@@ -16,6 +16,12 @@ def bench(fn):
 
 def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):
     assert type(a) == type(b)
+    if type(a) == float:
+        import numpy as np
+        f = np.allclose
+        max = np.max
+        a, b = np.array([a]), np.array([b])
+    
     if f"{type(a).__module__}.{type(a).__name__}" == 'numpy.ndarray':
         import numpy as np
         f = np.allclose
@@ -28,7 +34,7 @@ def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):
         f = torch.allclose
         max = torch.max
     else:
-        assert False, 'Unsupported type'
+        assert False, f'Unsupported type, a: {type(a)}, b: {type(b)}'
 
     if not f(a, b, rtol, atol) and verbose:
         diff = a - b
