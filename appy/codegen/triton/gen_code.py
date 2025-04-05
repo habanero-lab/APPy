@@ -67,6 +67,7 @@ class TritonBackend(object):
         from ..high_level_transforms.hoist_acc import HoistAccumulators
         from ..high_level_transforms.check_for_assign_pragma import CheckAssignPragma
         from ..high_level_transforms.insert_before_loop import InsertRangeVar
+        from ..high_level_transforms.process_data_pragma import ProcessDataPragma
 
         # Perform high-level transformations
         func = self.func
@@ -95,6 +96,8 @@ class TritonBackend(object):
         else:
             func = InsertBarrier().visit(func)
             func = RemoveBarrierInsideTE().visit(func)
+
+        func = ProcessDataPragma().visit(func)
 
         if self.options.get('dump_final_appy'): 
             print('dump final APPy code:')            

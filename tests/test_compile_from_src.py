@@ -132,7 +132,7 @@ def f8(a):
     return c
 
 
-for f in [f5]:
+for f in [f6, f7]:
     src = inspect.getsource(f)
-    newcode = appy.compile_from_src(src)
+    newcode = appy.compile_from_src(src, dump_final_appy=1)
     print(newcode)
