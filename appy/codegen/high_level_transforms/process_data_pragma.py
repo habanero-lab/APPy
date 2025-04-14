@@ -25,8 +25,8 @@ class ProcessDataPragma(ast.NodeTransformer):
         self.generic_visit(node)
         if hasattr(node, 'pragma_dict'):
             d = node.pragma_dict
-            if d.get('global', None):
-                global_scalars = d['global']
+            if d.get('shared', None):
+                global_scalars = d['shared']
                 global_scalars = [global_scalars] if type(global_scalars) == str else global_scalars
                 to_gpu_stmts = []
                 for scalar in global_scalars:
