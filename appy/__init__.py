@@ -124,7 +124,13 @@ def atomic_add(a, offset, b):
 vidx = step
 
 # Data transfer functions
-def to_gpu(a):
+def to_gpu(*args):
+    if len(args) == 1:
+        return _to_gpu(args[0])
+    else:
+        return [_to_gpu(a) for a in args]
+
+def _to_gpu(a):
     import torch
     if f"{type(a).__module__}.{type(a).__name__}" == 'numpy.ndarray':
         return torch.from_numpy(a).to('cuda')
@@ -137,7 +143,13 @@ def to_gpu(a):
     else:
         assert False, "Unsupported type to transfer to GPU"
 
-def to_cpu(a):
+def to_cpu(*args):
+    if len(args) == 1:
+        return _to_cpu(args[0])
+    else:
+        return [_to_cpu(a) for a in args]
+
+def _to_cpu(a):
     import torch
     if type(a) == torch.Tensor:
         if a.ndim == 0:
