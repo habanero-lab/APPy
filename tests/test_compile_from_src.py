@@ -128,11 +128,11 @@ def f8(a):
     #pragma parallel for simd to() from()
     for i in range(a.shape[0]):
         c[i] = a[i] + b[i]
-    c = appy.from_gpu(c)
+    c = appy.to_cpu(c)
     return c
 
 
-for f in [f6, f7]:
+for f in [f6, f7, f8]:
     src = inspect.getsource(f)
     newcode = appy.compile_from_src(src, dump_final_appy=1)
     print(newcode)
