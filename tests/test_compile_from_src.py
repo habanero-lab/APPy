@@ -96,18 +96,18 @@ def f6(a, b):
     specified in the `global` clause (see the next example). 
     '''
     c = np.empty_like(a)
-    #pragma parallel for simd to(a,b) tofrom(c)
+    #pragma parallel for simd to(a,b,c) from(c)
     for i in range(a.shape[0]):
         c[i] = a[i] + b[i]
     return c
 
 def f7(a):
     '''
-    The global clause moves a scalar variable to the GPU global memory,
+    The shared clause moves a scalar variable to the GPU global memory,
     and copies it back after the parallel region exits.
     '''
     b = 0.0
-    #pragma parallel for simd to(a) global(b)
+    #pragma parallel for simd to(a) shared(b)
     for i in range(a.shape[0]): 
         #pragma atomic
         b += a[i]

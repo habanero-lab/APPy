@@ -44,6 +44,12 @@ def parse_pragma(pragma_str):
         else:
             result[key] = val
 
+    # Check for unrecognized clauses
+    recognized_clauses = {'parallel_for', 'simd', 'block', 'shared', 'to', 'from', 'atomic'}
+    for key in result:
+        if key not in recognized_clauses:
+            raise ValueError(f"Unrecognized pragma clause: `{key}` in `{pragma_str}`")
+
     return result
 
 
