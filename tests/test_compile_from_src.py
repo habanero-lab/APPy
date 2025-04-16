@@ -38,6 +38,17 @@ def f3(A, B):
                                 B[2:M, 1:N-1] + B[0:M-2, 1:N-1])
     return A, B
 
+def f3_(A, B):
+    M, N = A.shape
+    for t in range(1, 10):
+        #pragma dim(1:M-1,parallel) dim(1:N-1,parallel,le[2048])
+        B[1:M-1, 1:N-1] = 0.2 * (A[1:M-1, 1:N-1] + A[1:M-1, :N-2] + A[1:M-1, 2:N] +
+                                A[2:M, 1:N-1] + A[0:M-2, 1:N-1])
+        #pragma 1:M-1=>parallel 1:N-1=>parallel
+        A[1:M-1, 1:N-1] = 0.2 * (B[1:M-1, 1:N-1] + B[1:M-1, :N-2] + B[1:M-1, 2:N] +
+                                B[2:M, 1:N-1] + B[0:M-2, 1:N-1])
+    return A, B
+
 def f4(A_indptr, A_indices, A_data, A_shape, B_indptr, B_indices, B_data, B_shape, C_indptr, C_indices, C_data, C_shape):
     __dB = empty((A_shape[0], A_shape[1]))
     __v2 = empty((A_shape[0], A_shape[1]))
