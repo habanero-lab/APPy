@@ -107,9 +107,8 @@ def f7(a):
     and copies it back after the parallel region exits.
     '''
     b = 0.0
-    #pragma parallel for simd to(a) shared(b)
+    #pragma parallel for simd to(a) reduction(+:b)
     for i in range(a.shape[0]): 
-        #pragma atomic
         b += a[i]
     return b
 
