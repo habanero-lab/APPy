@@ -55,25 +55,48 @@ def parse_pragma(pragma_str):
 
     return result
 
+# Code by ChatGPT :)
+def dict_to_pragma(pragma_dict):
+    clauses = []
+
+    # Handle 'parallel_for' specially, converting to 'parallel for'
+    if pragma_dict.get('parallel_for'):
+        clauses.extend(['parallel', 'for'])
+
+    for key, val in pragma_dict.items():
+        if key == 'parallel_for':
+            continue  # already handled
+
+        if val is True:
+            clauses.append(key)
+        elif isinstance(val, tuple):
+            val_str = ', '.join(val)
+            clauses.append(f'{key}({val_str})')
+        else:
+            clauses.append(f'{key}({val})')
+
+    return '#pragma ' + ' '.join(clauses)
 
 class PragmaLinker(ast.NodeTransformer):
     def __init__(self):
         self.cur_loop_pragma = None
         self.cur_top_pragma = None
-        self.verbose = False
+        self.pragma_dict = None
+        self.verbose = 1
+    
+    def process_simd_clause(self, pragma_dict):
+        # Replace key `simd` with key `block`
+        if 'simd' in pragma_dict:
+            pragma_dict['block'] = pragma_dict['simd']
+            del pragma_dict['simd']
 
-    def convert_simd_directive(self, pragma):
-        if ' simd' in pragma:
-            arg = get_pragma_property(pragma, 'simd')
-            if arg:
-                pragma = pragma.replace(' simd', ' block')
-            else:
-                # Compiler determines a block size
-                if 'reduction' in pragma:
-                    pragma = pragma.replace(' simd', ' block(1024)')
+            # If `block` has no value associated (by default it's True), set it to 256 or 1024
+            if pragma_dict['block'] is True:
+                if 'reduction' in pragma_dict:
+                    pragma_dict['block'] = 1024
                 else:
-                    pragma = pragma.replace(' simd', ' block(256)')
-        return pragma
+                    pragma_dict['block'] = 256
+        return pragma_dict
 
     def convert_le_prop(self, pragma):
         if 'le(' in pragma:
@@ -92,15 +115,13 @@ class PragmaLinker(ast.NodeTransformer):
     def visit_Comment(self, node):
         comment = node.value.strip()
         if comment.startswith('#pragma '):
-            if comment == '#pragma parallel':
-                comment += ' for'
-
-            if comment.startswith('#pragma parallel for') or \
-                comment.startswith('#pragma simd') or\
-                comment.startswith('#pragma sequential for'):
-                self.cur_loop_pragma = self.convert_simd_directive(node.value)
-            else:
+            if '=>' in comment:
                 self.cur_top_pragma = self.convert_le_prop(node.value)
+            else:
+                pragma_dict = parse_pragma(node.value)
+                pragma_dict = self.process_simd_clause(pragma_dict)
+                self.cur_loop_pragma = dict_to_pragma(pragma_dict)
+                self.pragma_dict = pragma_dict
             return None
         else:
             return node
@@ -117,10 +138,9 @@ class PragmaLinker(ast.NodeTransformer):
         return node
 
     def visit_For(self, node):
-        pragma = self.cur_loop_pragma
-        if pragma:
-            node.pragma = pragma
-            node.pragma_dict = parse_pragma(pragma)
+        if self.cur_loop_pragma:
+            node.pragma = self.cur_loop_pragma
+            node.pragma_dict = self.pragma_dict
             self.cur_loop_pragma = None
             if self.verbose:
                 print(f'associated `{unparse(node)}` with pragma `{node.pragma}`')
