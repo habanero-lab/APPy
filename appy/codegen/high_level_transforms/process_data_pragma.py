@@ -27,11 +27,8 @@ class ProcessDataPragma(ast.NodeTransformer):
             d = node.pragma_dict
             to_device_stmts = []
             from_device_stmts = []
-            if d.get('shared', None):
-                global_scalars = d['shared']
-                global_scalars = [global_scalars] if type(global_scalars) == str else global_scalars
-                
-                for scalar in global_scalars:
+            if d.get('shared', None):                
+                for scalar in d['shared']:
                     to_device_stmts.append(
                         to_ast_node(f'{scalar} = torch.tensor([{scalar}], device="cuda")')
                     )
@@ -39,16 +36,16 @@ class ProcessDataPragma(ast.NodeTransformer):
                         to_ast_node(f'{scalar} = {scalar}.cpu().item()')
                     )
                 # Inside the for loop, replace all occurences of the shared scalar `x` with `x[0]`
-                ReplaceScalars(global_scalars).visit(node)
+                ReplaceScalars(d['shared']).visit(node)
             
             if d.get('to', None):
-                for arr in [d['to']] if type(d['to']) == str else d['to']:
+                for arr in d['to']:
                     to_device_stmts.append(
                         to_ast_node(f'{arr} = torch.from_numpy({arr}).to("cuda")')
                     )
 
             if d.get('from', None):
-                for arr in [d['from']] if type(d['from']) == str else d['from']:
+                for arr in d['from']:
                     from_device_stmts.append(
                         to_ast_node(f'{arr} = {arr}.cpu().numpy()')
                     )
