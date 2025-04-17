@@ -48,15 +48,6 @@ class RewriteAPPyCall(ast.NodeTransformer):
                 )
             newnode.lineno = node.lineno
             node = newnode
-
-        elif unparse(node).startswith('appy.atomic_'):
-            # Add the first and the second argument
-            assert len(node.args) == 3
-            new_args = [
-                new_add_node(node.args[0], node.args[1]),
-                node.args[2],
-            ]
-            node.args = new_args
         elif unparse(node.func) in ['appy.flip']:
             # Convert "appy.flip(A[..])" to "A[..]", and add a new attr "flip" to its slice
             assert len(node.args) == 1
