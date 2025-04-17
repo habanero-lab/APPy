@@ -67,6 +67,7 @@ class TritonBackend(object):
         from ..high_level_transforms.check_for_assign_pragma import CheckAssignPragma
         from ..high_level_transforms.insert_before_loop import InsertRangeVar
         from ..high_level_transforms.process_data_pragma import ProcessDataPragma
+        from ..high_level_transforms.process_reduction_pragma import ProcessReductionPragma
 
         # Perform high-level transformations
         func = self.func
@@ -96,6 +97,7 @@ class TritonBackend(object):
             func = InsertBarrier().visit(func)
             func = RemoveBarrierInsideTE().visit(func)
 
+        func = ProcessReductionPragma().visit(func)
         func = ProcessDataPragma().visit(func)
 
         if self.options.get('dump_final_appy'): 

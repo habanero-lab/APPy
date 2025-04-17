@@ -20,10 +20,16 @@ def parse_pragma(pragma_str):
         if match := re.match(r'(\w+)\s*\(([^)]*)\)', pragma_str[i:]):
             key, val = match.group(1), match.group(2)
             val_tuple = tuple(v.strip() for v in val.split(',') if v.strip())
-            if len(val_tuple) == 0:
-                tokens.append((key, val_tuple))
+            
+            if key in ['shared', 'to', 'from']:
+                tokens.append((key, list(val_tuple)))
             else:
                 tokens.append((key, val_tuple if len(val_tuple) > 1 else val_tuple[0]))
+                
+            # if len(val_tuple) == 0:
+            #     tokens.append((key, val_tuple))
+            # else:
+            #     tokens.append((key, val_tuple if len(val_tuple) > 1 else val_tuple[0]))
             i += match.end()
         else:
             # Match single-word tokens like 'parallel' or 'simd'

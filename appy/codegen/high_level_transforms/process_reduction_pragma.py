@@ -1,0 +1,48 @@
+from ast import unparse
+from appy.ast_utils import *
+from .utils import *
+from copy import deepcopy
+
+class AttachAtomicPragma(ast.NodeTransformer):
+    def __init__(self, op, scalar):
+        self.op = op
+        self.scalar = scalar
+
+    def visit_Assign(self, node):
+        '''
+        For the "+" reduction op, we attach the atomic pragma to statements
+        like "x = x + y"
+        '''
+        rhs = node.value
+        lhs = node.targets[0]
+        if self.op == '+' and isinstance(rhs, ast.BinOp) and isinstance(rhs.op, ast.Add):
+            if isinstance(lhs, ast.Name) and isinstance(rhs.left, ast.Name) and lhs.id == rhs.left.id:
+                node.pragma = '#pragma atomic'
+            elif isinstance(lhs, ast.Name) and isinstance(rhs.right, ast.Name) and lhs.id == rhs.right.id:
+                node.pragma = '#pragma atomic'
+
+        return node
+
+
+class ProcessReductionPragma(ast.NodeTransformer):
+    '''
+    This pass converts a loop annotated with reduction clause into a loop
+    using explicit #pragma atomic and the shared clause.
+    '''
+    def visit_For(self, node: ast.For):
+        self.generic_visit(node)
+        if hasattr(node, 'pragma_dict'):
+            d = node.pragma_dict
+            if d.get('reduction', None):
+                assert len(d['reduction'].split(':')) == 2
+                op, scalar = d['reduction'].split(':')
+                assert op in ['+'], f'Unsupported reduction op: {op}'
+                node = AttachAtomicPragma(op, scalar).visit(node)
+                # Add the scalar to shared clause
+                if 'shared' in d:
+                    d['shared'].append(scalar)
+                else:
+                    d['shared'] = [scalar]
+
+        return node
+                
