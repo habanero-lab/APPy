@@ -4,9 +4,9 @@ from .utils import *
 from copy import deepcopy
 
 class AttachAtomicPragma(ast.NodeTransformer):
-    def __init__(self, op, scalar):
+    def __init__(self, op, scalars):
         self.op = op
-        self.scalar = scalar
+        self.scalars = scalars
 
     def visit_Assign(self, node):
         '''
@@ -15,11 +15,12 @@ class AttachAtomicPragma(ast.NodeTransformer):
         '''
         rhs = node.value
         lhs = node.targets[0]
-        if self.op == '+' and isinstance(rhs, ast.BinOp) and isinstance(rhs.op, ast.Add):
-            if isinstance(lhs, ast.Name) and isinstance(rhs.left, ast.Name) and lhs.id == rhs.left.id:
-                node.pragma = '#pragma atomic'
-            elif isinstance(lhs, ast.Name) and isinstance(rhs.right, ast.Name) and lhs.id == rhs.right.id:
-                node.pragma = '#pragma atomic'
+        if isinstance(lhs, ast.Name) and lhs.id in self.scalars:
+            if self.op == '+' and isinstance(rhs, ast.BinOp) and isinstance(rhs.op, ast.Add):
+                if isinstance(rhs.left, ast.Name) and lhs.id == rhs.left.id:
+                    node.pragma = '#pragma atomic'
+                elif isinstance(rhs.right, ast.Name) and lhs.id == rhs.right.id:
+                    node.pragma = '#pragma atomic'
 
         return node
 
@@ -35,14 +36,16 @@ class ProcessReductionPragma(ast.NodeTransformer):
             d = node.pragma_dict
             if d.get('reduction', None):
                 assert len(d['reduction'].split(':')) == 2
-                op, scalar = d['reduction'].split(':')
+                op, scalars = d['reduction'].split(':')
                 assert op in ['+'], f'Unsupported reduction op: {op}'
-                node = AttachAtomicPragma(op, scalar).visit(node)
+                # `scalars` can contain multiple variables separated by comma
+                scalars = scalars.split(',')
+                node = AttachAtomicPragma(op, scalars).visit(node)
                 # Add the scalar to shared clause
                 if 'shared' in d:
-                    d['shared'].append(scalar)
+                    d['shared'] += scalars
                 else:
-                    d['shared'] = [scalar]
+                    d['shared'] = scalars
 
         return node
                 
