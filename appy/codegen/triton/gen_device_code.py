@@ -1,6 +1,7 @@
 import ast
 from ast import unparse
 from appy.ast_utils import *
+import appy.config as config
 
 class TritonKernelTransformer(ast.NodeTransformer):
     def __init__(self, grid):
@@ -93,6 +94,12 @@ class TritonKernelTransformer(ast.NodeTransformer):
             start, step, bound = self.vindices[node.id]
             offset = to_ast_expr(f'({unparse(start)} + tl.arange(0, {unparse(step)}))')
             return offset
+        else:
+            return node
+        
+    def visit_Constant(self, node):
+        if isinstance(node.value, float):
+            return to_ast_expr(f'tl.cast({node.value}, tl.{config.default_float})')
         else:
             return node
         
