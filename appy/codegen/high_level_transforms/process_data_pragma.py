@@ -2,6 +2,7 @@ from ast import unparse
 from appy.ast_utils import *
 from .utils import *
 from copy import deepcopy
+import appy.config as config
 
 class ReplaceScalars(ast.NodeTransformer):
     def __init__(self, scalars):
@@ -30,7 +31,7 @@ class ProcessDataPragma(ast.NodeTransformer):
             if d.get('shared', None):                
                 for scalar in d['shared']:
                     to_device_stmts.append(
-                        to_ast_node(f'{scalar} = torch.tensor([{scalar}], device="cuda")')
+                        to_ast_node(f'{scalar} = torch.tensor([{scalar}], device="cuda", dtype=torch.{config.default_float})')
                     )
                     from_device_stmts.append(
                         to_ast_node(f'{scalar} = {scalar}.cpu().item()')
