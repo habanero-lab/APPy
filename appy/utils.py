@@ -16,7 +16,7 @@ def bench(fn):
 
 def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):
     assert type(a) == type(b)
-    if type(a) == float:
+    if type(a) in [float, int]:
         import numpy as np
         f = np.allclose
         max = np.max
