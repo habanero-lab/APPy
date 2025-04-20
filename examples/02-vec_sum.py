@@ -10,9 +10,8 @@ from appy.utils import allclose, bench
 @appy.jit  # Comment this line to run the function in the Python interpter (debug mode)
 def kernel_appy(a):
     b = 0.0
-    #pragma parallel for simd global(b)
+    #pragma parallel for simd reduction(+:b)
     for i in range(a.shape[0]): 
-        #pragma atomic
         b += a[i]
     return b
 
