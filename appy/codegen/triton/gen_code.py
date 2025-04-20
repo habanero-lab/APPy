@@ -7,6 +7,7 @@ from appy.codegen.typesys import build_type_from_value, get_tl_dtype_from_str
 from appy.codegen.typesys import Tensor as TensorType
 from appy.codegen.typesys import Constant as ConstantType
 from appy.ast_utils import *
+import appy.config as config
 
 
 class TritonBackend(object):
@@ -31,6 +32,14 @@ class TritonBackend(object):
 
                     def init_to_zero(name):
                         return lambda nargs: nargs[name].zero_()
+
+                    def to_torch_dtype(ty):
+                        if ty == float:
+                            return getattr(torch, '{config.default_float}')
+                        elif ty == int:
+                            return getattr(torch, '{config.default_int}')
+                        else:
+                            assert False, "unknown type: " + str(ty)
                 ''')
         if appy.config.tensorlib != 'torch':
             imports += 'import torch\n'

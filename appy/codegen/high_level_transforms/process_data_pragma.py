@@ -31,7 +31,7 @@ class ProcessDataPragma(ast.NodeTransformer):
             if d.get('shared', None):                
                 for scalar in d['shared']:
                     to_device_stmts.append(
-                        to_ast_node(f'{scalar} = torch.tensor([{scalar}], device="cuda", dtype=torch.{config.default_float})')
+                        to_ast_node(f'{scalar} = torch.tensor([{scalar}], device="cuda", dtype=to_torch_dtype(type({scalar})))')
                     )
                     from_device_stmts.append(
                         to_ast_node(f'{scalar} = {scalar}.cpu().item()')
