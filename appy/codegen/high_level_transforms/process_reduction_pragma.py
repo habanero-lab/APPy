@@ -34,7 +34,9 @@ class ProcessReductionPragma(ast.NodeTransformer):
         self.generic_visit(node)
         if hasattr(node, 'pragma_dict'):
             d = node.pragma_dict
-            if d.get('reduction', None):
+            # If reduction is used together with parallel for, convert the reduction
+            # variables to shared scope, and attach atomic pragma
+            if d.get('reduction', None) and d.get('parallel_for', None):
                 assert len(d['reduction'].split(':')) == 2
                 op, scalars = d['reduction'].split(':')
                 assert op in ['+'], f'Unsupported reduction op: {op}'
