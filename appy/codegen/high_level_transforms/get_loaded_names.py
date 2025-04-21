@@ -22,10 +22,6 @@ class ExtractArguments(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call):
         if isinstance(node.func, ast.Name):
             self.func_or_package_names.append(node.func.id)
-
-        if unparse(node).startswith('vidx(') or unparse(node).startswith('appy.vidx('):
-            if isinstance(node.args[1], ast.Name):
-                self.names[node.args[1].id] = ('const', 0)
         
         self.generic_visit(node)
 
