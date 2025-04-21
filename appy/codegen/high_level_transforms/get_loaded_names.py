@@ -1,13 +1,9 @@
 import ast
-from ast import unparse
-from appy.ast_utils import *
-from copy import deepcopy
-import appy.codegen.typesys as typesys
 
 class ExtractArguments(ast.NodeVisitor):
-    def __init__(self, names):
-        self.names = names
-        self.stored_vars = []
+    def __init__(self):
+        self.read_names = {}
+        self.write_names = {}
         self.func_or_package_names = []
 
     def visit_Subscript(self, node: ast.Subscript):
@@ -15,7 +11,7 @@ class ExtractArguments(ast.NodeVisitor):
             ndim = 1
             if isinstance(node.slice, ast.Tuple):
                 ndim = len(node.slice.elts)
-            self.names[node.value.id] = ('tensor', ndim)
+            self.read_names[node.value.id] = ('tensor', ndim)
             #print(self.names)
         self.generic_visit(node)
 
@@ -35,9 +31,26 @@ class ExtractArguments(ast.NodeVisitor):
         id = node.id     
         if id.startswith('_top_var'):# or id.startswith('__range_var'):
             return
+        
+        if id in self.func_or_package_names:
+            return
+
+        # `id` could already be registered as a tensor read name since
+        # visit_Subscript is called before visit_Name
+        if isinstance(node.ctx, ast.Load) and id not in self.read_names:
+            self.read_names[id] = ('scalar', 0)
 
         if isinstance(node.ctx, ast.Store):
-            self.stored_vars.append(id)         
+            self.write_names[id] = ('scalar', 0)        
         
-        if id not in (self.stored_vars + self.func_or_package_names) and (id not in self.names):
-            self.names[id] = ('scalar', 0)
+
+def transform(tree):
+    visitor = ExtractArguments()
+    visitor.visit(tree)
+    readonly_names = {}
+
+    for name in visitor.read_names:
+        if name not in visitor.write_names:
+            readonly_names[name] = visitor.read_names[name]
+            
+    return tree, readonly_names

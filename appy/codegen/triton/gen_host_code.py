@@ -103,7 +103,7 @@ class RewritePFor(ast.NodeTransformer):
             from ..high_level_transforms.block_loop import BlockLoop
             from ..high_level_transforms.attach_mask_info import AttachMaskInfo
             from ..high_level_transforms.rewrite_call import RewriteAPPyCall
-            from ..high_level_transforms.get_loaded_names import ExtractArguments
+            from ..high_level_transforms import get_loaded_names
 
             pragma = node.pragma
             num_warps = 4
@@ -114,9 +114,7 @@ class RewritePFor(ast.NodeTransformer):
             node = BlockLoop().visit(node)
             node = AttachMaskInfo().visit(node)
             node = RewriteAPPyCall().visit(node)            
-
-            self.extracted_args = {}
-            ExtractArguments(self.extracted_args).visit(node)
+            node, self.extracted_args = get_loaded_names.transform(node)
             
             # Rearrange the args to make tl.constexpr args the last
             reordered = OrderedDict()
