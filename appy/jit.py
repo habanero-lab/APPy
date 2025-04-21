@@ -1,112 +1,62 @@
-import os
-import re
-import sys
-import subprocess
-import torch
-import inspect
+from ast_utils import *
 import ast_comments as ast
-import importlib.util
-from pathlib import Path
-from appy.codegen.triton.gen_code import TritonBackend
+import inspect
+import textwrap
 
-# import appy.config as config
+class ExtractParallelLoops(ast.NodeTransformer):
+    def __init__(self):
+        self.pfor_pragma = None
 
-compiled = {}
-
-
-def compile(fn, args, dump_code=0, verbose=False, **options):
-    # print('options:', options)
-    if options.get("use_compiled_file"):
-        filename = options.get("use_compiled_file")
-        print("use compiled file:", filename)
-    else:
-        appy_kernel_dir = "./.appy_kernels"
-        os.makedirs(appy_kernel_dir, exist_ok=True)
-        if verbose:
-            print(
-                f"[jit] Compile function {fn.__name__} with type signature {[type(x) for x in args]}"
-            )
-        src = inspect.getsource(fn)
-        # src = constant_prop(src, get_arg_names(src), args)
-        tree = ast.parse(src)
-
-        backend = TritonBackend(tree, args, **options)
-        module = backend.codegen()
-        if dump_code:
-            print(module)
-        filename = f"{appy_kernel_dir}/{fn.__name__}.py"
-        Path(filename).write_text(module, encoding='utf-8')
+    def visit_Comment(self, node):
+        comment = node.value.strip()
     
-    #subprocess.run(["black", filename], capture_output=True, text=True)
-    subprocess.run(["black", filename], capture_output=True)
-    # exit(1)
-    spec = importlib.util.spec_from_file_location("module.name", filename)
-    foo = importlib.util.module_from_spec(spec)
-    sys.modules["module.name"] = foo
-    spec.loader.exec_module(foo)
-    if verbose:
-        print("[jit] Done compiling")
-    compiled = getattr(foo, fn.__name__)
-    return compiled
+        if comment.startswith('#pragma parallel for'):
+            self.pfor_pragma = node
+            return None
+        return node
 
-
-def preprocess(src):
-    lines = src.split("\n")
-    newsrc = ""
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-
-        m = re.match(r" *\#pragma", line)
-        if m:
-            nextline = lines[i + 1]
-            assert re.match(r" *for ", nextline)
-            newsrc += nextline + line + "\n"
-            i += 1
+    def visit_For(self, node: ast.For):
+    
+        if self.pfor_pragma:
+            assign_node = to_ast_node(f'__code_str = """{ast.unparse(self.pfor_pragma) + '\n' + ast.unparse(node)}"""')
+            call_node = to_ast_node(f'appy.compile_from_src(__code_str)')
+            self.pfor_pragma = None
+            return [assign_node, call_node]
         else:
-            newsrc += line + "\n"
-        i += 1
-    return newsrc
+            self.generic_visit(node)
+            return node
+
+def jit(func):
+    source_code = inspect.getsource(func)
+    source_code = textwrap.dedent(source_code)  # Remove indentation
+    tree = ast.parse(source_code)
+    transformer = ExtractParallelLoops()
+    tree = transformer.visit(tree)
+    ast.fix_missing_locations(tree)
+    print(ast.unparse(tree))
+
+    # Compile the modified AST to a code object
+    filename = inspect.getfile(func)
+    code = compile(tree, filename=filename, mode='exec')
+
+    # Create a namespace in which to execute the code object
+    namespace = func.__globals__.copy()
+    exec(code, namespace)
+
+    # Return the new version of the function
+    return namespace[func.__name__]
 
 
-def get_arg_names(src):
-    defline = ""
-    for line in src.split("\n"):
-        if line.startswith("@"):
-            continue
-        if line.startswith("def "):
-            defline = line
-            break
-    result = re.search(r"\((.*)\)", defline)
-    args_str = result.groups()[0]
-    items = list(map(lambda x: x.strip(), args_str.split(",")))
-    items = list(filter(lambda x: "=" not in x, items))
+if __name__ == '__main__':
+    import appy
+    import numpy as np
 
-    return items
+    def foo():
+        a = np.zeros(10)
+        b = np.ones(10)
+        #pragma parallel for
+        for i in range(a.shape[0]):
+            a[i] += b[i]
 
-
-def constant_prop(src, arg_names, arg_values):
-    for i, arg in enumerate(arg_names):
-        value = arg_values[i]
-        if not isinstance(value, torch.Tensor):
-            continue
-
-        src = src.replace(f"{arg}.dtype", str(value.dtype))
-
-        for dim in range(len(value.shape)):
-            src = src.replace(f"{arg}.shape[{dim}]", f"{arg}_shape_{dim}")
-    return src
-
-
-def get_type_sig(*args):
-    sigs = []
-    for arg in args:
-        if isinstance(arg, torch.Tensor):
-            sigs.append(f"<{arg.dtype}*{arg.dim()}>")
-        elif isinstance(arg, int):
-            sigs.append(f"{arg}")
-        else:
-            sigs.append(f"{type(arg)}")
-    return ",".join(sigs)
-
-
+    newfoo = jit(foo)
+    newfoo()
