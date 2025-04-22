@@ -97,11 +97,13 @@ class TritonKernelTransformer(ast.NodeTransformer):
         else:
             return node
         
-    # def visit_Constant(self, node):
-    #     if isinstance(node.value, float):
-    #         return to_ast_expr(f'tl.cast({node.value}, tl.{config.default_float})')
-    #     else:
-    #         return node
+    def visit_Constant(self, node):
+        if isinstance(node.value, float):
+            return to_ast_expr(f'tl.full([1], {node.value}, dtype=tl.{config.default_float})')
+        elif isinstance(node.value, int):
+            return to_ast_expr(f'tl.full([1], {node.value}, dtype=tl.{config.default_int})')
+        else:
+            return node
         
     def visit_Call(self, node: ast.Call):
         self.generic_visit(node)
