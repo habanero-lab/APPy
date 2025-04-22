@@ -30,11 +30,13 @@ class ProcessDataPragma(ast.NodeTransformer):
             from_device_stmts = []
             if d.get('shared', None):                
                 for scalar in d['shared']:
-                    to_device_stmts.append(
-                        to_ast_node(f'{scalar} = torch.tensor([{scalar}], device="cuda", dtype=to_torch_dtype(type({scalar})))')
+                    to_device_stmts += (
+                        to_ast_node(f'{scalar} = torch.tensor(np.array({scalar}), device="cuda")'),
                     )
-                    from_device_stmts.append(
-                        to_ast_node(f'{scalar} = {scalar}.cpu().item()')
+                    from_device_stmts += (
+                        to_ast_node(f'{scalar} = {scalar}.cpu()'),
+                        # Make this work for both scalar and arrays, despite the variable is called scalar
+                        to_ast_node(f'{scalar} = {scalar}.item() if {scalar}.ndim == 0 else {scalar}')
                     )
                 # Inside the for loop, replace all occurences of the shared scalar `x` with `x[0]`
                 ReplaceScalars(d['shared']).visit(node)
