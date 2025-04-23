@@ -63,7 +63,8 @@ class TritonKernelTransformer(ast.NodeTransformer):
             assert False
         # Example: A[i], A[0]    
         if not isinstance(node.slice, ast.Tuple):
-            offset = node.slice            
+            #offset = node.slice
+            offset = new_add_node(node.slice, to_ast_expr('tl.arange(0, 1)'))
             addr = new_add_node(base, offset)            
         else:
             # Example: A[i, j], A[0, i]
