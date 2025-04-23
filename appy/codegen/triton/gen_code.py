@@ -70,6 +70,8 @@ class TritonBackend(object):
         from ..high_level_transforms.process_data_pragma import ProcessDataPragma
         from ..high_level_transforms.process_reduction_pragma import ProcessReductionPragma
         from ..high_level_transforms import add_entry_exit_data_transfer
+        from ..high_level_transforms import mark_reduction_stmts
+        from ..high_level_transforms import process_simd_clause
 
         # Perform high-level transformations
         func = self.func
@@ -100,6 +102,8 @@ class TritonBackend(object):
             func = InsertBarrier().visit(func)
             func = RemoveBarrierInsideTE().visit(func)
 
+        func = mark_reduction_stmts.transform(func)
+        func = process_simd_clause.transform(func)
         func = ProcessReductionPragma().visit(func)
         func = ProcessDataPragma().visit(func)
 
