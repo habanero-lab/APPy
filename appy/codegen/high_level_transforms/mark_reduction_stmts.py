@@ -35,6 +35,18 @@ class GetReductionCandidateStmts(ast.NodeVisitor):
                     elif isinstance(value.args[1], ast.Name) and target.id == value.args[1].id:
                         self.candidates.append(node)
         return node
+    
+class GetDefinitions(ast.NodeVisitor):
+    def __init__(self):
+        self.definitions = {}
+
+    def visit_Assign(self, node):
+        target = node.targets[0]
+        if isinstance(target, ast.Name):
+            if target.id not in self.definitions:
+                self.definitions[target.id] = []
+            self.definitions[target.id].append(node)
+        return node
 
 class MarkReductionStmts(ast.NodeTransformer):
     def visit_For(self, node):
@@ -52,39 +64,39 @@ class MarkReductionStmts(ast.NodeTransformer):
             visitor = GetReductionCandidateStmts()
             visitor.visit(node)
             # Check if a candidate is the single definition of its target inside the loop
-            var_to_candidate = {}
+            def_visitor = GetDefinitions()
+            def_visitor.visit(node)
             for candidate in visitor.candidates:
                 target = candidate.targets[0]
-                if target not in var_to_candidate:
-                    var_to_candidate[target] = []
-                var_to_candidate[target].append(candidate)
+                assert target.id in def_visitor.definitions
+                if len(def_visitor.definitions[target.id]) != 1:
+                    continue
+                assert def_visitor.definitions[target.id][0] == candidate
+                
+                # Now candidate should be the only definition of its target
+                stmt = candidate
+                # Attach the `reduce` attribute depending on the operator
+                if isinstance(stmt.value, ast.BinOp):
+                    if isinstance(stmt.value.op, ast.Add):
+                        stmt.reduce = '+'
+                    elif isinstance(stmt.value.op, ast.Mult):
+                        stmt.reduce = '*'
+                elif isinstance(stmt.value, ast.Call):
+                    if stmt.value.func.id == 'max':
+                        stmt.reduce = 'max'
+                    elif stmt.value.func.id == 'min':
+                        stmt.reduce = 'min'
+                else:
+                    assert False
 
-            # Attach the `reduce` attribute for candidates that are single definitions
-            for target, candidates in var_to_candidate.items():
-                if len(candidates) == 1:
-                    stmt = candidates[0]
-                    # Attach the `reduce` attribute depending on the operator
-                    if isinstance(stmt.value, ast.BinOp):
-                        if isinstance(stmt.value.op, ast.Add):
-                            stmt.reduce = '+'
-                        elif isinstance(stmt.value.op, ast.Mult):
-                            stmt.reduce = '*'
-                    elif isinstance(stmt.value, ast.Call):
-                        if stmt.value.func.id == 'max':
-                            stmt.reduce = 'max'
-                        elif stmt.value.func.id == 'min':
-                            stmt.reduce = 'min'
-                    else:
-                        assert False
-
-                    # If the loop is a parallel for loop or a simd loop, attach the `reduction` clause
-                    if hasattr(node, 'pragma'):
-                        pragma_dict = node.pragma_dict
-                        if 'parallel_for' in pragma_dict or 'simd' in pragma_dict:
-                            if 'reduction' not in pragma_dict:
-                                node.pragma_dict['reduction'] = f'{stmt.reduce}:{target.id}'
-                                print(f'[DEBUG] pragma_dict: {node.pragma_dict}')
-        
+                # If the loop is a parallel for loop or a simd loop, attach the `reduction` clause
+                if hasattr(node, 'pragma'):
+                    pragma_dict = node.pragma_dict
+                    if 'parallel_for' in pragma_dict or 'simd' in pragma_dict:
+                        if 'reduction' not in pragma_dict:
+                            node.pragma_dict['reduction'] = f'{stmt.reduce}:{target.id}'
+                            print(f'[DEBUG] pragma_dict: {node.pragma_dict}')
+    
         return node
     
 
