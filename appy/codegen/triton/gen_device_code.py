@@ -100,8 +100,9 @@ class TritonKernelTransformer(ast.NodeTransformer):
     def visit_Constant(self, node):
         if isinstance(node.value, float):
             return to_ast_expr(f'tl.full([1], {node.value}, dtype=tl.{config.default_float})')
-        elif isinstance(node.value, int):
-            return to_ast_expr(f'tl.full([1], {node.value}, dtype=tl.{config.default_int})')
+        # This makes range(xx, xx) not work inside the kernel
+        # elif isinstance(node.value, int):
+        #     return to_ast_expr(f'tl.full([1], {node.value}, dtype=tl.{config.default_int})')
         else:
             return node
         
