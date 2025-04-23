@@ -69,6 +69,7 @@ class TritonBackend(object):
         from ..high_level_transforms.insert_before_loop import InsertRangeVar
         from ..high_level_transforms.process_data_pragma import ProcessDataPragma
         from ..high_level_transforms.process_reduction_pragma import ProcessReductionPragma
+        from ..high_level_transforms import add_entry_exit_data_transfer
 
         # Perform high-level transformations
         func = self.func
@@ -81,6 +82,7 @@ class TritonBackend(object):
             dim_info = self.options.get('dim_info')
             func = AddDimToSlice(dim_info).visit(func)
 
+        func = add_entry_exit_data_transfer.transform(func, self.options)
         func = PragmaLinker().visit(func)    
         func = ConvertSeqLoop().visit(func)
         func = CheckAssignPragma(self.arg_val_map).visit(func)

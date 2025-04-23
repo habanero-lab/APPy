@@ -104,6 +104,7 @@ class RewritePFor(ast.NodeTransformer):
             from ..high_level_transforms.attach_mask_info import AttachMaskInfo
             from ..high_level_transforms.rewrite_call import RewriteAPPyCall
             from ..high_level_transforms import get_loaded_names
+            from ..high_level_transforms import ternary_to_where
 
             pragma = node.pragma
             num_warps = 4
@@ -113,6 +114,7 @@ class RewritePFor(ast.NodeTransformer):
 
             node = BlockLoop().visit(node)
             node = AttachMaskInfo().visit(node)
+            node = ternary_to_where.transform(node)
             node = RewriteAPPyCall().visit(node)            
             node, self.extracted_args = get_loaded_names.transform(node)
             
