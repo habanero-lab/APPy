@@ -19,8 +19,8 @@ class RewriteAugAssign(ast.NodeTransformer):
                 lineno=node.lineno,
             )
 
-        if isinstance(node.op, ast.Add):
-            newnode.reduce = '+'
-            #print('mark as + reduction')
-            #dump(newnode)
+        # if isinstance(node.op, ast.Add):
+        #     newnode.reduce = '+'
+        #     #print('mark as + reduction')
+        #     #dump(newnode)
         return newnode
