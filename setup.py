@@ -1,8 +1,17 @@
+import os
+import re
 from setuptools import setup, find_packages
 
+def read_version():
+    with open(os.path.join("appy", "__version__.py")) as f:
+        match = re.search(r'__version__\s*=\s*["\'](.+?)["\']', f.read())
+        if match:
+            return match.group(1)
+        raise RuntimeError("Version not found.")
+    
 setup(
     name="appyc",                 # Name of the package
-    version="0.1.13",                    # Version
+    version="0.2.0",                    # Version
     author="Tong Zhou",                 # Your name
     author_email="zt9465@gmail.com", # Your email
     description="APPy (Annotated Parallelism for Python) enables users to annotate loops and tensor expressions in Python with compiler directives akin to OpenMP, and automatically compiles the annotated code to GPU kernels.", # Short description

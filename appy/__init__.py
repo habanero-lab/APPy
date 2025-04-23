@@ -6,6 +6,7 @@ from pathlib import Path
 import black
 from appy.codegen.triton.gen_code import TritonBackend
 from . import config
+from .__version__ import __version__
 
 def compile_from_src(src, **options):
     tree = ast.parse(src)
