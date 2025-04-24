@@ -95,7 +95,7 @@ class MarkReductionStmts(ast.NodeTransformer):
                     if 'parallel_for' in pragma_dict or 'simd' in pragma_dict:
                         if 'reduction' not in pragma_dict:
                             node.pragma_dict['reduction'] = f'{stmt.reduce}:{target.id}'
-                            print(f'[DEBUG] pragma_dict: {node.pragma_dict}')
+                            #print(f'[DEBUG] pragma_dict after mark reduction: {node.pragma_dict}')
     
         return node
     

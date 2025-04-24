@@ -6,6 +6,7 @@ from .utils import dict_to_pragma
 
 class ProcessSimdClause(ast.NodeTransformer):
     def visit_For(self, node: ast.For):
+        self.generic_visit(node)
         if hasattr(node, 'pragma'):
             pragma_dict = node.pragma_dict
             if 'simd' in pragma_dict:
@@ -20,6 +21,7 @@ class ProcessSimdClause(ast.NodeTransformer):
                         pragma_dict['block'] = 256
             node.pragma_dict = pragma_dict
             node.pragma = dict_to_pragma(pragma_dict)
+            #print(f'[DEBUG] pragma after process_simd: {node.pragma}')
         return node
     
 

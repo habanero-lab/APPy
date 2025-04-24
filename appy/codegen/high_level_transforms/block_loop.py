@@ -10,7 +10,6 @@ class BlockLoop(ast.NodeTransformer):
     def visit_For(self, node: ast.For):    
         if hasattr(node, 'pragma'):
             pragma = node.pragma
-            #print('pragma:', pragma)
             if ' block' in pragma:
                 block_size = get_pragma_property(pragma, 'block')
                 assert block_size, "Block size argument required!"

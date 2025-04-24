@@ -142,7 +142,14 @@ def f8(a):
     return c
 
 
-for f in [f6, f7, f8]:
+def f9(a, b, c, M, N):
+    #pragma parallel for simd
+    for i in range(M, N):
+        c[i] = a[i] + b[i]
+    return c
+
+
+for f in [f0, f1, f2]:
     src = inspect.getsource(f)
     newcode = appy.compile_from_src(src, dump_final_appy=1)
     print(newcode)
