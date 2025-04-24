@@ -45,15 +45,13 @@ class RewritePFor(ast.NodeTransformer):
         newargs = []
         for name, (ty, ndim) in arg_dim_map.items():
             arg = name
-            if name in self.arg_val_map and appy.get_type_str(self.arg_val_map[name]) in ["numpy.float64", "numpy.float32"]:
-                arg = f'float({name})'
             if appy.config.tensorlib == 'cupy' and ty == 'tensor':
                 arg = f'torch.as_tensor({name}, device="cuda")'
             newargs.append(arg)
             if ndim > 1:
                 for d in range(ndim):
                     if appy.config.tensorlib == 'cupy':
-                        newargs.append(f'torch.as_tensor({name}, device="cuda").stride({d})')
+                        newargs.append(f'{name}.strides[{d}] / {name}.itemsize')
                     else:
                         newargs.append(f'{name}.stride({d})')
         return newargs
