@@ -10,32 +10,7 @@ A statement is determined to be a reduction if
 import ast
 from appy.ast_utils import *
 
-class GetReductionCandidateStmts(ast.NodeVisitor):
-    '''
-    If an assignment has form `x = x + y` or `x = x * y` or `x = max(x, y)` or `x = min(x, y)`
-    or `x = y + x` or `x = y * x` or `x = max(y, x)` or `x = min(y, x)`, it is a reduction candidate.
-    '''
-    def __init__(self):
-        self.candidates = []
 
-    def visit_Assign(self, node):
-        target = node.targets[0]
-        value = node.value
-        if isinstance(target, ast.Name):
-            if isinstance(value, ast.BinOp):
-                if isinstance(value.op, ast.Add) or isinstance(value.op, ast.Mult):
-                    if isinstance(value.left, ast.Name) and target.id == value.left.id:
-                        self.candidates.append(node)
-                    elif isinstance(value.right, ast.Name) and target.id == value.right.id:
-                        self.candidates.append(node)
-            elif isinstance(value, ast.Call):
-                if value.func.id == 'max' or value.func.id == 'min':
-                    if isinstance(value.args[0], ast.Name) and target.id == value.args[0].id:
-                        self.candidates.append(node)
-                    elif isinstance(value.args[1], ast.Name) and target.id == value.args[1].id:
-                        self.candidates.append(node)
-        return node
-    
 class GetDefinitions(ast.NodeVisitor):
     def __init__(self):
         self.definitions = {}
@@ -47,34 +22,59 @@ class GetDefinitions(ast.NodeVisitor):
                 self.definitions[target.id] = []
             self.definitions[target.id].append(node)
         return node
+    
+
+class HasBreakOrContinue(ast.NodeVisitor):
+    def __init__(self):
+        self.has_break = False
+        self.has_continue = False
+
+    def visit_Break(self, node):
+        self.has_break = True
+        return node
+
+    def visit_Continue(self, node):
+        self.has_continue = True
+        return node
+
 
 class MarkReductionStmts(ast.NodeTransformer):
+    def is_candidate(self, node):
+        assert isinstance(node, ast.Assign)
+        target = node.targets[0]
+        value = node.value
+        if isinstance(target, ast.Name):
+            if isinstance(value, ast.BinOp):
+                if isinstance(value.op, ast.Add) or isinstance(value.op, ast.Mult):
+                    if isinstance(value.left, ast.Name) and target.id == value.left.id:
+                        return True
+                    elif isinstance(value.right, ast.Name) and target.id == value.right.id:
+                        return True
+            elif isinstance(value, ast.Call):
+                if value.func.id == 'max' or value.func.id == 'min':
+                    if isinstance(value.args[0], ast.Name) and target.id == value.args[0].id:
+                        return True
+                    elif isinstance(value.args[1], ast.Name) and target.id == value.args[1].id:
+                        return True
+
+        return False
+
     def visit_For(self, node):
         self.generic_visit(node)
-        # Check if the loop has no control flow
-        no_control_flow = True
-        for stmt in node.body:
-            # As long as the loop body contains non-assignment statements
-            # it is not a straight line
-            if not isinstance(stmt, ast.Assign):
-                no_control_flow = False
-                break
+        visitor = HasBreakOrContinue()
+        visitor.visit(node)
+        if visitor.has_break or visitor.has_continue:
+            return node
         
-        if no_control_flow:
-            visitor = GetReductionCandidateStmts()
-            visitor.visit(node)
-            # Check if a candidate is the single definition of its target inside the loop
-            def_visitor = GetDefinitions()
-            def_visitor.visit(node)
-            for candidate in visitor.candidates:
-                target = candidate.targets[0]
-                assert target.id in def_visitor.definitions
-                if len(def_visitor.definitions[target.id]) != 1:
-                    continue
-                assert def_visitor.definitions[target.id][0] == candidate
-                
-                # Now candidate should be the only definition of its target
-                stmt = candidate
+        # Perform reduction analysis if the loop has no break or continue
+        def_visitor = GetDefinitions()
+        def_visitor.visit(node)
+        defs = def_visitor.definitions
+        for stmt in node.body:
+            # If the assignment statement is the only definition of its target
+            # and it is a reduction candidate, mark it as a reduction
+            if isinstance(stmt, ast.Assign) and isinstance(stmt.targets[0], ast.Name) \
+                and len(defs[stmt.targets[0].id]) == 1 and self.is_candidate(stmt):
                 # Attach the `reduce` attribute depending on the operator
                 if isinstance(stmt.value, ast.BinOp):
                     if isinstance(stmt.value.op, ast.Add):
@@ -92,6 +92,7 @@ class MarkReductionStmts(ast.NodeTransformer):
                 # If the loop is a parallel for loop or a simd loop, attach the `reduction` clause
                 if hasattr(node, 'pragma'):
                     pragma_dict = node.pragma_dict
+                    target = stmt.targets[0]
                     if 'parallel_for' in pragma_dict or 'simd' in pragma_dict:
                         if 'reduction' not in pragma_dict:
                             node.pragma_dict['reduction'] = f'{stmt.reduce}:{target.id}'
