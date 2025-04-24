@@ -56,46 +56,6 @@ class RewritePFor(ast.NodeTransformer):
                         newargs.append(f'{name}.stride({d})')
         return newargs
 
-    def make_triton_configs(self, configs, init_hook):    
-        keys = []
-        for name, (ty, ndim) in self.extracted_args.items():
-            if ty == 'tensor':
-                for d in range(ndim):
-                    keys.append(f'"{name}_stride_{d}"') 
-        # for param in self.make_kernel_parameters(self.extracted_args):
-        #     if '_shape_' in param:
-        #         keys.append('"' + param.replace(': tl.constexpr', '') + '"')
-        
-        triton_configs = []
-        for config in configs:
-            meta_args = []
-            for meta_arg in ['num_warps', 'num_stages']:
-                val = config.pop(meta_arg, None)
-                if val:
-                    meta_args.append([meta_arg, val])
-            triton_config = f'triton.Config({config}'
-            if init_hook:
-                op, var = init_hook
-                if op == 'sum':
-                    triton_config += f',pre_hook=init_to_zero("{var}")' 
-                else:
-                    assert False            
-
-            for k, v in meta_args:
-                triton_config += f', {k}={v}'
-            
-            triton_config += ')'
-            triton_configs.append(triton_config)
-                    
-        code = textwrap.dedent(f'''
-        @triton.autotune(
-            configs=[{','.join(triton_configs)}],
-            key=[{','.join(keys)}],
-        )
-        ''')        
-        return code
-
-
     def visit_For(self, node: ast.For):
         if hasattr(node, 'pragma'):
             from ..high_level_transforms.block_loop import BlockLoop
@@ -140,39 +100,7 @@ class RewritePFor(ast.NodeTransformer):
             #print(meta_grid)
             #print(self.options)
                               
-            k_args = self.make_kernel_actual_arguments(self.extracted_args)
-            
-            if self.options.get('tune'):  
-                configs = []
-                for key, values in self.options.get('tune').items():                          
-                        
-                    for value in values:
-                        configs.append({key: value})
-                    # Remove this tuning parameter from argument list
-                    # Note that DEFAULT_BLOCK may not be in the argument list
-                    if key in k_args:
-                        k_args.remove(key)
-                    # Update the grid 
-                    meta_grid = meta_grid.replace(key, f'META["{key}"]')
-                init_hook = None
-                if hasattr(node, 'init_hook'):
-                    init_hook = node.init_hook
-                tune_code = self.make_triton_configs(configs, init_hook)                
-                kf = to_ast_node(tune_code + unparse(kf))
-
-            if self.options.get('configs'):
-                for config in self.options.get('configs'):
-                    for key, values in config.items(): 
-                        if key in k_args:
-                            k_args.remove(key)
-                            # Update the grid 
-                            meta_grid = meta_grid.replace(key, f'META["{key}"]')
-                tune_code = self.make_triton_configs(self.options.get('configs'), None)
-                kf = to_ast_node(tune_code + unparse(kf))
-            
-
-            #print(unparse(kf))
-            
+            k_args = self.make_kernel_actual_arguments(self.extracted_args)            
             self.module.body.append(kf)
             
             if self.options.get('tune') or self.options.get('configs'):  
