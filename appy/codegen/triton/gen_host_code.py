@@ -96,17 +96,10 @@ class RewritePFor(ast.NodeTransformer):
             kernel_code = TritonKernelTransformer(grid).visit(node)                 
             kf = self.create_new_kernel_function()
             kf.body += kernel_code
-            meta_grid = f'kernel_grid = lambda META: ({",".join(grid)},)'                
-            #print(meta_grid)
-            #print(self.options)
-                              
-            k_args = self.make_kernel_actual_arguments(self.extracted_args)            
             self.module.body.append(kf)
-            
-            if self.options.get('tune') or self.options.get('configs'):  
-                launch_stmt = f'fn = {kf.name}[kernel_grid]({",".join(k_args)})'
-            else:
-                launch_stmt = f'fn = {kf.name}[kernel_grid]({",".join(k_args)}, num_warps={num_warps})'
+            meta_grid = f'kernel_grid = lambda META: ({",".join(grid)},)'
+            k_args = self.make_kernel_actual_arguments(self.extracted_args)            
+            launch_stmt = f'fn = {kf.name}[kernel_grid]({",".join(k_args)}, num_warps={num_warps})'
             new_nodes = [to_ast_node(meta_grid), to_ast_node(launch_stmt) ]
 
             if self.options.get('print_ptx'):
