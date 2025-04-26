@@ -72,6 +72,7 @@ class TritonBackend(object):
         from ..high_level_transforms import add_entry_exit_data_transfer
         from ..high_level_transforms import mark_reduction_stmts
         from ..high_level_transforms import process_simd_clause
+        from ..high_level_transforms import identify_readonly_scalars
 
         # Perform high-level transformations
         func = self.func
@@ -103,6 +104,7 @@ class TritonBackend(object):
             func = RemoveBarrierInsideTE().visit(func)
 
         func = mark_reduction_stmts.transform(func)
+        func = identify_readonly_scalars.transform(func)
         func = process_simd_clause.transform(func)
         func = ProcessReductionPragma().visit(func)
         func = ProcessDataPragma().visit(func)
