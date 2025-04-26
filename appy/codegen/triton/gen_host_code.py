@@ -71,8 +71,8 @@ class RewritePFor(ast.NodeTransformer):
                 num_warps = int(p)
 
             node = BlockLoop().visit(node)
-            node = AttachMaskInfo().visit(node)
             node = ternary_to_where.transform(node)
+            node = AttachMaskInfo().visit(node)
             node = RewriteAPPyCall().visit(node)            
             node, self.extracted_args = get_loaded_names.transform(node)
             
@@ -100,6 +100,7 @@ class RewritePFor(ast.NodeTransformer):
             meta_grid = f'kernel_grid = lambda META: ({",".join(grid)},)'
             k_args = self.make_kernel_actual_arguments(self.extracted_args)            
             launch_stmt = f'fn = {kf.name}[kernel_grid]({",".join(k_args)}, num_warps={num_warps})'
+            launch_stmt += '\ntorch.cuda.synchronize()'
             new_nodes = [to_ast_node(meta_grid), to_ast_node(launch_stmt) ]
 
             if self.options.get('print_ptx'):

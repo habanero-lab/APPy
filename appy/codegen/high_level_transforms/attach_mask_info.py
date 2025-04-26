@@ -72,6 +72,29 @@ class MaskPropagation(ast.NodeTransformer):
             if isinstance(node.targets[0], ast.Name):
                 self.masked_vars[node.targets[0].id] = node.value.mask
         return node
+    
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        # Call `appy.where` has a special mask to attach. The first argument is a condition,
+        # and if any of the other two arguments are array loads, they need to have an extra 
+        # mask of the condition. If arg1 already have masks, the new mask should be condition & old_mask;
+        # If arg2 already have masks, the new mask should be (~condition) & old_mask since
+        # arg2 implies condition to be False, i.e. (~condition).
+        if unparse(node).startswith('appy.where('):
+            condition = node.args[0]
+            arg1 = node.args[1]
+            arg2 = node.args[2]
+            if isinstance(arg1, ast.Subscript):
+                if hasattr(arg1, 'mask'):
+                    arg1.mask = f'({unparse(condition)}) & ({arg1.mask})'
+                else:
+                    arg1.mask = f'({unparse(condition)})'
+            if isinstance(arg2, ast.Subscript):
+                if hasattr(arg2, 'mask'):
+                    arg2.mask = f'(~{unparse(condition)}) & ({arg2.mask})'
+                else:
+                    arg2.mask = f'(~{unparse(condition)})'
+        return node
 
 
 class AttachMaskInfo(ast.NodeTransformer):
