@@ -73,8 +73,8 @@ class MarkReductionStmts(ast.NodeTransformer):
         for stmt in node.body:
             # If the assignment statement is the only definition of its target
             # and it is a reduction candidate, mark it as a reduction
-            if isinstance(stmt, ast.Assign) and isinstance(stmt.targets[0], ast.Name) \
-                and len(defs[stmt.targets[0].id]) == 1 and self.is_candidate(stmt):
+            if isinstance(stmt, ast.Assign) and self.is_candidate(stmt) \
+                and len(defs[stmt.targets[0].id]) == 1:
                 # Attach the `reduce` attribute depending on the operator
                 if isinstance(stmt.value, ast.BinOp):
                     if isinstance(stmt.value.op, ast.Add):
