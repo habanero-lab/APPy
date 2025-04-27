@@ -20,16 +20,6 @@ class InspectAssign(ast.NodeVisitor):
                     self.candidates[target] = ''
                     if hasattr(node, 'pragma'):
                         self.candidates[target] = node.pragma
-                              
-
-    # def visit_Assign(self, node):
-    #     if hasattr(node, 'reduce') and node.reduce == '+':
-    #         if isinstance(node.targets[0], ast.Subscript):
-    #             target = node.targets[0]
-    #             if target not in self.candidates:
-    #                 self.candidates[target] = None
-    #                 if hasattr(node, 'pragma'):
-    #                     self.candidates[target] = node.pragma
            
 
 class Substitute(ast.NodeTransformer):
