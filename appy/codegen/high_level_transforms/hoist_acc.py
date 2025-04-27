@@ -7,13 +7,29 @@ class InspectAssign(ast.NodeVisitor):
         self.candidates = {}
 
     def visit_Assign(self, node):
-        if hasattr(node, 'reduce') and node.reduce == '+':
-            if isinstance(node.targets[0], ast.Subscript):
-                target = node.targets[0]
-                if target not in self.candidates:
-                    self.candidates[target] = None
+        '''
+        Check if `node` has form `x[i] = x[i] + y` where the target is a subscript
+        and the right hand side is a reduction.
+        '''
+        target, value = node.targets[0], node.value
+        if isinstance(target, ast.Subscript):
+            if isinstance(value, ast.BinOp) and isinstance(value.op, ast.Add):
+                # Check if one of the add operands is the target
+                if isinstance(value.left, ast.Subscript) and ast.unparse(value.left) == ast.unparse(target) \
+                    or isinstance(value.right, ast.Subscript) and ast.unparse(value.right) == ast.unparse(target):
+                    self.candidates[target] = ''
                     if hasattr(node, 'pragma'):
                         self.candidates[target] = node.pragma
+                              
+
+    # def visit_Assign(self, node):
+    #     if hasattr(node, 'reduce') and node.reduce == '+':
+    #         if isinstance(node.targets[0], ast.Subscript):
+    #             target = node.targets[0]
+    #             if target not in self.candidates:
+    #                 self.candidates[target] = None
+    #                 if hasattr(node, 'pragma'):
+    #                     self.candidates[target] = node.pragma
            
 
 class Substitute(ast.NodeTransformer):
@@ -27,7 +43,7 @@ class Substitute(ast.NodeTransformer):
         return node
 
 
-class CheckLoopVariant(ast.NodeVisitor):
+class ContainsLoopIndex(ast.NodeVisitor):
     def __init__(self, loop_var):
         self.loop_var = loop_var
         self.is_inv = True
@@ -59,7 +75,7 @@ class HoistAccumulators(ast.NodeTransformer):
         new_assigns_after = []
         index_var = node.target
         for sub, pragma in visitor.candidates.items():
-            checker = CheckLoopVariant(index_var)
+            checker = ContainsLoopIndex(index_var)
             checker.visit(sub)
             
             # Skip if not a loop invariant
