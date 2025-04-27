@@ -79,8 +79,7 @@ class TritonBackend(object):
         func.decorator_list = []
         func = InsertRangeVar().visit(func)
         func = RewriteAugAssign().visit(func)
-        func = RewriteRange().visit(func)        
-        #func = RewriteAPPyCall().visit(func)  # This will also rewrite non-kernel code
+        func = RewriteRange().visit(func)
         if self.options.get('dim_info'):
             dim_info = self.options.get('dim_info')
             func = AddDimToSlice(dim_info).visit(func)
