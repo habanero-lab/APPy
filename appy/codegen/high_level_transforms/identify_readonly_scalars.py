@@ -24,10 +24,11 @@ class IdentifySharedVars(ast.NodeVisitor):
             shared_scalars = [s for s in shared_scalars if s not in range_names]
 
             # Update the pragma dictionary
-            if 'to' in node.pragma_dict:
-                node.pragma_dict['to'] += shared_scalars
-            else:
-                node.pragma_dict['to'] = shared_scalars
+            if shared_scalars:
+                if 'to' in node.pragma_dict:
+                    node.pragma_dict['to'] += shared_scalars
+                else:
+                    node.pragma_dict['to'] = shared_scalars
 
 
 def transform(node):
