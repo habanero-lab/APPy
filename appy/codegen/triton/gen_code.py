@@ -94,8 +94,8 @@ class TritonBackend(object):
         func = RewriteTensorOperation(self.options, self.arg_val_map).visit(func)
         self.func = ast.fix_missing_locations(func)
         func = process_prange.transform(func)
-        # Just run this twice for now - maybe we can do better
         func = InsertRangeVar().visit(func)
+        # Just run this twice for now - maybe we can do better
         func = RewriteRange().visit(func)
         func = PragmaLinker().visit(func)
 
