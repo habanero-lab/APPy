@@ -122,6 +122,9 @@ def debug_barrier():
 def atomic_add(a, offset, b):
     a[offset] += b
 
+def prange(*args):
+    return range(*args)
+
 vidx = step
 
 # Data transfer functions
