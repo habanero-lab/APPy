@@ -1,12 +1,10 @@
 import textwrap
-from copy import deepcopy
-import ast
-from ast_comments import unparse
+#import ast
+import ast_comments as ast
 import appy
 from appy.codegen.typesys import build_type_from_value, get_tl_dtype_from_str
 from appy.codegen.typesys import Tensor as TensorType
 from appy.codegen.typesys import Constant as ConstantType
-from appy.ast_utils import *
 import appy.config as config
 
 
@@ -37,7 +35,7 @@ class TritonBackend(object):
             imports += 'import torch\n'
 
         self.module = ast.parse(imports)
-        self.arg_names = get_arg_names(self.func)
+        self.arg_names = [x.arg for x in self.func.args.args]
 
         self.arg_val_map = {}
         for name, val in zip(self.arg_names, self.arg_values):
@@ -73,11 +71,12 @@ class TritonBackend(object):
         from ..high_level_transforms import mark_reduction_stmts
         from ..high_level_transforms import process_simd_clause
         from ..high_level_transforms import identify_readonly_scalars
+        from ..high_level_transforms import process_prange
 
         # Perform high-level transformations
         func = self.func
         func.decorator_list = []
-        func = InsertRangeVar().visit(func)
+        #func = InsertRangeVar().visit(func)
         func = RewriteAugAssign().visit(func)
         func = RewriteRange().visit(func)
         if self.options.get('dim_info'):
@@ -94,6 +93,10 @@ class TritonBackend(object):
         #func = InsertInitialization().visit(func) 
         func = RewriteTensorOperation(self.options, self.arg_val_map).visit(func)
         self.func = ast.fix_missing_locations(func)
+        func = process_prange.transform(func)
+        # Just run this twice for now - maybe we can do better
+        func = InsertRangeVar().visit(func)
+        func = RewriteRange().visit(func)
         func = PragmaLinker().visit(func)
 
         if self.options.get('no_barrier_after_write'):
@@ -109,8 +112,8 @@ class TritonBackend(object):
         func = ProcessDataPragma().visit(func)
 
         if self.options.get('dump_final_appy'): 
-            print('dump final APPy code:')            
-            print(ast.unparse(func))
+            print('dump final APPy code:')
+            print(ast.unparse(AddBackComments().visit(func)))
 
         # Perform host and device code generation
         # RewritePFor rewrites the original function and also generates a triton kernel
@@ -120,3 +123,11 @@ class TritonBackend(object):
         m = self.module
         m.body += [launcher_func]
         return ast.unparse(m)
+
+
+class AddBackComments(ast.NodeTransformer):
+    def visit_For(self, node):
+        node = self.generic_visit(node)
+        if hasattr(node, 'pragma'):
+            return [ast.Comment(value=node.pragma, inline=False), node]
+        return node
