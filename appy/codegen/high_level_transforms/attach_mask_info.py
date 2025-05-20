@@ -52,15 +52,17 @@ class MaskPropagation(ast.NodeTransformer):
         else:
             elts = node.slice.elts
         
-        # More than one elements having mask is not yet supported, check that
-        if len([elt for elt in elts if hasattr(elt, 'mask')]) > 1:
-            print(f'{unparse(node)} has more than one element with mask, this is not yet supported')
-            raise NotImplementedError
-
+        mask = None
         # If one of the slices has attribute "mask", then the whole expression is masked
         for elt in elts:
             if hasattr(elt, 'mask'):
-                node.mask = elt.mask
+                if mask is None:
+                    mask = elt.mask
+                else:
+                    if mask != elt.mask:
+                        raise NotImplementedError("Slices have different masks, this is not yet supported")
+        if mask is not None:
+            node.mask = mask
         return node
 
     def visit_Assign(self, node: ast.Assign):
