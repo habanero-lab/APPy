@@ -58,5 +58,8 @@ Reduction is a special case of cross-iteration dependency, but can be paralleliz
            sum += a[i]
        return sum
 
-More examples are available in the tutorials section.
-
+More examples are available in :doc:`high-level` and :doc:`low-level`. 
+APPy supports both a high-level and a low-level programming interface.
+The high-level interface is easy to use - parallelizing a Python loop on GPUs 
+is as simple as replacing ``range`` with ``appy.prange`` while
+the low-level interface is more flexible and allows for more control over the generated code.
