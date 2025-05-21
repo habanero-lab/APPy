@@ -6,14 +6,18 @@ This guide walks you through how to install and use APPy to parallelize your Pyt
 Installation
 ------------
 
-APPy is available on PyPI as `appyc` and can be installed using pip:
+APPy is available on PyPI as *appyc* and can be installed using pip:
 
 .. code-block:: bash
 
     pip install appyc
 
+Supported platforms
+-------------------
+APPy currently supports Python 3.9+ on Linux platforms with a CUDA-enabled GPU (Compute Capability 8.0 or higher).
 
-Basic Example
+
+Basic example
 -------------
 
 The easiest way to parallelize a Python loop with APPy is to replace ``range`` with ``appy.prange``
@@ -32,6 +36,11 @@ and annotate the loop with ``@appy.jit``:
    # APPy will compile this to GPU code automatically
 
 
+Will APPy work for my code?
+---------------------------
+
+APPy is suitable for Python programs that use `Numba <https://numba.readthedocs.io/en/stable/user/parallel.html>`_ with ``numba.prange`` for CPU parallelization. It provides a drop-in replacement for ``numba.prange`` to parallelize Python loops on GPUs.
+
 When can ``appy.prange`` be used?
 ---------------------------------
 
@@ -42,12 +51,12 @@ An example of a cross-iteration dependency is:
 .. code-block:: python
 
    def add_vectors(a, N):
-       for i in range(N):
+       for i in range(N-1):
            a[i+1] = a[i]
 
 In this code example, every loop iteration depends on the previous loop iteration, so the loop cannot be parallelized (``prange`` cannot be used).
 
-Reduction is a special case of cross-iteration dependency, but can be parallelized:
+Reduction is a special case of cross-iteration dependency that can be parallelized:
 
 .. code-block:: python
 
