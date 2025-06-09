@@ -65,8 +65,8 @@ class TritonBackend(object):
         from ..high_level_transforms.hoist_acc import HoistAccumulators
         from ..high_level_transforms.check_for_assign_pragma import CheckAssignPragma
         from ..high_level_transforms.insert_before_loop import InsertRangeVar
-        from ..high_level_transforms.process_data_pragma import ProcessDataPragma
-        from ..high_level_transforms.process_reduction_pragma import ProcessReductionPragma
+        from ..high_level_transforms import process_data_pragma
+        from ..high_level_transforms import process_reduction_pragma
         from ..high_level_transforms import add_entry_exit_data_transfer
         from ..high_level_transforms import mark_reduction_stmts
         from ..high_level_transforms import process_simd_clause
@@ -108,8 +108,8 @@ class TritonBackend(object):
         func = mark_reduction_stmts.transform(func)
         func = identify_readonly_scalars.transform(func)
         func = process_simd_clause.transform(func)
-        func = ProcessReductionPragma().visit(func)
-        func = ProcessDataPragma().visit(func)
+        func = process_reduction_pragma.transform(func)
+        func = process_data_pragma.transform(func)
 
         if self.options.get('dump_final_appy'): 
             print('dump final APPy code:')

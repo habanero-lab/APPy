@@ -42,6 +42,8 @@ class ProcessReductionPragma(ast.NodeTransformer):
                 assert op in ['+'], f'Unsupported reduction op: {op}'
                 # `scalars` can contain multiple variables separated by comma
                 scalars = scalars.split(',')
+
+                # Attach atomic pragma
                 node = AttachAtomicPragma(op, scalars).visit(node)
                 # Add the scalar to shared clause
                 if 'shared' in d:
@@ -51,3 +53,6 @@ class ProcessReductionPragma(ast.NodeTransformer):
 
         return node
                 
+
+def transform(tree):
+    return ProcessReductionPragma().visit(tree)

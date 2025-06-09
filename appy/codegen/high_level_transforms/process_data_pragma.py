@@ -70,3 +70,7 @@ class ProcessDataPragma(ast.NodeTransformer):
             return to_device_stmts + [node] + from_device_stmts
         
         return node
+
+
+def transform(node):
+    return ProcessDataPragma().visit(node)
