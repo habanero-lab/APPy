@@ -45,12 +45,15 @@ class ProcessReductionPragma(ast.NodeTransformer):
 
                 # Attach atomic pragma
                 node = AttachAtomicPragma(op, scalars).visit(node)
-                # Add the scalar to shared clause
-                if 'shared' in d:
-                    d['shared'] += scalars
-                else:
-                    d['shared'] = scalars
+                # # Add the scalar to shared clause
+                # if 'shared' in d:
+                #     d['shared'] += scalars
+                # else:
+                #     d['shared'] = scalars
 
+                # Add the scalars to "to" and "from" clause
+                d['to'] = d.get('to', []) + scalars
+                d['from'] = d.get('from', []) + scalars
         return node
                 
 

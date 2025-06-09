@@ -61,11 +61,11 @@ class ProcessDataPragma(ast.NodeTransformer):
 
             if d.get('from', None):
                 for var in d['from']:
-                    from_device_stmts.append(
+                    from_device_stmts.extend((
                         to_ast_node(f'{var} = __{var}.cpu()'),
                         # Make this work for both scalar and arrays, despite the variable is called scalar
-                        to_ast_node(f'{var} = {var}.item() if {var}.ndim == 0 else {var}.numpy()')
-                    )
+                        to_ast_node(f'{var} = {var}.item() if {var}.ndim == 0 else {var}.numpy()'),
+                    ))
 
             return to_device_stmts + [node] + from_device_stmts
         
