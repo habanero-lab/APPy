@@ -9,7 +9,10 @@ Welcome to APPy's documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-
+   
+   getting_started
+   high-level
+   low-level
    api
 
 
