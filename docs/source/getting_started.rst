@@ -12,6 +12,14 @@ APPy is available on PyPI as *appyc* and can be installed using pip:
 
     pip install appyc
 
+Or you can install the latest development version from `source <https://github.com/habanero-lab/APPy>`_:
+
+.. code-block:: bash
+
+    git clone https://github.com/habanero-lab/APPy.git
+    cd APPy
+    pip install -e .
+
 Supported platforms
 -------------------
 APPy currently supports Python 3.9+ on Linux platforms with a CUDA-enabled GPU (Compute Capability 8.0 or higher).
