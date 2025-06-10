@@ -16,7 +16,7 @@ and scalar values can be directly used inside the ``prange`` region. Here's an e
               a[i] += 1
 
     a = np.zeros(10)
-    add_vectors(a, 10)
+    add_vectors(a)
 
     # a is now [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
