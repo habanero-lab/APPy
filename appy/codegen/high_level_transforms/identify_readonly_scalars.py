@@ -1,7 +1,8 @@
 import ast
 from .get_loaded_names import ExtractArguments
+from .process_reduction_pragma import ReplaceNameWithSubscript
 
-class IdentifySharedVars(ast.NodeVisitor):
+class IdentifySharedVars(ast.NodeTransformer):
     def visit_For(self, node: ast.For):
         self.generic_visit(node)
         if hasattr(node, 'pragma_dict') and 'parallel_for' in node.pragma_dict:
@@ -26,15 +27,18 @@ class IdentifySharedVars(ast.NodeVisitor):
             # Update the pragma dictionary
             if readonly_scalars:
                 node.pragma_dict['to'] = node.pragma_dict.get('to', []) + readonly_scalars
+                # Rewrite a scalar reference to a subscript with slice 0
+                node = ReplaceNameWithSubscript(readonly_scalars).visit(node)
 
             # Add tensor variables to "to" and "from" clause
             for var, type_and_ndim in name_visitor.read_names.items():
                 if type_and_ndim[0] == 'tensor':
                     node.pragma_dict['to'] = node.pragma_dict.get('to', []) + [var]
                     node.pragma_dict['from'] = node.pragma_dict.get('from', []) + [var]
+        return node
 
 
 def transform(node):
     visitor = IdentifySharedVars()
-    visitor.visit(node)
+    node = visitor.visit(node)
     return node
