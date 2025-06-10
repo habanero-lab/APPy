@@ -3,6 +3,12 @@ from .get_loaded_names import ExtractArguments
 from .process_reduction_pragma import ReplaceNameWithSubscript
 
 class IdentifySharedVars(ast.NodeTransformer):
+    def __init__(self, options):
+        self.options = options
+        self.auto_transfer = True
+        if 'entry_to_device' in self.options or 'exit_to_host' in self.options:
+            self.auto_transfer = False
+        
     def visit_For(self, node: ast.For):
         self.generic_visit(node)
         if hasattr(node, 'pragma_dict') and 'parallel_for' in node.pragma_dict:
@@ -30,15 +36,16 @@ class IdentifySharedVars(ast.NodeTransformer):
                 # Rewrite a scalar reference to a subscript with slice 0
                 node = ReplaceNameWithSubscript(readonly_scalars).visit(node)
 
-            # Add tensor variables to "to" and "from" clause
-            for var, type_and_ndim in name_visitor.read_names.items():
-                if type_and_ndim[0] == 'tensor':
-                    node.pragma_dict['to'] = node.pragma_dict.get('to', []) + [var]
-                    node.pragma_dict['from'] = node.pragma_dict.get('from', []) + [var]
+            # Add tensor variables to "to" and "from" clause if auto_transfer is enabled
+            if self.auto_transfer:
+                for var, type_and_ndim in name_visitor.read_names.items():
+                    if type_and_ndim[0] == 'tensor':
+                        node.pragma_dict['to'] = node.pragma_dict.get('to', []) + [var]
+                        node.pragma_dict['from'] = node.pragma_dict.get('from', []) + [var]
         return node
 
 
-def transform(node):
-    visitor = IdentifySharedVars()
+def transform(node, options):
+    visitor = IdentifySharedVars(options)
     node = visitor.visit(node)
     return node
