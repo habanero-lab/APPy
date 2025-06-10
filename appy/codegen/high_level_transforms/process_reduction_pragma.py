@@ -25,6 +25,20 @@ class AttachAtomicPragma(ast.NodeTransformer):
         return node
 
 
+class ReplaceNameWithSubscript(ast.NodeTransformer):
+    def __init__(self, scalars):
+        self.scalars = scalars
+
+    def visit_Name(self, node):
+        if node.id in self.scalars:
+            node = ast.Subscript(
+                value=ast.Name(id=node.id, ctx=ast.Load()),
+                slice=ast.Constant(value=0),
+                ctx=node.ctx
+            )
+        return node
+    
+
 class ProcessReductionPragma(ast.NodeTransformer):
     '''
     This pass converts a loop annotated with reduction clause into a loop
@@ -54,6 +68,9 @@ class ProcessReductionPragma(ast.NodeTransformer):
                 # Add the scalars to "to" and "from" clause
                 d['to'] = d.get('to', []) + scalars
                 d['from'] = d.get('from', []) + scalars
+
+                # Rewrite a scalar reference to a subscript with slice 0
+                node = ReplaceNameWithSubscript(scalars).visit(node)
         return node
                 
 

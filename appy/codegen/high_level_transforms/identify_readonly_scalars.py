@@ -15,20 +15,23 @@ class IdentifySharedVars(ast.NodeVisitor):
                     range_names.append(arg.id)
             
             # Get the scalar names that are read but not written in the for loop
-            shared_scalars = []
+            readonly_scalars = []
             for var, type_and_ndim in name_visitor.read_names.items():
                 if type_and_ndim[0] == 'scalar' and var not in name_visitor.write_names:
-                    shared_scalars.append(var)
+                    readonly_scalars.append(var)
             
             # Exclude the range names from the shared scalars
-            shared_scalars = [s for s in shared_scalars if s not in range_names]
+            readonly_scalars = [s for s in readonly_scalars if s not in range_names]
 
             # Update the pragma dictionary
-            if shared_scalars:
-                if 'to' in node.pragma_dict:
-                    node.pragma_dict['to'] += shared_scalars
-                else:
-                    node.pragma_dict['to'] = shared_scalars
+            if readonly_scalars:
+                node.pragma_dict['to'] = node.pragma_dict.get('to', []) + readonly_scalars
+
+            # Add tensor variables to "to" and "from" clause
+            for var, type_and_ndim in name_visitor.read_names.items():
+                if type_and_ndim[0] == 'tensor':
+                    node.pragma_dict['to'] = node.pragma_dict.get('to', []) + [var]
+                    node.pragma_dict['from'] = node.pragma_dict.get('from', []) + [var]
 
 
 def transform(node):

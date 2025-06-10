@@ -3,22 +3,9 @@ from appy.ast_utils import *
 from .utils import *
 from copy import deepcopy
 import appy.config as config
-
-class ReplaceNameWithSubscript(ast.NodeTransformer):
-    def __init__(self, scalars):
-        self.scalars = scalars
-
-    def visit_Name(self, node):
-        if node.id in self.scalars:
-            node = ast.Subscript(
-                value=ast.Name(id=node.id, ctx=ast.Load()),
-                slice=ast.Constant(value=0),
-                ctx=node.ctx
-            )
-        return node
     
 
-class RenameScalars(ast.NodeTransformer):
+class RenameASTNames(ast.NodeTransformer):
     def __init__(self, name_map):
         self.name_map = name_map
 
@@ -48,23 +35,21 @@ class ProcessDataPragma(ast.NodeTransformer):
                         # Make this work for both scalar and arrays, despite the variable is called scalar
                         to_ast_node(f'{scalar} = {scalar}.item() if {scalar}.ndim == 0 else {scalar}.numpy()')
                     )
-                # Inside the for loop, replace all occurences of the shared scalar `x` with `x[0]`
-                ReplaceNameWithSubscript(d['shared']).visit(node)
             
             if d.get('to', None):
                 for var in d['to']:
-                    to_device_stmts.append(
-                        to_ast_node(f'__{var} = torch.tensor(np.array({var}, copy=False), device="cuda")'),
-                    )
-                    RenameScalars({var: f'__{var}'}).visit(node)
-                    ReplaceNameWithSubscript([f'__{var}']).visit(node)
+                    to_device_stmts.extend((
+                        to_ast_node(f'__ttc_{var} = torch.from_numpy(np.array({var}, copy=False))'),
+                        to_ast_node(f'__{var} = __ttc_{var}.cuda()')
+                    )) 
+                    RenameASTNames({var: f'__{var}'}).visit(node)
 
             if d.get('from', None):
                 for var in d['from']:
                     from_device_stmts.extend((
-                        to_ast_node(f'{var} = __{var}.cpu()'),
+                        to_ast_node(f'__ttc_{var}.copy_(__{var})'),
                         # Make this work for both scalar and arrays, despite the variable is called scalar
-                        to_ast_node(f'{var} = {var}.item() if {var}.ndim == 0 else {var}.numpy()'),
+                        #to_ast_node(f'{var} = {var}.item() if {var}.ndim == 0 else {var}.numpy()'),
                     ))
 
             return to_device_stmts + [node] + from_device_stmts
