@@ -50,7 +50,7 @@ An example of a cross-iteration dependency is:
 
 .. code-block:: python
 
-   def add_vectors(a, N):
+   def dependence_example(a, N):
        for i in range(N-1):
            a[i+1] = a[i]
 
@@ -61,7 +61,7 @@ Reduction is a special case of cross-iteration dependency that can be paralleliz
 .. code-block:: python
 
    @jit
-   def add_vectors(a, N):
+   def sum_vector(a, N):
        sum = 0
        for i in prange(N):
            sum += a[i]
@@ -71,4 +71,4 @@ More examples are available in :doc:`high-level` and :doc:`low-level`.
 APPy supports both a high-level and a low-level programming interface.
 The high-level interface is easy to use - parallelizing a Python loop on GPUs 
 is as simple as replacing ``range`` with ``appy.prange`` while
-the low-level interface is more flexible and allows for more control over the generated code.
+the low-level interface is more flexible and allows for more control over the generated code via pragmas.
