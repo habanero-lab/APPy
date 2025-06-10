@@ -71,6 +71,9 @@ class ProcessReductionPragma(ast.NodeTransformer):
 
                 # Rewrite a scalar reference to a subscript with slice 0
                 node = ReplaceNameWithSubscript(scalars).visit(node)
+                # Reference process_data_pragma.py for the compiler-generated statements
+                stmts = [to_ast_node(f'{var} = __ttc_{var}.item()') for var in scalars]
+                return node, stmts
         return node
                 
 
