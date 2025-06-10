@@ -13,6 +13,7 @@ Welcome to APPy's documentation!
    getting_started
    high-level
    low-level
+   developer
    api
 
 

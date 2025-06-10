@@ -1,0 +1,22 @@
+Developer Guide
+===============
+
+This guide explains how APPy compiler works under the hood.
+
+High-Level Programming Interface
+--------------------------------
+
+APPy's high-level programming interface is a wrapper around the low-level programming interface where
+the compiler performs three key automatic transformations:
+
+1. **Data Movement**: APPy generates code that moves data between the CPU and the GPU automatically around the ``prange`` region.
+
+2. **Reduction Detection**: APPy automatically detects reductions and add corresponding pragma annotations.
+
+3. **Inner Loop Vectorization**: APPy automatically adds the `simd` pragma to innermost loops that can be vectorized.
+
+
+Low-Level Programming Interface
+-------------------------------
+
+APPy utilizes Triton for its backend for low-level programming interface. Please refer to our CC '24 `paper <https://dl.acm.org/doi/pdf/10.1145/3640537.3641575>`_ for more details.
