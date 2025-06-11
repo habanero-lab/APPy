@@ -11,12 +11,12 @@ and scalar values can be directly used inside the ``prange`` region. Here's an e
     from appy import jit, prange
 
     @jit
-    def add_vectors(a):
+    def add_one(a):
          for i in prange(a.shape[0]):
               a[i] += 1
 
     a = np.zeros(10)
-    add_vectors(a)
+    add_one(a)
 
     # a is now [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 

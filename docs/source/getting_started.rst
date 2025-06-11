@@ -28,20 +28,23 @@ APPy currently supports Python 3.9+ on Linux platforms with a CUDA-enabled GPU (
 Basic example
 -------------
 
-The easiest way to parallelize a Python loop with APPy is to replace ``range`` with ``appy.prange``
+The easiest way to parallelize a Python/NumPy loop with APPy is to replace ``range`` with ``appy.prange``
 and annotate the loop with ``@appy.jit``:
 
 .. code-block:: python
 
-   from appy import jit, prange
+    import numpy as np
+    from appy import jit, prange
 
-   @jit
-   def add_vectors(a, b, c):
-       for i in prange(len(a)):
-           c[i] = a[i] + b[i]
+    @jit
+    def add_one(a):
+         for i in prange(a.shape[0]):
+              a[i] += 1
 
-   # Call the function with NumPy arrays
-   # APPy will compile this to GPU code automatically
+    a = np.zeros(10)
+    add_one(a)
+
+    # a is now [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
 
 Will APPy work for my code?
@@ -64,7 +67,7 @@ An example of a cross-iteration dependency is:
 
 In this code example, every loop iteration depends on the previous loop iteration, so the loop cannot be parallelized (``prange`` cannot be used).
 
-Reduction is a special case of cross-iteration dependency that can be parallelized:
+Reduction is a special case of cross-iteration dependency that can be parallelized due to reduction operations being commutative:
 
 .. code-block:: python
 
