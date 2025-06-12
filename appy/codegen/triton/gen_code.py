@@ -72,6 +72,7 @@ class TritonBackend(object):
         from ..high_level_transforms import process_simd_clause
         from ..high_level_transforms import identify_shared_vars
         from ..high_level_transforms import process_prange
+        from ..high_level_transforms import check_for_unsupported
 
         # Perform high-level transformations
         func = self.func
@@ -98,6 +99,7 @@ class TritonBackend(object):
         # Just run this twice for now - maybe we can do better
         func = RewriteRange().visit(func)
         func = PragmaLinker().visit(func)
+        func = check_for_unsupported.transform(func)
 
         if self.options.get('no_barrier_after_write'):
             pass
