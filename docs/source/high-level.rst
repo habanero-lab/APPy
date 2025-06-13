@@ -47,7 +47,7 @@ APPy automatically detects reductions on scalar variables and generates atomic o
 
 
 Unsupported Features
-====================
+--------------------
 
 In general, it's fine to use common NumPy array operations, slicing, and indexing inside ``prange``. 
 Control flows such as ``if`` structures are also supported, though using some of them could prevent automatic vectorization.
