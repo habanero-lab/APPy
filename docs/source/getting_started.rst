@@ -52,6 +52,25 @@ and annotate the loop with ``@appy.jit``:
 
     # a is now [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
+Reductions can be parallelized as well:
+
+.. code-block:: python
+
+    @jit
+    def sum_vector(a, N):
+        sum = 0
+        for i in prange(N):
+            sum += a[i]
+        return sum
+
+    a = np.ones(10)
+    sum_vector(a, 10)
+
+    # sum is now 10
+
+APPy automatically detects reductions on scalar variables and generates atomic operations for them.
+For reduction on array elements or slices, the user must explicitly annotate the statement with ``#pragma simd``.
+
 
 Will APPy work for my code?
 ---------------------------
