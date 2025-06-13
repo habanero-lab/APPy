@@ -15,6 +15,7 @@ Welcome to APPy's documentation!
    low-level
    developer
    api
+   APPy-0.1
 
 
 Indices and tables

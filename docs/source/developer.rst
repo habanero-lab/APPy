@@ -32,4 +32,4 @@ In this rule, control flow is fine - even if there are control flows, it's still
 Low-Level Programming Interface
 -------------------------------
 
-APPy utilizes Triton for its backend for low-level programming interface. Please refer to our CC '24 `paper <https://dl.acm.org/doi/pdf/10.1145/3640537.3641575>`_ for more details.
+APPy utilizes Triton for its backend for low-level programming interface. 
