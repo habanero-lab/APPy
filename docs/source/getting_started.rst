@@ -20,6 +20,12 @@ Or you can install the latest development version from `source <https://github.c
     cd APPy
     pip install -e .
 
+To execute the APPy-generated code at runtime, you'd also need to install ``torch`` and ``triton`` (part of the ``torch`` package), which are used as APPy's backend:
+
+.. code-block:: bash
+
+    pip install torch  
+
 Supported platforms
 -------------------
 APPy currently supports Python 3.9+ on Linux platforms with a CUDA-enabled GPU (Compute Capability 8.0 or higher).
