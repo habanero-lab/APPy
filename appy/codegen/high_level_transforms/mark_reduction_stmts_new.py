@@ -44,33 +44,54 @@ class GetAssignReductionOps(ast.NodeVisitor):
         target = node.targets[0]
         if isinstance(target, ast.Name):
             op = self.get_reduction_op(node)
-            self.reduction_ops.get(target.id, set()).add(op)
+            self.reduction_ops.setdefault(target.id, set()).add(op)
         return node
 
 
 class MarkReductionStmts(ast.NodeTransformer):
     def __init__(self, reduction_ops):
         self.reduction_ops = reduction_ops
+        self.reduction_vars = {}
 
     def visit_Assign(self, node):
         target = node.targets[0]
         if isinstance(target, ast.Name):
             if target.id in self.reduction_ops and len(self.reduction_ops[target.id]) == 1:
-                node.reduce = next(iter(self.reduction_ops[target.id]))
+                reduce_op = next(iter(self.reduction_ops[target.id]))
+                if reduce_op is not None:
+                    self.reduction_vars[target.id] = reduce_op
+                    node.reduce = reduce_op
         return node
 
 
 class MarkReductionStmtsInLoops(ast.NodeTransformer):
     def visit_For(self, node):
         self.generic_visit(node)
-        # Perform reduction analysis: if all assignments to a scalar variable
-        # only ever had one type of reduction ops, mark it as a reduction. 
-        # For example, if it has both None and +, then it is not a reduction.
-        visitor = GetAssignReductionOps()
-        visitor.visit(node)
-        reduction_ops = visitor.reduction_ops
-        return MarkReductionStmts(reduction_ops).visit(node)
     
+        if hasattr(node, 'pragma_dict'):
+            # Perform reduction analysis: if all assignments to a scalar variable
+            # only ever had one type of reduction ops, mark it as a reduction. 
+            # For example, if it has both None and +, then it is not a reduction.
+            visitor = GetAssignReductionOps()
+            visitor.visit(node)
+            reduction_ops = visitor.reduction_ops
+
+            visitor = MarkReductionStmts(reduction_ops)
+            node = visitor.visit(node)
+
+            pragma_dict = node.pragma_dict
+            if 'parallel_for' in pragma_dict or 'simd' in pragma_dict:
+                reductions = []
+                if 'reduction' in pragma_dict:
+                    reductions = pragma_dict['reduction'].split(',')
+
+                for var,op in visitor.reduction_vars.items():
+                    entry = f'{op}:{var}'
+                    if entry not in reductions:
+                        reductions.append(entry)
+
+                pragma_dict['reduction'] = ','.join(reductions)
+        return node
 
 def transform(tree):
     return MarkReductionStmtsInLoops().visit(tree)

@@ -51,29 +51,31 @@ class ProcessReductionPragma(ast.NodeTransformer):
             # If reduction is used together with parallel for, convert the reduction
             # variables to shared scope, and attach atomic pragma
             if d.get('reduction', None) and d.get('parallel_for', None):
-                assert len(d['reduction'].split(':')) == 2
-                op, scalars = d['reduction'].split(':')
-                assert op in ['+'], f'Unsupported reduction op: {op}'
-                # `scalars` can contain multiple variables separated by comma
-                scalars = scalars.split(',')
+                new_stmts = []
+                for reduction in d.get('reduction').split(','):
+                    assert len(reduction.split(':')) == 2
+                    op, scalars = reduction.split(':')
+                    assert op in ['+'], f'Unsupported reduction op: {op}'
+                    # `scalars` can contain multiple variables separated by comma
+                    scalars = scalars.split(',')
 
-                # Attach atomic pragma
-                node = AttachAtomicPragma(op, scalars).visit(node)
-                # # Add the scalar to shared clause
-                # if 'shared' in d:
-                #     d['shared'] += scalars
-                # else:
-                #     d['shared'] = scalars
+                    # Attach atomic pragma
+                    node = AttachAtomicPragma(op, scalars).visit(node)
+                    # # Add the scalar to shared clause
+                    # if 'shared' in d:
+                    #     d['shared'] += scalars
+                    # else:
+                    #     d['shared'] = scalars
 
-                # Add the scalars to "to" and "from" clause
-                d['to'] = d.get('to', []) + scalars
-                d['from'] = d.get('from', []) + scalars
+                    # Add the scalars to "to" and "from" clause
+                    d['to'] = d.get('to', []) + scalars
+                    d['from'] = d.get('from', []) + scalars
 
-                # Rewrite a scalar reference to a subscript with slice 0
-                node = ReplaceNameWithSubscript(scalars).visit(node)
-                # Reference process_data_pragma.py for the compiler-generated statements
-                stmts = [to_ast_node(f'{var} = __ttc_{var}.item()') for var in scalars]
-                return node, stmts
+                    # Rewrite a scalar reference to a subscript with slice 0
+                    node = ReplaceNameWithSubscript(scalars).visit(node)
+                    # Reference process_data_pragma.py for the compiler-generated statements
+                    new_stmts.extend([to_ast_node(f'{var} = __ttc_{var}.item()') for var in scalars])
+                return node, new_stmts
         return node
                 
 
