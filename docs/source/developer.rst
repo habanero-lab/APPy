@@ -37,11 +37,32 @@ In the ``add_one`` example above, all assignments to ``a[i]`` are in the form of
 Therefore the previous rule will detect ``a[i]`` as a reduction pattern. However, ``a[i] = a[i] + 1`` is not a reduction pattern here, as it performs an element-wise addition on array elements.
 
 To reduce false positives, we can check the indices of the array variable in the assignment. 
-The previous rule is extended to the following detection algorithm:
+The previous rule is extended to distinguish reduction with regard to which loop is involved:
 
-* Check all assignments to ``x``, ``x`` is a reduction pattern if and only if all the assignments to it has the same reduction operator, and its indices do not contain all the loop indices containing this assignment.
+* For loop ``loop_i`` with index variable ``i``, an array store ``a[i0, i1, ...]`` is considered a reduction pattern 
+  if all the assignments to it has the same reduction operator, and ``i`` does not appear in the array store indices ``i0, i1, ...``.
 
-In the ``add_one`` example, ``a[i]`` does contain all the loop index variables (``i``), and thus ``a[i] = a[i] + 1`` is excluded from reduction candidates.
+In the ``add_one`` example, the loop index variables ``i`` does appear in the array store ``a[i]``, thus ``a[i] = a[i] + 1`` is not a reduction with regard to loop ``i``.
+On the other hand, ``a[j] += b[i,j]`` in the following code is a reduction with regard to loop ``i``, but not a reduction with regard to loop ``j``:
+
+.. code-block:: python
+    
+    @jit
+    def foo(a):
+         for i in prange(a.shape[0]):
+                for j in range(a.shape[1]):
+                    a[j] += b[i,j]
+
+
+Similarly, for the code example below with ``a[i] += b[i,j]``, ``a[i]`` will be detected as a reduction with regard to loop ``j``, but not to loop ``i``:
+ 
+.. code-block:: python
+    
+    @jit
+    def foo(a, b):
+         for i in prange(a.shape[0]):
+                for j in range(a.shape[1]):
+                    a[i] += b[i,j]
 
 .. code-block:: python
 
