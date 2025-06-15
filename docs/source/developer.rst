@@ -23,8 +23,8 @@ To detect reductions on scalar variable ``x``, APPy uses the following rules:
 
 * Check all assignments to ``x``, ``x`` is a reduction pattern if and only if all the assignments to it has the same reduction operator. For example, all assignments to ``x`` are in the form of ``x = x + y``.
 
-In this rule, control flows are fine - even if there are control flows, it's still a reduction pattern. However, 
-we note that this approach will not properly detect reductions on array variables. 
+This rule works well for detecting reductions on scalar variables (it's sound for commonly used reduction patterns). However, it may easily have false positives
+for array variables.
 
 .. code-block:: python
     
@@ -34,10 +34,14 @@ we note that this approach will not properly detect reductions on array variable
               a[i] += 1
 
 In the ``add_one`` example above, all assignments to ``a[i]`` are in the form of ``a[i] = a[i] + 1``. 
-This rule will detect ``a[i]`` as a reduction pattern. However, this loop performs an element-wise addition
-on array elements, which is not a reduction pattern. 
+Therefore the previous rule will detect ``a[i]`` as a reduction pattern. However, ``a[i] = a[i] + 1`` is not a reduction pattern here, as it performs an element-wise addition on array elements.
 
-Therefore, we extend the previous rule to the following detection algorithm:
+To reduce false positives, we can check the indices of the array variable in the assignment. 
+The previous rule is extended to the following detection algorithm:
+
+* Check all assignments to ``x``, ``x`` is a reduction pattern if and only if all the assignments to it has the same reduction operator, and its indices do not contain all the loop indices containing this assignment.
+
+In the ``add_one`` example, ``a[i]`` does contain all the loop index variables (``i``), and thus ``a[i] = a[i] + 1`` is excluded from reduction candidates.
 
 .. code-block:: python
 
