@@ -64,7 +64,7 @@ class TritonBackend(object):
         from ..high_level_transforms.select_num_warps import SelectNumWarps
         from ..high_level_transforms.hoist_acc import HoistAccumulators
         from ..high_level_transforms.check_for_assign_pragma import CheckAssignPragma
-        from ..high_level_transforms.insert_before_loop import InsertRangeVar
+        from ..high_level_transforms import insert_range_vars
         from ..high_level_transforms import process_data_pragma
         from ..high_level_transforms import process_reduction_pragma
         from ..high_level_transforms import add_entry_exit_data_transfer
@@ -78,7 +78,7 @@ class TritonBackend(object):
         # Perform high-level transformations
         func = self.func
         func.decorator_list = []
-        #func = InsertRangeVar().visit(func)
+
         func = RewriteAugAssign().visit(func)
         func = RewriteRange().visit(func)
         if self.options.get('dim_info'):
@@ -90,13 +90,13 @@ class TritonBackend(object):
         func = ConvertSeqLoop().visit(func)
         func = CheckAssignPragma(self.arg_val_map).visit(func)
         func = SelectNumWarps().visit(func)
-        func = HoistAccumulators().visit(func)
+        #func = HoistAccumulators().visit(func)
         
         #func = InsertInitialization().visit(func) 
         func = RewriteTensorOperation(self.options, self.arg_val_map).visit(func)
         self.func = ast.fix_missing_locations(func)
         func = process_prange.transform(func)
-        func = InsertRangeVar().visit(func)
+        func = insert_range_vars.transform(func)
         # Just run this twice for now - maybe we can do better
         func = RewriteRange().visit(func)
         func = PragmaLinker().visit(func)
