@@ -1,10 +1,8 @@
-from ast import unparse
 from appy.ast_utils import *
-from .utils import *
 
 class RangeArgsToVarsTransformer(ast.NodeTransformer):
     '''
-    This pass rewrites range(...) to range(__new_var). The created new vars
+    This pass rewrites range(...) to range(__range_var). The created new vars
     will be added a dict.
     '''
     def __init__(self):
