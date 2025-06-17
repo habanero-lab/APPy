@@ -80,17 +80,18 @@ class MarkReductionStmtsInLoops(ast.NodeTransformer):
             node = visitor.visit(node)
 
             pragma_dict = node.pragma_dict
-            if 'parallel_for' in pragma_dict or 'simd' in pragma_dict:
-                reductions = []
+            reduction_vars = visitor.reduction_vars
+            if len(reduction_vars) > 0 and ('parallel_for' in pragma_dict or 'simd' in pragma_dict):
+                entries = []
                 if 'reduction' in pragma_dict:
-                    reductions = pragma_dict['reduction'].split(',')
+                    entries = pragma_dict['reduction'].split(',')
 
-                for var,op in visitor.reduction_vars.items():
+                for var,op in reduction_vars.items():
                     entry = f'{op}:{var}'
-                    if entry not in reductions:
-                        reductions.append(entry)
+                    if entry not in entries:
+                        entries.append(entry)
 
-                pragma_dict['reduction'] = ','.join(reductions)
+                pragma_dict['reduction'] = ','.join(entries)
         return node
 
 def transform(tree):
