@@ -90,10 +90,7 @@ def new_const_node(val):
     return ast.Constant(value=val)
 
 def new_assign_node(target, value, lineno=None):
-    if lineno:
-        return ast.Assign(targets=[target], value=value, lineno=lineno)
-    else:
-        return ast.Assign(targets=[target], value=value)
+    return ast.Assign(targets=[target], value=value, lineno=lineno)
 
 def new_add_node(a, b):
     return ast.BinOp(left=a, op=ast.Add(), right=b)
