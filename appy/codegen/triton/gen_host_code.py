@@ -60,7 +60,8 @@ class RewritePFor(ast.NodeTransformer):
         if hasattr(node, 'pragma'):
             from ..high_level_transforms.block_loop import BlockLoop
             from ..high_level_transforms.attach_mask_info import AttachMaskInfo
-            from ..high_level_transforms.rewrite_call import RewriteAPPyCall
+            #from ..high_level_transforms.rewrite_call import RewriteAPPyCall
+            from ..high_level_transforms import rewrite_lib_calls
             from ..high_level_transforms import get_loaded_names
             from ..high_level_transforms import ternary_to_where
 
@@ -73,7 +74,7 @@ class RewritePFor(ast.NodeTransformer):
             node = BlockLoop().visit(node)
             node = ternary_to_where.transform(node)
             node = AttachMaskInfo().visit(node)
-            node = RewriteAPPyCall().visit(node)            
+            node = rewrite_lib_calls.transform(node)         
             node, self.extracted_args = get_loaded_names.transform(node)
             
             # Rearrange the args to make tl.constexpr args the last
