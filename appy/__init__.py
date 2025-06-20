@@ -16,7 +16,7 @@ def compile_from_src(src, **options):
     module = black.format_str(module, mode=black.Mode())
     return module
 
-def compile(fn, args, dump_code=False, verbose=False, **options):
+def compile(fn, args, **options):
     '''
     Compile an annotated function and returns a new function that executes GPU kernels
     '''
@@ -29,7 +29,7 @@ def compile(fn, args, dump_code=False, verbose=False, **options):
     else:
         source_code = inspect.getsource(fn)
         module = compile_from_src(source_code, **options)  # module includes both host and device code
-        if dump_code:
+        if options.get('dump_code'):
             print(module)
         filename = f".appy_kernels/{fn.__name__}.py"
         Path(filename).parent.mkdir(parents=True, exist_ok=True)
@@ -48,65 +48,78 @@ def compile(fn, args, dump_code=False, verbose=False, **options):
         if k not in m.__dict__:
             m.__dict__[k] = v
     
-    if verbose:
+    if options.get('verbose'):
         print("[jit] Done compiling")
     compiled = getattr(m, fn.__name__)
     return compiled
 
 
-compiled_funcs = {}
-
 def _jit(fn):
-    def inner(*args):
-        key = f"{fn}+{get_type_sig(*args)}"
-        if key not in compiled_funcs:
-            compiled_funcs[key] = compile(fn, args)
-        return compiled_funcs[key](*args)
+    return compile(fn, None)
 
-    inner.__name__ = fn.__name__
-    return inner
-
-def jit(fn=None, dump_code=None, verbose=None, **options):
+def jit(fn=None, **options):
     if fn:
         return _jit(fn)
     else:
-        # if dump_code != None:
-        #     config.configs['dump_code'] = dump_code
-        # if verbose != None:
-        #     config.configs['verbose'] = verbose
-
-        # print('return arg version')
         def jit_with_args(fn1):
-            def inner(*args):
-                key = f"{fn1}+{get_type_sig(*args)}"
-                if key not in compiled_funcs:
-                    compiled_funcs[key] = compile(
-                        fn1, args, dump_code=dump_code, verbose=verbose, **options
-                    )
-                return compiled_funcs[key](*args)
-
-            inner.__name__ = fn1.__name__
-            return inner
-
+            return compile(fn1, None, **options)
         return jit_with_args
 
 
-def get_type_str(v):
-    return f"{type(v).__module__}.{type(v).__name__}"
 
-def is_type(v, ty):
-    return get_type_str(v) == ty
+# compiled_funcs = {}
 
-def get_type_sig(*args):
-    sigs = []
-    for arg in args:
-        if is_type(arg, "torch.Tensor"):
-            sigs.append(f"<{arg.dtype}*{arg.dim()}>")
-        elif isinstance(arg, int):
-            sigs.append(f"{arg}")
-        else:
-            sigs.append(f"{type(arg)}")
-    return ",".join(sigs)
+# def _jit(fn):
+#     def inner(*args):
+#         key = f"{fn}+{get_type_sig(*args)}"
+#         if key not in compiled_funcs:
+#             compiled_funcs[key] = compile(fn, args)
+#         return compiled_funcs[key](*args)
+
+#     inner.__name__ = fn.__name__
+#     return inner
+
+# def jit(fn=None, dump_code=None, verbose=None, **options):
+#     if fn:
+#         return _jit(fn)
+#     else:
+#         # if dump_code != None:
+#         #     config.configs['dump_code'] = dump_code
+#         # if verbose != None:
+#         #     config.configs['verbose'] = verbose
+
+#         # print('return arg version')
+#         def jit_with_args(fn1):
+#             def inner(*args):
+#                 key = f"{fn1}+{get_type_sig(*args)}"
+#                 if key not in compiled_funcs:
+#                     compiled_funcs[key] = compile(
+#                         fn1, args, dump_code=dump_code, verbose=verbose, **options
+#                     )
+#                 return compiled_funcs[key](*args)
+
+#             inner.__name__ = fn1.__name__
+#             return inner
+
+#         return jit_with_args
+
+
+# def get_type_str(v):
+#     return f"{type(v).__module__}.{type(v).__name__}"
+
+# def is_type(v, ty):
+#     return get_type_str(v) == ty
+
+# def get_type_sig(*args):
+#     sigs = []
+#     for arg in args:
+#         if is_type(arg, "torch.Tensor"):
+#             sigs.append(f"<{arg.dtype}*{arg.dim()}>")
+#         elif isinstance(arg, int):
+#             sigs.append(f"{arg}")
+#         else:
+#             sigs.append(f"{type(arg)}")
+#     return ",".join(sigs)
 
 # Special functions
 def step(start, stepsize, bound=None):
