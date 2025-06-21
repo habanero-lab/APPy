@@ -1,6 +1,7 @@
 import ast
 from .get_loaded_names import ExtractArguments
 from .process_reduction_pragma import ReplaceNameWithSubscript
+from . import var_access_analysis
 
 class IdentifySharedVars(ast.NodeTransformer):
     def __init__(self, options):
@@ -12,8 +13,8 @@ class IdentifySharedVars(ast.NodeTransformer):
     def visit_For(self, node: ast.For):
         self.generic_visit(node)
         if hasattr(node, 'pragma_dict') and 'parallel_for' in node.pragma_dict:
-            name_visitor = ExtractArguments()
-            name_visitor.visit(node)
+            var_info = var_access_analysis.visit(node)
+        
             range_names = []
             # Extract the range names from the arguments of the for loop
             # For example, if the loop is "for xx in range(M, N)", then range_names = ['M', 'N']
@@ -23,8 +24,8 @@ class IdentifySharedVars(ast.NodeTransformer):
             
             # Get the scalar names that are read but not written in the for loop
             readonly_scalars = []
-            for var, type_and_ndim in name_visitor.read_names.items():
-                if type_and_ndim[0] == 'scalar' and var not in name_visitor.write_names:
+            for var, props in var_info.items():
+                if props[0] == set(['scalar']) and props[2] == set(['load']):
                     readonly_scalars.append(var)
             
             # Exclude the range names from the shared scalars
@@ -38,10 +39,11 @@ class IdentifySharedVars(ast.NodeTransformer):
 
             # Add tensor variables to "to" and "from" clause if auto_transfer is enabled
             if self.auto_transfer:
-                for var, type_and_ndim in name_visitor.read_names.items():
-                    if type_and_ndim[0] == 'tensor':
+                for var, props in var_info.items():
+                    if props[0] == set(['tensor']):
                         node.pragma_dict['to'] = node.pragma_dict.get('to', []) + [var]
-                        node.pragma_dict['from'] = node.pragma_dict.get('from', []) + [var]
+                        if 'store' in props[2]:
+                            node.pragma_dict['from'] = node.pragma_dict.get('from', []) + [var]
         return node
 
 
