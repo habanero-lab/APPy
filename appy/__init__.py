@@ -42,10 +42,12 @@ def compile(fn, args, **options):
 
     # Note: stack[1] is `inner`, and stack[2] is the user code caller
     user_globals = inspect.stack()[2].frame.f_globals
+    # for f in inspect.stack():
+    #     print(f.function, f.filename, f.lineno)
     
     # Add the missing globals into the new module
     for k, v in user_globals.items():
-        if k not in m.__dict__:
+        if k not in m.__dict__:            
             m.__dict__[k] = v
     
     if options.get('verbose'):
@@ -54,12 +56,9 @@ def compile(fn, args, **options):
     return compiled
 
 
-def _jit(fn):
-    return compile(fn, None)
-
 def jit(fn=None, **options):
     if fn:
-        return _jit(fn)
+        return compile(fn, None)
     else:
         def jit_with_args(fn1):
             return compile(fn1, None, **options)
