@@ -28,7 +28,7 @@ class ProcessDataPragma(ast.NodeTransformer):
             if d.get('shared', None):                
                 for scalar in d['shared']:
                     to_device_stmts += (
-                        to_ast_node(f'{scalar} = torch.tensor(np.array({scalar}, copy=False), device="cuda")'),
+                        to_ast_node(f'{scalar} = torch.tensor(np.asarray({scalar}), device="cuda")'),
                     )
                     from_device_stmts += (
                         to_ast_node(f'{scalar} = {scalar}.cpu()'),
@@ -39,7 +39,7 @@ class ProcessDataPragma(ast.NodeTransformer):
             if d.get('to', None):
                 for var in d['to']:
                     to_device_stmts.extend((
-                        to_ast_node(f'__ttc_{var} = torch.from_numpy(np.array({var}, copy=False))'),
+                        to_ast_node(f'__ttc_{var} = torch.from_numpy(np.asarray({var}))'),
                         to_ast_node(f'__{var} = __ttc_{var}.cuda()')
                     )) 
                     RenameASTNames({var: f'__{var}'}).visit(node)

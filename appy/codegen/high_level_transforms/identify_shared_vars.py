@@ -1,5 +1,4 @@
 import ast
-from .get_loaded_names import ExtractArguments
 from .process_reduction_pragma import ReplaceNameWithSubscript
 from . import var_access_analysis
 

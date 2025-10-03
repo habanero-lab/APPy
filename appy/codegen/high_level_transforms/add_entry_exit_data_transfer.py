@@ -21,7 +21,7 @@ class AddEntryExitDataTransfer(ast.NodeTransformer):
         if self.options.get('entry_to_device', None):
             vars = self.options.get('entry_to_device').split(',')
             stmts = [
-                to_ast_node(f'{var} = torch.tensor(np.array({var}, copy=False), device="cuda")') for var in vars
+                to_ast_node(f'{var} = torch.tensor(np.asarray({var}), device="cuda")') for var in vars
             ]
             node.body = stmts + node.body
 
