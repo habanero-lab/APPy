@@ -2,12 +2,7 @@ import torch
 import appy
 from appy.utils import allclose, bench
 
-# APPy tensors are `torch` tensors by default. Uncomment the 
-# following lines to make APPy work with (and return) `cupy` tensors.
-#import cupy
-#appy.tensorlib = cupy
-
-@appy.jit(dump_final_appy=True)  # Comment this line to run the function in the Python interpter (debug mode)
+@appy.jit(auto_transfer=False) 
 def kernel_appy(a, b):
     c = torch.empty_like(a)
     #pragma parallel for simd
