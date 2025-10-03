@@ -5,7 +5,7 @@ from . import var_access_analysis
 class IdentifySharedVars(ast.NodeTransformer):
     def __init__(self, options):
         self.options = options
-        self.auto_transfer = True
+        self.auto_transfer = options.get('auto_transfer', True)
         if 'entry_to_device' in self.options or 'exit_to_host' in self.options:
             self.auto_transfer = False
         
