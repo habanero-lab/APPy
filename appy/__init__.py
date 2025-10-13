@@ -1,143 +1,96 @@
 import sys
 import inspect
-import ast_comments as ast
+import textwrap
 import importlib
 from pathlib import Path
-import black
-from appy.codegen.triton.gen_code import TritonBackend
-from . import config
+import ast_comments as ast
 from .__version__ import __version__
+from ast_transforms import remove_func_decorator
+from . import replace_pfor
+import ast
 
-def compile_from_src(src, **options):
-    tree = ast.parse(src)
-    args = {}
-    backend = TritonBackend(tree, args, **options)
-    module = backend.codegen()
-    module = black.format_str(module, mode=black.Mode())
-    return module
+# Globals
+_options = None
 
-def compile(fn, args, **options):
-    '''
-    Compile an annotated function and returns a new function that executes GPU kernels
-    '''
-    if options.get('lib', 'torch') == 'cupy':
-        config.tensorlib = 'cupy'
-    
-    if options.get('use_file'):
-        # Use an existing compiled file
-        filename = options.get('use_file')
+def __appy_kernel_launch(loop_source, loop_name, scope, global_scope):
+    """
+    Runtime stub invoked when a prange loop is encountered.
+
+    Parameters
+    ----------
+    loop_source : str
+        The original loop source code as a string (e.g., 'for i in prange(...): ...')
+    loop_name : str
+        Unique name for this loop (e.g., 'kernel_loop_1')
+    scope : dict
+        The locals() dictionary of the calling function.
+    global_scope (dict): 
+        The global variables of the caller.
+
+    Behavior
+    --------
+    When appy.options["dry_run"] is True:
+        - Simply executes the loop source as regular Python code in the given scope.
+    """
+
+    if _options.get("dry_run", False):
+        # In dry_run mode, just execute the loop source in the caller's scope
+        try:
+            code_obj = compile(loop_source, filename=f"<{loop_name}>", mode="exec")        
+            exec(code_obj, global_scope or scope, scope)
+        except Exception as e:
+            raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
     else:
-        source_code = inspect.getsource(fn)
-        module = compile_from_src(source_code, **options)  # module includes both host and device code
-        if options.get('dump_code'):
-            print(module)
-        filename = f".appy_kernels/{fn.__name__}.py"
-        Path(filename).parent.mkdir(parents=True, exist_ok=True)
-        Path(filename).write_text(module, encoding='utf-8')
+        raise NotImplementedError(
+            f"__appy_kernel_launch: non-dry-run mode not yet implemented for {loop_name}"
+        )
 
-    spec = importlib.util.spec_from_file_location("module.name", filename)
-    m = importlib.util.module_from_spec(spec)
-    sys.modules["module.name"] = m
-    spec.loader.exec_module(m)
 
-    # Note: stack[1] is `inner`, and stack[2] is the user code caller
-    user_globals = inspect.stack()[2].frame.f_globals
-    # for f in inspect.stack():
-    #     print(f.function, f.filename, f.lineno)
-    
-    # Add the missing globals into the new module
-    for k, v in user_globals.items():
-        if k not in m.__dict__:            
-            m.__dict__[k] = v
-    
-    if options.get('verbose'):
-        print("[jit] Done compiling")
-    compiled = getattr(m, fn.__name__)
-    return compiled
+def compile_loops(fn, **options):
+    # 1. Get source and parse into AST
+    source = textwrap.dedent(inspect.getsource(fn))
+    tree = ast.parse(source)
 
+    # 2. Apply transformation
+    tree = replace_pfor.transform(tree)
+    tree = remove_func_decorator.transform(tree)
+
+    print("new code:", ast.unparse(tree))
+
+    # 3. Compile the new AST into a code object
+    code = compile(tree, filename="<ast>", mode="exec")
+
+    # 4. Create a namespace for execution
+    namespace = {}
+    exec(code, fn.__globals__, namespace)
+
+    # 5. Return the new function object
+    new_fn = namespace[fn.__name__]
+    return new_fn
+
+def set_default_options(options):
+    if "backend" not in options:
+        options["backend"] = "triton"
+    elif "dry_run" not in options:
+        options["dry_run"] = False
+    elif "auto_transfer" not in options:
+        options["auto_transfer"] = True
+
+    global _options
+    _options = options
 
 def jit(fn=None, **options):
+    set_default_options(options)
     if fn:
-        return compile(fn, None)
+        return compile_loops(fn)
     else:
         def jit_with_args(fn1):
-            return compile(fn1, None, **options)
+            return compile_loops(fn1, **options)
         return jit_with_args
 
-
-
-# compiled_funcs = {}
-
-# def _jit(fn):
-#     def inner(*args):
-#         key = f"{fn}+{get_type_sig(*args)}"
-#         if key not in compiled_funcs:
-#             compiled_funcs[key] = compile(fn, args)
-#         return compiled_funcs[key](*args)
-
-#     inner.__name__ = fn.__name__
-#     return inner
-
-# def jit(fn=None, dump_code=None, verbose=None, **options):
-#     if fn:
-#         return _jit(fn)
-#     else:
-#         # if dump_code != None:
-#         #     config.configs['dump_code'] = dump_code
-#         # if verbose != None:
-#         #     config.configs['verbose'] = verbose
-
-#         # print('return arg version')
-#         def jit_with_args(fn1):
-#             def inner(*args):
-#                 key = f"{fn1}+{get_type_sig(*args)}"
-#                 if key not in compiled_funcs:
-#                     compiled_funcs[key] = compile(
-#                         fn1, args, dump_code=dump_code, verbose=verbose, **options
-#                     )
-#                 return compiled_funcs[key](*args)
-
-#             inner.__name__ = fn1.__name__
-#             return inner
-
-#         return jit_with_args
-
-
-# def get_type_str(v):
-#     return f"{type(v).__module__}.{type(v).__name__}"
-
-# def is_type(v, ty):
-#     return get_type_str(v) == ty
-
-# def get_type_sig(*args):
-#     sigs = []
-#     for arg in args:
-#         if is_type(arg, "torch.Tensor"):
-#             sigs.append(f"<{arg.dtype}*{arg.dim()}>")
-#         elif isinstance(arg, int):
-#             sigs.append(f"{arg}")
-#         else:
-#             sigs.append(f"{type(arg)}")
-#     return ",".join(sigs)
-
-# Special functions
-def step(start, stepsize, bound=None):
-    if bound:
-        r = slice(start, min(bound, start+stepsize))
-    else:
-        r = slice(start, start+stepsize)
-    return r
-
-def debug_barrier():
-    pass
-
-def atomic_add(a, offset, b):
-    a[offset] += b
-
+# Built-in functions
 def prange(*args):
     return range(*args)
-
-vidx = step
 
 # Data transfer functions
 def to_gpu(*args):

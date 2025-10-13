@@ -10,11 +10,11 @@ def read_version():
         raise RuntimeError("Version not found.")
     
 setup(
-    name="appyc",                 # Name of the package
-    version="0.2.0",                    # Version
-    author="Tong Zhou",                 # Your name
-    author_email="zt9465@gmail.com", # Your email
-    description="APPy (Annotated Parallelism for Python) enables users to annotate loops and tensor expressions in Python with compiler directives akin to OpenMP, and automatically compiles the annotated code to GPU kernels.", # Short description
+    name="appyc",                 
+    version=read_version(),            
+    author="Tong Zhou",           
+    author_email="zt9465@gmail.com", 
+    description="APPy (Annotated Parallelism for Python) enables users to easily run Python loops on GPUs.", # Short description
     long_description=open("README.md").read(), # Long description from README file
     long_description_content_type="text/markdown", # Type of the long description
     url="https://github.com/habanero-lab/APPy", # URL of your project repository
@@ -25,5 +25,18 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.9',            # Minimum Python version requirement
-    install_requires=['ast_comments', 'black', 'sympy', 'ast_transforms'],
+    install_requires=[
+        'ast_comments', 
+        'ast_transforms',        
+    ],
+    extras_require={
+        "gpu": [
+            "torch",
+        ],
+        "dev": [
+            "pytest",
+            "pytest-regressions",
+            "black",
+        ],
+    },
 )
