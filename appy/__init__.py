@@ -1,15 +1,14 @@
-import sys
+# AST imports
 import inspect
 import textwrap
-import importlib
-from pathlib import Path
 import ast_comments as ast
-from .__version__ import __version__
+
+# AST passes
 from ast_transforms import remove_func_decorator
 from . import replace_pfor
-import ast
 
 # Globals
+from .__version__ import __version__
 _options = None
 
 def __appy_kernel_launch(loop_source, loop_name, scope, global_scope):
