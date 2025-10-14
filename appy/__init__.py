@@ -31,6 +31,15 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
     When appy._options["dry_run"] is True:
         - Simply executes the loop source as regular Python code in the given scope.
     """
+    target_code = ""
+    if _options.get("backend") == "triton":
+        from .backends.triton.backend import TritonBackend
+        back = TritonBackend()
+        target_code = back.codegen(loop_source, {
+            "loop_name": loop_name,
+            "local_scope": scope,
+            "global_scope": global_scope
+        })
 
     if _options.get("dry_run", False):
         # In dry_run mode, just execute the loop source in the caller's scope
