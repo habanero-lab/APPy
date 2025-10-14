@@ -5,7 +5,7 @@ import ast_comments as ast
 
 # AST passes
 from ast_transforms import remove_func_decorator
-from . import replace_pfor
+from .midend import replace_pfor
 
 # Globals
 from .__version__ import __version__
