@@ -11,7 +11,7 @@ from . import replace_pfor
 from .__version__ import __version__
 _options = None
 
-def __appy_kernel_launch(loop_source, loop_name, scope, global_scope):
+def _kernel_launch(loop_source, loop_name, scope, global_scope):
     """
     Runtime stub invoked when a prange loop is encountered.
 
@@ -68,12 +68,9 @@ def compile_loops(fn, **options):
     return new_fn
 
 def set_default_options(options):
-    if "backend" not in options:
-        options["backend"] = "triton"
-    elif "dry_run" not in options:
-        options["dry_run"] = False
-    elif "auto_transfer" not in options:
-        options["auto_transfer"] = True
+    options.setdefault("backend", "triton")
+    options.setdefault("dry_run", False)
+    options.setdefault("auto_transfer", True)
 
     global _options
     _options = options

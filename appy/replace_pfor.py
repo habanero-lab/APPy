@@ -40,7 +40,7 @@ class ReplacePForWithKernelLaunchStub(ast.NodeTransformer):
                 value=ast.Call(
                     func=ast.Attribute(
                         value=ast.Name(id="appy", ctx=ast.Load()),
-                        attr="__appy_kernel_launch",
+                        attr="_kernel_launch",
                         ctx=ast.Load(),
                     ),
                     args=[
