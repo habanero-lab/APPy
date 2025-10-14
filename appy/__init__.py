@@ -4,8 +4,8 @@ import textwrap
 import ast_comments as ast
 
 # AST passes
-from ast_transforms import remove_func_decorator
-from .midend import replace_pfor
+import ast_transforms as at
+from .midend import replace_pfor_with_stub
 
 # Globals
 from .__version__ import __version__
@@ -51,8 +51,8 @@ def compile_loops(fn, **options):
     tree = ast.parse(source)
 
     # 2. Apply transformation
-    tree = replace_pfor.transform(tree)
-    tree = remove_func_decorator.transform(tree)
+    tree = replace_pfor_with_stub.transform(tree)
+    tree = at.remove_func_decorator(tree)
 
     print("new code:", ast.unparse(tree))
 
