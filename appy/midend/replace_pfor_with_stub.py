@@ -4,10 +4,11 @@ class ReplacePForWithKernelLaunchStub(ast.NodeTransformer):
     '''
     Transforms both "for i in prange(...)" and "for i in appy.prange(...)" loops into:
 
-        __appy_kernel_launch(
+        appy._kernel_launch(
             loop_ast=<loop source>,
             loop_name="kernel_loop_1",
-            scope=locals()
+            scope=locals(),
+            global_scope=globals()
         )
     '''
     def __init__(self):

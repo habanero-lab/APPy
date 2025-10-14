@@ -23,12 +23,12 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         Unique name for this loop (e.g., 'kernel_loop_1')
     scope : dict
         The locals() dictionary of the calling function.
-    global_scope (dict): 
+    global_scope : dict 
         The global variables of the caller.
 
     Behavior
     --------
-    When appy.options["dry_run"] is True:
+    When appy._options["dry_run"] is True:
         - Simply executes the loop source as regular Python code in the given scope.
     """
 
