@@ -1,3 +1,4 @@
+import os
 import ast
 import textwrap as tw
 from pathlib import Path
@@ -21,7 +22,7 @@ class TritonBackend(Backend):
         }
 
         if loop_source in sample_kernels:
-            m = Path(f"/home/tong/projects/APPy/appy/backends/triton/sample_kernels/{sample_kernels[loop_source]}.py").read_text()
+            m = Path(f"{os.environ["HOME"]}/projects/APPy/appy/backends/triton/sample_kernels/{sample_kernels[loop_source]}.py").read_text()
             return m
         else:
             raise NotImplementedError()
