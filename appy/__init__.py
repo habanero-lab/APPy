@@ -41,6 +41,8 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
             "global_scope": global_scope
         })
 
+        print(target_code)
+
     if _options.get("dry_run", False):
         # In dry_run mode, just execute the loop source in the caller's scope
         try:
@@ -49,6 +51,8 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         except Exception as e:
             raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
     else:
+        ns = {}
+        exec(target_code, {})
         raise NotImplementedError(
             f"__appy_kernel_launch: non-dry-run mode not yet implemented for {loop_name}"
         )
