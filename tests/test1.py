@@ -11,5 +11,4 @@ def kernel_prange(a, b):
 a = np.ones(8)
 b = np.ones(8)
 res = kernel_prange(a, b)  # Runs Python fallback, writes Triton code to .appy_kernels/kernel_prange.py
-
 print(res)

@@ -7,6 +7,9 @@ import ast_comments as ast
 import ast_transforms as at
 from .midend import replace_pfor_with_stub
 
+# Util functions
+from .utils import load_func_from_str
+
 # Globals
 from .__version__ import __version__
 _options = None
@@ -41,8 +44,6 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
             "global_scope": global_scope
         })
 
-        print(target_code)
-
     if _options.get("dry_run", False):
         # In dry_run mode, just execute the loop source in the caller's scope
         try:
@@ -51,12 +52,12 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         except Exception as e:
             raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
     else:
-        ns = {}
-        exec(target_code, {})
-        raise NotImplementedError(
-            f"__appy_kernel_launch: non-dry-run mode not yet implemented for {loop_name}"
-        )
-
+        f = load_func_from_str(target_code, "kernel_appy")
+        used_names = at.get_used_names(ast.parse(loop_source).body[0], no_funcname=True)
+        merged_scope = global_scope | scope
+        args = [merged_scope[x] for x in used_names if x in merged_scope]
+        f(*args)
+    
 
 def compile_loops(fn, **options):
     # 1. Get source and parse into AST
