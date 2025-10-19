@@ -1,51 +1,38 @@
-import torch
-import torch.utils.benchmark as torchbench
+import importlib.util
+import tempfile
+import sys
+from pathlib import Path
 
-def bench(fn):
-    t0 = torchbench.Timer(
-        stmt='fn()',
-        globals={'fn': fn},
-    )
-    N = 20
-    one_run = t0.timeit(1).mean
-    if one_run > 1:
-        N = 5
-    elif one_run > 5:
-        N = 2
-    return t0.timeit(N).mean * 1000
+def load_module_from_str(code_str: str, module_name: str = "dynamic_module"):
+    """
+    Dynamically loads a Python module from a source code string.
 
-def allclose(a, b, verbose=True, rtol=1e-05, atol=1e-06, equal_nan=False):
-    assert type(a) == type(b)
-    if type(a) in [float, int]:
-        import numpy as np
-        f = np.allclose
-        max = np.max
-        a, b = np.array([a]), np.array([b])
-    
-    if f"{type(a).__module__}.{type(a).__name__}" == 'numpy.ndarray':
-        import numpy as np
-        f = np.allclose
-        max = np.max
-    elif f"{type(a).__module__}.{type(a).__name__}" == 'cupy.ndarray':
-        import cupy
-        f = cupy.allclose
-        max = cupy.max
-    elif f"{type(a).__module__}.{type(a).__name__}" == 'torch.Tensor':
-        f = torch.allclose
-        max = torch.max
-    else:
-        assert False, f'Unsupported type, a: {type(a)}, b: {type(b)}'
+    Parameters
+    ----------
+    code_str : str
+        The full source code of the module as a string.
+    module_name : str, optional
+        The name to assign to the module (default: "dynamic_module").
 
-    if not f(a, b, rtol, atol) and verbose:
-        diff = a - b
-        # print(torch.where(diff != 0))
-        # print(diff[diff != 0])
-        if len(a.shape) < 2:
-            print(a)
-            print(b)
-        else:
-            print(a[0])
-            print(b[0])
-        print('max diff:', max(diff))
+    Returns
+    -------
+    types.ModuleType
+        The imported module object. You can access functions, classes, etc.
+        Example: mod.kernel_appy(a, b, c)
+    """
+    # Create a temporary file to hold the module code
+    temp_dir = Path(tempfile.gettempdir())
+    temp_path = temp_dir / f"{module_name}.py"
+    temp_path.write_text(code_str)
 
-    return f(a, b, rtol, atol)
+    # Load the module spec and execute
+    spec = importlib.util.spec_from_file_location(module_name, temp_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+
+    return module
+
+def load_func_from_str(code_str: str, func: str):
+    m = load_module_from_str(code_str)
+    return getattr(m, func)
