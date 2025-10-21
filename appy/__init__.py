@@ -43,6 +43,13 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
             "local_scope": scope,
             "global_scope": global_scope
         })
+    elif _options.get("backend") == "ptx":
+        from .backends.ptx.backend import PTXBackend
+        target_code = PTXBackend().codegen(loop_source, {
+            "loop_name": loop_name,
+            "local_scope": scope,
+            "global_scope": global_scope
+        })
 
     if _options.get("dry_run", False):
         # In dry_run mode, just execute the loop source in the caller's scope
@@ -52,7 +59,10 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         except Exception as e:
             raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
     else:
-        f = load_func_from_str(target_code, "kernel_appy")
+        #f = load_func_from_str(target_code, "kernel_appy")
+        ns = {}
+        exec(target_code, ns)
+        f = ns['kernel_appy']
         used_names = at.get_used_names(ast.parse(loop_source).body[0], no_funcname=True)
         merged_scope = global_scope | scope
         args = [merged_scope[x] for x in used_names if x in merged_scope]

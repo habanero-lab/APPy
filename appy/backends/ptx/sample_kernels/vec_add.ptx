@@ -1,0 +1,48 @@
+.version 5.0
+.target sm_50
+.address_size 64
+
+.visible .entry vec_add(
+    .param .u64 param_a,     // pointer to float* a
+    .param .u64 param_b,     // pointer to float* b
+    .param .u64 param_c,     // pointer to float* c
+    .param .u32 param_n      // int n
+)
+{
+    .reg .pred %p;
+    .reg .b32 %r<6>;
+    .reg .b64 %rd<10>;
+    .reg .f32 %f<4>;
+
+    // Load kernel parameters
+    ld.param.u64 %rd1, [param_a];
+    ld.param.u64 %rd2, [param_b];
+    ld.param.u64 %rd3, [param_c];
+    ld.param.u32 %r4,  [param_n];
+
+    // Get thread index = blockIdx.x * blockDim.x + threadIdx.x
+    mov.u32 %r1, %tid.x;
+    mov.u32 %r2, %ctaid.x;
+    mov.u32 %r3, %ntid.x;
+    mad.lo.s32 %r5, %r2, %r3, %r1;
+
+    // Check if idx < n
+    setp.ge.s32 %p, %r5, %r4;
+    @%p bra DONE;
+
+    // Compute addresses
+    mul.wide.s32 %rd4, %r5, 4;
+    add.s64 %rd5, %rd1, %rd4;
+    add.s64 %rd6, %rd2, %rd4;
+    add.s64 %rd7, %rd3, %rd4;
+
+    // Load a[i], b[i], add, store c[i]
+    ld.global.f32 %f0, [%rd5];
+    ld.global.f32 %f1, [%rd6];
+    add.f32 %f2, %f0, %f1;
+    st.global.f32 [%rd7], %f2;
+
+DONE:
+    ret;
+}
+
