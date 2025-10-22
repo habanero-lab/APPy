@@ -27,8 +27,8 @@
     mad.lo.s32 %r5, %r2, %r3, %r1;
 
     // Check if idx < n
-    setp.ge.s32 %p, %r5, %r4;
-    @%p bra DONE;
+    setp.lt.s32 %p, %r5, %r4;
+    @!%p bra DONE;
 
     // Compute addresses
     mul.wide.s32 %rd4, %r5, 4;
