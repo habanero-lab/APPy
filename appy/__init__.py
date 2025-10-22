@@ -5,7 +5,7 @@ import ast_comments as ast
 
 # AST passes
 import ast_transforms as at
-from .midend import replace_pfor_with_stub
+from .frontend import replace_pfor_with_stub
 
 # Util functions
 from .utils import load_func_from_str
