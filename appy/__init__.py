@@ -17,7 +17,8 @@ _options = None
 
 def _kernel_launch(loop_source, loop_name, scope, global_scope):
     """
-    Runtime stub invoked when a prange loop is encountered.
+    Runtime stub invoked when a prange loop is encountered. The loop source 
+    is compiled and dynamically executed.
 
     Parameters
     ----------
@@ -29,17 +30,12 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         The locals() dictionary of the calling function.
     global_scope : dict 
         The global variables of the caller.
-
-    Behavior
-    --------
-    When appy._options["dry_run"] is True:
-        - Simply executes the loop source as regular Python code in the given scope.
     """
-    tree = ast.parse(loop_source).body[0]
-    loop_source = ast.unparse(tree)
+    tree = ast.parse(loop_source)
+    tree = at.hoist_shape_attr(tree)
 
     backend = Backend.create_backend(_options["backend"])
-    target_code = backend.codegen(loop_source, metadata={
+    target_code_ast = backend.codegen(tree, metadata={
         "loop_name": loop_name,
         "local_scope": scope,
         "global_scope": global_scope,
@@ -48,7 +44,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
 
     if _options.get("dump_code", False):
         print(f"--- Dumped code for loop {loop_name} ---")
-        print(target_code)
+        print(ast.unparse(target_code_ast))
         print(f"--- End of dumped code for loop {loop_name} ---")
 
     if _options.get("dry_run", False):
@@ -61,7 +57,9 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
     else:
         #f = load_func_from_str(target_code, "kernel_appy")
         ns = {}
-        exec(target_code, ns)
+        obj = compile(target_code_ast, filename=f"<ast>", mode="exec")
+        exec(obj, ns)
+        print(ns)
         f = ns['kernel_appy']
         used_names = at.get_used_names(ast.parse(loop_source).body[0], no_funcname=True)
         merged_scope = global_scope | scope
@@ -109,8 +107,13 @@ def jit(fn=None, **options):
         return jit_with_args
 
 # Built-in functions
-def prange(*args):
+def prange(*args, simd=False):
     return range(*args)
+
+built_in_range = range
+
+def range(*args, parallel=False, simd=False):
+    return built_in_range(*args)
 
 # Data transfer functions
 def to_gpu(*args):
