@@ -6,6 +6,7 @@ import ast_comments as ast
 # AST passes
 import ast_transforms as at
 from .frontend import replace_pfor_with_stub
+from .backends.base import Backend
 
 # Util functions
 from .utils import load_func_from_str
@@ -34,22 +35,21 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
     When appy._options["dry_run"] is True:
         - Simply executes the loop source as regular Python code in the given scope.
     """
-    target_code = ""
-    if _options.get("backend") == "triton":
-        from .backends.triton.backend import TritonBackend
-        back = TritonBackend()
-        target_code = back.codegen(loop_source, {
-            "loop_name": loop_name,
-            "local_scope": scope,
-            "global_scope": global_scope
-        })
-    elif _options.get("backend") == "ptx":
-        from .backends.ptx.backend import PTXBackend
-        target_code = PTXBackend().codegen(loop_source, {
-            "loop_name": loop_name,
-            "local_scope": scope,
-            "global_scope": global_scope
-        })
+    tree = ast.parse(loop_source).body[0]
+    loop_source = ast.unparse(tree)
+
+    backend = Backend.create_backend(_options["backend"])
+    target_code = backend.codegen(loop_source, metadata={
+        "loop_name": loop_name,
+        "local_scope": scope,
+        "global_scope": global_scope,
+        "options": _options,
+    })
+
+    if _options.get("dump_code", False):
+        print(f"--- Dumped code for loop {loop_name} ---")
+        print(target_code)
+        print(f"--- End of dumped code for loop {loop_name} ---")
 
     if _options.get("dry_run", False):
         # In dry_run mode, just execute the loop source in the caller's scope
@@ -67,7 +67,6 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         merged_scope = global_scope | scope
         args = [merged_scope[x] for x in used_names if x in merged_scope]
         f(*args)
-    
 
 def compile_loops(fn, **options):
     # 1. Get source and parse into AST
@@ -95,6 +94,7 @@ def set_default_options(options):
     options.setdefault("backend", "triton")
     options.setdefault("dry_run", False)
     options.setdefault("auto_transfer", True)
+    options.setdefault("dump_code", False)
 
     global _options
     _options = options
