@@ -12,8 +12,8 @@ class PTXBackend(Backend):
         print(self.val_map)
         
     def codegen(self, tree, metadata):
-        tree = passes.block_loop(tree)        
+        tree = passes.block_loop(tree)                
         tree, type_map = passes.attach_types(tree, self.val_map)
-        print(type_map)
+        tree = passes.to_pseudo_ptx(tree, self.val_map, type_map)
         return tree
         

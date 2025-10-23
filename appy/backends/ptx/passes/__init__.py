@@ -39,3 +39,7 @@ def attach_types(tree, val_map):
     visitor = AttachTypes(val_map)
     visitor.visit(tree)
     return tree, visitor.type_map
+
+def to_pseudo_ptx(tree, val_map, type_map):
+    from .to_pseudo_ptx import ToPseudoPTX
+    return ToPseudoPTX(val_map, type_map).visit(tree)
