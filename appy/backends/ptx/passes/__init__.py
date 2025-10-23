@@ -32,8 +32,10 @@ def attach_types(tree, val_map):
 
     Returns
     -------
-    ast.AST
-        The transformed AST.
+    (ast.AST, dict)
+        The transformed AST and a mapping from variable names to their types.
     '''
     from .attach_types import AttachTypes
-    return AttachTypes(val_map).visit(tree)
+    visitor = AttachTypes(val_map)
+    visitor.visit(tree)
+    return tree, visitor.type_map

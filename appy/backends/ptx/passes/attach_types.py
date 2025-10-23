@@ -3,7 +3,26 @@ import ast
 class AttachTypesInner(ast.NodeTransformer):
     def __init__(self, val_map):
         self.type_map = {}
-        self.val_map = val_map
+
+        # Initialize type_map from val_map
+        if val_map:
+            import numpy as np
+        for key, val in val_map.items():
+            if isinstance(val, int):
+                self.type_map[key] = 'int32'
+            elif isinstance(val, float):
+                self.type_map[key] = 'float64'
+            elif isinstance(val, np.ndarray):
+                if val.dtype == np.int32:
+                    self.type_map[key] = 'int32*'
+                elif val.dtype == np.float32:
+                    self.type_map[key] = 'float32*'
+                elif val.dtype == np.float64:
+                    self.type_map[key] = 'float64*'
+                else:
+                    raise NotImplementedError(f"Type attachment not implemented for array {key} with dtype {val.dtype}")
+            else:
+                raise NotImplementedError(f"Type attachment not implemented for variable {key} of type {type(val)}")
 
     def visit_For(self, node):
         # The loop target has type 'int32'
@@ -20,23 +39,7 @@ class AttachTypesInner(ast.NodeTransformer):
 
     def visit_Name(self, node):
         if node.id in self.type_map:
-            node.appy_type = self.type_map[node.id]
-        elif node.id in self.val_map:
-            import numpy as np
-            val = self.val_map[node.id]
-            if isinstance(val, int):
-                node.appy_type = 'int32'
-            elif isinstance(val, float):
-                node.appy_type = 'float64'
-            elif isinstance(val, np.ndarray):
-                if val.dtype == np.int32:
-                    node.appy_type = 'int32*'
-                elif val.dtype == np.float32:
-                    node.appy_type = 'float32*'
-                elif val.dtype == np.float64:
-                    node.appy_type = 'float64*'
-            else:
-                raise NotImplementedError(f"Type attachment not implemented for variable {node.id} of type {type(val)}")
+            node.appy_type = self.type_map[node.id]        
         elif node.id == "appy":
             pass # skip this
         else:
@@ -73,6 +76,10 @@ class AttachTypesInner(ast.NodeTransformer):
 class AttachTypes(ast.NodeTransformer):
     def __init__(self, val_map):
         self.val_map = val_map
+        self.type_map = None
 
     def visit_For(self, node):
-        return AttachTypesInner(self.val_map).visit(node)
+        visitor = AttachTypesInner(self.val_map)
+        visitor.visit(node)
+        self.type_map = visitor.type_map
+        return node

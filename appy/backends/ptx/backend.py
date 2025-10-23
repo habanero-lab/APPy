@@ -13,6 +13,7 @@ class PTXBackend(Backend):
         
     def codegen(self, tree, metadata):
         tree = passes.block_loop(tree)        
-        tree = passes.attach_types(tree, self.val_map)
+        tree, type_map = passes.attach_types(tree, self.val_map)
+        print(type_map)
         return tree
         
