@@ -29,6 +29,7 @@ class AttachTypesInner(ast.NodeTransformer):
         node.target.appy_type = 'int32'
         self.type_map[node.target.id] = 'int32'
         self.generic_visit(node)
+        return node
 
     def visit_Assign(self, node):
         self.visit(node.value)
@@ -36,6 +37,7 @@ class AttachTypesInner(ast.NodeTransformer):
         target.appy_type = node.value.appy_type
         if isinstance(target, ast.Name):
             self.type_map[target.id] = target.appy_type
+        return node
 
     def visit_Name(self, node):
         if node.id in self.type_map:
