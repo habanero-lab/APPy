@@ -8,13 +8,13 @@ class Backend(ABC):
         pass
     
     @staticmethod
-    def create_backend(name: str):
+    def create_backend(name: str, val_map: Dict = None):
         """Factory method to create backend instances based on the name."""
         if name == "triton":
             from .triton.backend import TritonBackend
-            return TritonBackend()
+            return TritonBackend(val_map)
         elif name == "ptx":
             from .ptx.backend import PTXBackend
-            return PTXBackend()
+            return PTXBackend(val_map)
         else:
             raise ValueError(f"Unknown backend: {name}")
