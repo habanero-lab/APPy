@@ -31,10 +31,13 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
     global_scope : dict 
         The global variables of the caller.
     """
-    tree = ast.parse(loop_source)
-    tree = at.hoist_shape_attr(tree)
+    used_names = at.get_used_names(ast.parse(loop_source).body[0])
+    merged_scope = global_scope | scope
+    val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
 
-    backend = Backend.create_backend(_options["backend"])
+    tree = ast.parse(loop_source)
+
+    backend = Backend.create_backend(_options["backend"], val_map)
     target_code_ast = backend.codegen(tree, metadata={
         "loop_name": loop_name,
         "local_scope": scope,
@@ -61,8 +64,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         exec(obj, ns)
         print(ns)
         f = ns['kernel_appy']
-        used_names = at.get_used_names(ast.parse(loop_source).body[0], no_funcname=True)
-        merged_scope = global_scope | scope
+        
         args = [merged_scope[x] for x in used_names if x in merged_scope]
         f(*args)
 
@@ -72,8 +74,9 @@ def compile_loops(fn, **options):
     tree = ast.parse(source)
 
     # 2. Apply transformation
-    tree = replace_pfor_with_stub.transform(tree)
+    tree = at.hoist_shape_attr(tree)
     tree = at.remove_func_decorator(tree)
+    tree = replace_pfor_with_stub.transform(tree)
 
     print("new code:", ast.unparse(tree))
 
