@@ -28,11 +28,3 @@ class BlockLoop(ast.NodeTransformer):
         self.generic_visit(node)
         ast.fix_missing_locations(node)
         return node
-    
-    def visit_Name(self, node):
-        if node.id in self.name_map:
-            new_node = ast.Name(id=self.name_map[node.id], ctx=node.ctx)
-            ast.copy_location(new_node, node)
-            return new_node
-        return node
-
