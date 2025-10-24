@@ -28,7 +28,8 @@ class AttachTypesInner(ast.NodeTransformer):
         # The loop target has type 'int32'
         node.target.appy_type = 'int32'
         self.type_map[node.target.id] = 'int32'
-        self.generic_visit(node)
+        for child in node.body:
+            self.visit(child)
         return node
 
     def visit_Assign(self, node):
