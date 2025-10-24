@@ -41,5 +41,41 @@ def attach_types(tree, val_map):
     return tree, visitor.type_map
 
 def to_pseudo_ptx(tree, val_map, type_map):
-    from .to_pseudo_ptx import ToPseudoPTX
-    return ToPseudoPTX(val_map, type_map).visit(tree)
+    '''
+    Transform the AST to a pseudo-PTX representation. This includes loading
+    kernel parameters into registers and replacing variable references with
+    register references.
+
+    Parameters
+    ----------
+    tree : ast.AST
+        The AST of the Python code to transform.
+    val_map : dict
+        A mapping from variable names to their values.
+    type_map : dict
+        A mapping from variable names to their types.
+
+    Returns
+    -------
+    ast.AST
+        The transformed AST.
+    '''
+    from .to_pseudo_ptx import transform
+    return transform(tree, val_map, type_map)
+
+def remove_appy(tree):
+    '''
+    Replaces `appy.prange` calls with `prange` calls in the AST.
+
+    Parameters
+    ----------
+    tree : ast.AST
+        The AST of the Python code to transform.
+
+    Returns
+    -------
+    ast.AST
+        The transformed AST.
+    '''
+    from .remove_appy import RemoveAPPy
+    return RemoveAPPy().visit(tree)
