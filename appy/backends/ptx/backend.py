@@ -8,11 +8,11 @@ from . import passes as passes
 
 class PTXBackend(Backend):
     def __init__(self, val_map=None):
-        self.val_map = val_map or {}
-        print(self.val_map)
+        self.val_map = val_map or {}        
         
     def codegen(self, tree, metadata):
-        tree = passes.block_loop(tree)                
+        tree = passes.remove_appy(tree)
+        tree = passes.block_loop(tree)             
         tree, type_map = passes.attach_types(tree, self.val_map)
         tree = passes.to_pseudo_ptx(tree, self.val_map, type_map)
         return tree
