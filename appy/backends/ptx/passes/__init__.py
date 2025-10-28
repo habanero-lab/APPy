@@ -79,3 +79,41 @@ def remove_appy(tree):
     '''
     from .remove_appy import RemoveAPPy
     return RemoveAPPy().visit(tree)
+
+def to_unit_stmts_form(tree):
+    '''
+    Transform the AST to unit statements form, where each statement contains
+    at most one arithmetic operation, function call, logical operation,
+    comparison, bitwise operation, or array load/store.
+
+    Parameters
+    ----------
+    tree : ast.AST
+        The AST of the Python code to transform.
+
+    Returns
+    -------
+    ast.AST
+        The transformed AST.
+    '''
+    from .to_unit_stmts_form import ToUnitStmtsForm
+    transformer = ToUnitStmtsForm()
+    return transformer.visit(tree)
+
+def add_builtin_imports(tree):
+    '''
+    Add necessary built-in imports to the AST.
+
+    Parameters
+    ----------
+    tree : ast.AST
+        The AST of the Python code to transform.
+
+    Returns
+    -------
+    ast.AST
+        The transformed AST.
+    '''
+    from .add_builtin_imports import AddBuiltinImports
+    transformer = AddBuiltinImports()
+    return transformer.visit(tree)

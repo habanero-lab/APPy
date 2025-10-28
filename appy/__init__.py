@@ -59,14 +59,14 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
             raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
     else:
         #f = load_func_from_str(target_code, "kernel_appy")
-        ns = {}
+        ns = merged_scope.copy()
         obj = compile(target_code_ast, filename=f"<ast>", mode="exec")
         exec(obj, ns)
-        print(ns)
-        f = ns['kernel_appy']
         
-        args = [merged_scope[x] for x in used_names if x in merged_scope]
-        f(*args)
+        # f = ns['kernel_appy']
+        
+        # args = [merged_scope[x] for x in used_names if x in merged_scope]
+        # f(*args)
 
 def compile_loops(fn, **options):
     # 1. Get source and parse into AST
@@ -153,3 +153,10 @@ def _to_cpu(a):
             return a.to('cpu').numpy()
     else:
         return a
+
+# Dummy functions
+def ptx_ld_param_u32(a):
+    return a
+
+def ptx_ld_param_u64(a):
+    return a

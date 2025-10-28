@@ -1,7 +1,7 @@
 import numpy as np
 import appy
 
-@appy.jit(backend="ptx", dry_run=True, dump_code=True)
+@appy.jit(backend="ptx", dry_run=False, dump_code=True)
 def kernel_prange(a, b):
     c = np.empty_like(a)
     for i in appy.prange(a.shape[0]):
