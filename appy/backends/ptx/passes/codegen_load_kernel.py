@@ -16,7 +16,7 @@ class AddCodeLoadKernel(ast.NodeTransformer):
         The transformed AST.
     '''
     def visit_Module(self, node):
-        ptx_file_path = Path(__file__).parent / 'sample_kernels' / 'vec_add.ptx'
+        ptx_file_path = Path(__file__).parent.parent / 'sample_kernels' / 'vec_add.ptx'
         load_kernel_code = ast.parse(f"""
 # Load PTX code from file
 with open('{ptx_file_path}', 'r') as f:

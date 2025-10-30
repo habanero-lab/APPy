@@ -20,8 +20,9 @@ class CodegenKernelLaunch(ast.NodeTransformer):
         launch_code = ast.parse("""
 # Define grid and block dimensions
 block_size = 256
+N = a.shape[0]
 grid_size = (N + block_size - 1) // block_size
 # Launch the kernel
 kernel(a_gpu, b_gpu, c_gpu, np.int32(N), block=(block_size, 1, 1), grid=(grid_size, 1))
-        """)     
+        """)
         return launch_code.body
