@@ -11,19 +11,18 @@ class PTXBackend(Backend):
         self.val_map = val_map or {}        
         
     def codegen(self, tree, metadata):
-        # Test manual PTX code generation passes
-        kernel_file = Path(__file__).parent / "sample_kernels" / "vec_add.py"
-        with open(kernel_file, "r") as f:
-            kernel_code = f.read()
-        kernel_ast = ast.parse(tw.dedent(kernel_code))
-        return kernel_ast
-
         tree = passes.remove_appy(tree)
         tree = passes.block_loop(tree)
         tree = passes.to_unit_stmts_form(tree)
         tree, type_map = passes.attach_types(tree, self.val_map)
-        
         tree = passes.to_pseudo_ptx(tree, self.val_map, type_map)
-        tree = passes.add_builtin_imports(tree)
+
+        #tree = passes.add_builtin_imports(tree)
+        
+        tree = passes.codegen_data_movement(tree, self.val_map)
+        tree = passes.codegen_load_kernel(tree)
+        tree = passes.codegen_pycuda_imports(tree)
+        tree = passes.codegen_kernel_launch(tree)
+        ast.fix_missing_locations(tree)
         return tree
         

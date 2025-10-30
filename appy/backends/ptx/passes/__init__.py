@@ -117,3 +117,78 @@ def add_builtin_imports(tree):
     from .add_builtin_imports import AddBuiltinImports
     transformer = AddBuiltinImports()
     return transformer.visit(tree)
+
+def codegen_pycuda_imports(tree):
+    '''
+    Add PyCUDA import statements to the AST.
+
+    Parameters
+    ----------
+    tree : ast.AST
+        The AST of the Python code to transform.
+
+    Returns
+    -------
+    ast.AST
+        The transformed AST.
+    '''
+    from .codegen_pycuda_imports import AddPyCUDAImports
+    transformer = AddPyCUDAImports()
+    return transformer.visit(tree)
+
+def codegen_data_movement(tree, val_map):
+    '''
+    Insert data movement operations (e.g., host to device and device to host
+    transfers) into the AST where necessary.
+
+    Parameters
+    ----------
+    tree : ast.AST
+        The AST of the Python code to transform.
+    val_map : dict
+        A mapping from variable names to their values.
+
+    Returns
+    -------
+    ast.AST
+        The transformed AST.
+    '''
+    from .codegen_data_movement import InsertDataMovement
+    transformer = InsertDataMovement(val_map)
+    return transformer.visit(tree)
+
+def codegen_load_kernel(tree):
+    '''
+    Add code to load the kernel from PTX file into the AST.
+
+    Parameters
+    ----------
+    tree : ast.AST
+        The AST of the Python code to transform.
+
+    Returns
+    -------
+    ast.AST
+        The transformed AST.
+    '''
+    from .codegen_load_kernel import AddCodeLoadKernel
+    transformer = AddCodeLoadKernel()
+    return transformer.visit(tree)
+
+def codegen_kernel_launch(tree):
+    '''
+    Add code to launch the kernel in the AST.
+
+    Parameters
+    ----------
+    tree : ast.AST
+        The AST of the Python code to transform.
+
+    Returns
+    -------
+    ast.AST
+        The transformed AST.
+    '''
+    from .codegen_kernel_launch import CodegenKernelLaunch
+    transformer = CodegenKernelLaunch()
+    return transformer.visit(tree)
