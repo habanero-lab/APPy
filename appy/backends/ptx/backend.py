@@ -30,10 +30,11 @@ class PTXBackend(Backend):
        
         print("Generated PTX Code:\n", ptx_code)
                 
+        tree = passes.codegen_kernel_launch(tree)
         tree = passes.codegen_data_movement(tree, self.val_map)
         tree = passes.codegen_load_kernel(tree, temp.name)
         tree = passes.codegen_pycuda_imports(tree)
-        tree = passes.codegen_kernel_launch(tree)
+        
         ast.fix_missing_locations(tree)
         return tree
         

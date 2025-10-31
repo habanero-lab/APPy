@@ -93,8 +93,17 @@ class CodegenPTX(ast.NodeTransformer):
         self.gen_func_decl()
         self.gen_ld_params()
         self.generic_visit(node)
+        self.gen_reg_decls()
         self.gen_func_closure()
         return []
+
+    def gen_reg_decls(self):
+        code = f"    .reg .b32 %r<{self.b32_reg_count}>;\n"
+        code += f"    .reg .b64 %rd<{self.b64_reg_count}>;\n"
+        code += f"    .reg .f32 %f<{self.f32_reg_count}>;\n" 
+        # Insert into ptx_code after the function decl "{"
+        self.ptx_code = self.ptx_code.split("{")[0] + "{\n" + code + self.ptx_code.split("{")[1]
+        return code
     
     def gen_assign_const_to_var(self, target, value):
         var_name = target.id
@@ -154,13 +163,13 @@ class CodegenPTX(ast.NodeTransformer):
         addr_reg = self.gen_offset_compute(subscript, self.type_map[target.id].value)
         dest_reg = self.get_reg_for_var(target.id)
         op_type = self.type_map[target.id].value
-        self.ptx_code += f"    ld.global.{op_type} {dest_reg} [{addr_reg}];\n"
+        self.ptx_code += f"    ld.global.{op_type} {dest_reg}, [{addr_reg}];\n"
 
     def gen_assign_var_to_subscript(self, subscript, name):
         val = self.get_reg_for_var(name.id)
         addr_reg = self.gen_offset_compute(subscript, self.type_map[name.id].value)
         op_type = self.type_map[name.id].value
-        self.ptx_code += f"    st.global.{op_type} [{addr_reg}] {val};\n"
+        self.ptx_code += f"    st.global.{op_type} [{addr_reg}], {val};\n"
     
     def visit_Assign(self, node):
         assert len(node.targets) == 1, "Only single target assignments are supported"
