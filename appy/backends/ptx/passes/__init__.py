@@ -157,14 +157,16 @@ def codegen_data_movement(tree, val_map):
     transformer = InsertDataMovement(val_map)
     return transformer.visit(tree)
 
-def codegen_load_kernel(tree):
+def codegen_load_kernel(tree, path):
     '''
     Add code to load the kernel from PTX file into the AST.
 
     Parameters
-    ----------
+    ----------   
     tree : ast.AST
         The AST of the Python code to transform.
+    path : str
+        The path to the PTX file.
 
     Returns
     -------
@@ -172,7 +174,7 @@ def codegen_load_kernel(tree):
         The transformed AST.
     '''
     from .codegen_load_kernel import AddCodeLoadKernel
-    transformer = AddCodeLoadKernel()
+    transformer = AddCodeLoadKernel(path)
     return transformer.visit(tree)
 
 def codegen_kernel_launch(tree):
@@ -192,3 +194,59 @@ def codegen_kernel_launch(tree):
     from .codegen_kernel_launch import CodegenKernelLaunch
     transformer = CodegenKernelLaunch()
     return transformer.visit(tree)
+
+from .ptx_types import PTXType
+
+def map_py_type_to_ptx_type(var_to_type):
+    '''
+    Map Python types to PTX types based on the provided value map.
+
+    Parameters
+    ----------
+    val_map : dict
+        A dictionary mapping variable names to their Python values.
+
+    Returns
+    -------
+    dict
+        A dictionary mapping variable names to their corresponding PTX types.
+    '''
+    py_type_to_ptx_type = {
+        'int32': PTXType.S32,
+        'float32': PTXType.F32,
+        'float64': PTXType.F64,
+        'int32*': PTXType.U64,
+        'float32*': PTXType.U64,
+        'float64*': PTXType.U64,
+    }
+
+    var_to_ptx_type = {}
+    for var, py_type in var_to_type.items():
+        if py_type in py_type_to_ptx_type:
+            var_to_ptx_type[var] = py_type_to_ptx_type[py_type]
+        else:
+            raise NotImplementedError(f"PTX type mapping not implemented for Python type: {py_type}")
+    return var_to_ptx_type
+
+def codegen_ptx(tree, val_map, type_map):
+    '''
+    Generate PTX code from the AST.
+
+    Parameters
+    ----------
+    tree : ast.AST
+        The AST of the Python code to transform.
+    val_map : dict
+        A mapping from variable names to their values.
+    type_map : dict
+        A mapping from variable names to their types.   
+    Returns
+    -------
+    str
+        The generated PTX code as a string.
+    '''    
+    from .codegen_ptx import CodegenPTX
+    var_to_ptx_type = map_py_type_to_ptx_type(type_map)
+    generator = CodegenPTX(val_map, var_to_ptx_type)
+    generator.visit(tree)
+    return generator.get_ptx_code()
