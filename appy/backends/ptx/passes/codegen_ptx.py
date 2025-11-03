@@ -57,6 +57,7 @@ class CodegenPTX(ast.NodeTransformer):
             if var in self.val_map:
                 reg = self.get_reg_for_var(var)
                 self.ptx_code += f"    ld.param.{ptx_type.value} {reg}, [param_{var}];\n"
+        self.ptx_code += '\n'
 
     def record_var_to_reg_map(self, var, reg):
         if var not in self.var_to_reg_map:
@@ -100,7 +101,10 @@ class CodegenPTX(ast.NodeTransformer):
     def gen_reg_decls(self):
         code = f"    .reg .b32 %r<{self.b32_reg_count}>;\n"
         code += f"    .reg .b64 %rd<{self.b64_reg_count}>;\n"
-        code += f"    .reg .f32 %f<{self.f32_reg_count}>;\n" 
+        if self.f32_reg_count > 0:
+            code += f"    .reg .f32 %f<{self.f32_reg_count}>;\n" 
+        if self.f64_reg_count > 0:
+            code += f"    .reg .f64 %fd<{self.f64_reg_count}>;\n" 
         # Insert into ptx_code after the function decl "{"
         self.ptx_code = self.ptx_code.split("{")[0] + "{\n" + code + self.ptx_code.split("{")[1]
         return code
