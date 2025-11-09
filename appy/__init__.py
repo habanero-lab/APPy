@@ -45,12 +45,12 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         "options": _options,
     })
 
-    if _options.get("dump_code", False):
+    if _options.get("dump_code"):
         print(f"--- Dumped code for loop {loop_name} ---")
         print(ast.unparse(target_code_ast))
         print(f"--- End of dumped code for loop {loop_name} ---")
 
-    if _options.get("dry_run", False):
+    if _options.get("dry_run"):
         # In dry_run mode, just execute the loop source in the caller's scope
         try:
             code_obj = compile(loop_source, filename=f"<{loop_name}>", mode="exec")        
