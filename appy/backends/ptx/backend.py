@@ -38,3 +38,6 @@ class PTXBackend(Backend):
         ast.fix_missing_locations(tree)
         return tree
         
+    def exec(self, tree, namespace=None):
+        obj = compile(tree, filename=f"<ast>", mode="exec")
+        exec(obj, namespace)

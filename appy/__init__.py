@@ -59,9 +59,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
             raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
     else:
         #f = load_func_from_str(target_code, "kernel_appy")
-        ns = merged_scope.copy()
-        obj = compile(target_code_ast, filename=f"<ast>", mode="exec")
-        exec(obj, ns)
+        backend.exec(target_code_ast, merged_scope.copy())
         
         # f = ns['kernel_appy']
         
