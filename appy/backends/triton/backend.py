@@ -4,6 +4,7 @@ import textwrap as tw
 from pathlib import Path
 import ast_transforms as at
 from ..base import Backend
+from ...utils import load_module_from_str
 
 class TritonBackend(Backend):
     def __init__(self, val_map=None):
@@ -20,3 +21,6 @@ class TritonBackend(Backend):
             return m
         else:
             raise NotImplementedError()
+        
+    def exec(self, str, namespace=None):
+        m = load_module_from_str(str)
