@@ -9,6 +9,13 @@ from ...utils import load_module_from_str
 
 class TritonBackend(Backend):
     def codegen(self, tree, metadata):
+        '''
+        Generate Triton GPU code for a single for loop.
+        '''
+        print("Input AST:\n", ast.dump(tree))
+        from .passes import sanity_check
+        sanity_check.visit(tree)
+          
         val_map = metadata['val_map']
         from .passes import gen_imports
         from .passes import gen_data_movement
