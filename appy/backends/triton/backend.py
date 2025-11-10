@@ -13,10 +13,10 @@ class TritonBackend(Backend):
         Generate Triton GPU code for a single for loop.
         '''
         print("Input AST:\n", ast.dump(tree))
-        from .passes import sanity_check, parse_pragma
+        from .passes import sanity_check, parse_pragma, block_loop
         sanity_check.visit(tree)
         pragma = parse_pragma.visit(tree)
-        print("Pragma:\n", pragma)
+        tree = block_loop.transform(tree, pragma)
         
         val_map = metadata['val_map']
         from .passes import gen_imports
