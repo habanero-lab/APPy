@@ -107,6 +107,13 @@ def jit(fn=None, **options):
         return jit_with_args
 
 # Built-in functions
+def vidx(start, stepsize, bound=None):
+    if bound:
+        r = slice(start, min(bound, start+stepsize))
+    else:
+        r = slice(start, start+stepsize)
+    return r
+
 def prange(*args, simd=False):
     return range(*args)
 
