@@ -1,4 +1,4 @@
-import ast
+import ast_comments as ast
 
 class ReplacePForWithKernelLaunchStub(ast.NodeTransformer):
     '''
@@ -14,6 +14,13 @@ class ReplacePForWithKernelLaunchStub(ast.NodeTransformer):
     def __init__(self):
         super().__init__()
         self.loop_counter = 0
+        self.pragma = None
+
+    def visit_Comment(self, node):
+        if node.value.startswith("#pragma parallel for "):
+            self.pragma = node.value
+            return None  # remove the recorded pragma
+        return node
 
     def visit_For(self, node):
         self.generic_visit(node)
@@ -30,12 +37,16 @@ class ReplacePForWithKernelLaunchStub(ast.NodeTransformer):
                     and node.iter.func.attr == "prange"
                 )
             )
+            or self.pragma
         )
 
         if is_prange:
             self.loop_counter += 1
             loop_name = f"kernel_loop_{self.loop_counter}"
             loop_source = ast.unparse(node)
+            if self.pragma:
+                loop_source = self.pragma + "\n" + loop_source
+                self.pragma = None  # reset
 
             new_call = ast.Expr(
                 value=ast.Call(

@@ -1,5 +1,6 @@
 import os
 import ast
+import ast_comments as astc
 import textwrap as tw
 from pathlib import Path
 import ast_transforms as at
@@ -18,6 +19,6 @@ class TritonBackend(Backend):
         return tree
         
     def exec(self, tree, namespace=None):
-        src = ast.unparse(tree)
+        src = astc.unparse(tree)
         print("Generated:\n", src)
         m = load_module_from_str(src, namespace)
