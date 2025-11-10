@@ -1,8 +1,9 @@
 import ast
 
 class GenKernelLaunch(ast.NodeTransformer):
-    def __init__(self, val_map):
+    def __init__(self, val_map, h2d_map):
         self.val_map = val_map
+        self.h2d_map = h2d_map
 
     def visit_For(self, node):
         iter_start, iter_end, iter_step = node.iter.args
@@ -30,16 +31,12 @@ class GenKernelLaunch(ast.NodeTransformer):
             )])
         ))
 
-        # Call the triton kernel with arguments
-        print(self.val_map)
-        #arg_nodes = [ast.Name(id=x, ctx=ast.Load()) for x in self.val_map.keys()]
-        arg_nodes = []
-        for var, val in self.val_map.items():
-            ty = type(val)
-            if f'{ty.__module__}.{ty.__name__}' == 'numpy.ndarray':
-                arg_nodes.append(ast.Name(id=f'__tg_{var}', ctx=ast.Load()))
-            else:
-                arg_nodes.append(ast.Name(id=var, ctx=ast.Load()))
+        # Call the triton kernel with arguments        
+        arg_nodes = [
+            ast.Name(id=self.h2d_map[var], ctx=ast.Load()) if var in self.h2d_map
+            else ast.Name(id=var, ctx=ast.Load())
+            for var in self.val_map
+        ]
 
         kwarg_nodes = [ast.keyword(arg="num_warps", value=ast.Constant(4))]
         assigns.append(ast.Expr(
@@ -54,5 +51,5 @@ class GenKernelLaunch(ast.NodeTransformer):
         ))
         return assigns
     
-def transform(tree, val_map):
-    return GenKernelLaunch(val_map).visit(tree)
+def transform(tree, val_map, h2d_map):
+    return GenKernelLaunch(val_map, h2d_map).visit(tree)

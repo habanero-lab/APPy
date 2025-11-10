@@ -14,8 +14,9 @@ class InsertDataMovement(ast.NodeTransformer):
     Insert data movement operations (e.g., host to device and device to host
     transfers) into the AST where necessary.
     '''
-    def __init__(self, val_map):
+    def __init__(self, val_map, h2d_map):
         self.val_map = val_map
+        self.h2d_map = h2d_map
 
     def visit_Module(self, node):
         to_device_assigns = []
@@ -49,6 +50,7 @@ class InsertDataMovement(ast.NodeTransformer):
                         keywords=[],                        
                     )   
                 ))
+                self.h2d_map[var] = f'__tg_{var}'
 
         store_analyzer = AnalyzeStoredArrays()
         store_analyzer.visit(node)        
@@ -78,4 +80,6 @@ class InsertDataMovement(ast.NodeTransformer):
         return node
     
 def transform(tree, val_map):
-    return InsertDataMovement(val_map).visit(tree)
+    h2d_map = {}
+    tree = InsertDataMovement(val_map, h2d_map).visit(tree)
+    return tree, h2d_map
