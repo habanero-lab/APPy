@@ -1,6 +1,6 @@
 import pycuda.autoinit
 import pycuda.gpuarray as gpuarray
-from pycuda.compiler import SourceModule
+from pycuda.compiler import SourceModule, DynamicSourceModule
 import numpy as np
 
 # Upload to GPU automatically
@@ -20,7 +20,7 @@ __global__ void vec_add(const double *a, const double *b, double *c, int N)
 }
 """
 
-mod = SourceModule(kernel_code, options=["--use_fast_math"])
+mod = SourceModule(kernel_code) # or DynamicSourceModule
 vec_add = mod.get_function("vec_add")
 
 # ------------------------------
