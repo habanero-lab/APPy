@@ -1,9 +1,10 @@
 import ast
 
 class GenKernelLaunch(ast.NodeTransformer):
-    def __init__(self, val_map, h2d_map):
+    def __init__(self, val_map, h2d_map, metadata):
         self.val_map = val_map
         self.h2d_map = h2d_map
+        self.metadata = metadata
 
     def visit_For(self, node):
         iter_start, iter_end, iter_step = node.iter.args
@@ -40,7 +41,7 @@ class GenKernelLaunch(ast.NodeTransformer):
         assigns.append(ast.Expr(
             value=ast.Call(
                 func=ast.Subscript(
-                    value=ast.Name(id="kernel", ctx=ast.Load()),
+                    value=ast.Name(id=self.metadata['loop_name'], ctx=ast.Load()),
                     slice=ast.Name(id="grid", ctx=ast.Load())
                 ),
                 args=arg_nodes,
@@ -49,5 +50,5 @@ class GenKernelLaunch(ast.NodeTransformer):
         ))
         return assigns
     
-def transform(tree, val_map, h2d_map):
-    return GenKernelLaunch(val_map, h2d_map).visit(tree)
+def transform(tree, val_map, h2d_map, metadata):
+    return GenKernelLaunch(val_map, h2d_map, metadata).visit(tree)
