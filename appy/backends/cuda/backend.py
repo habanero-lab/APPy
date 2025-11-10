@@ -3,7 +3,6 @@ import ast
 import textwrap as tw
 from pathlib import Path
 from ..base import Backend
-from ...utils import load_module_from_str
 
 class CUDABackend(Backend):
     def codegen(self, tree, metadata):
@@ -19,4 +18,4 @@ class CUDABackend(Backend):
             raise NotImplementedError()
         
     def exec(self, str, namespace=None):        
-        m = load_module_from_str(str, namespace)
+        exec(str, namespace)
