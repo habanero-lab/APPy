@@ -16,5 +16,8 @@ class Backend(ABC):
         elif name == "ptx":
             from .ptx.backend import PTXBackend
             return PTXBackend()
+        elif name == "cuda":
+            from .cuda.backend import CUDABackend
+            return CUDABackend()
         else:
             raise ValueError(f"Unknown backend: {name}")
