@@ -7,16 +7,14 @@ import ast_transforms as at
 from ..base import Backend
 from . import passes as passes
 
-class PTXBackend(Backend):
-    def __init__(self, val_map=None):
-        self.val_map = val_map or {}        
-        
+class PTXBackend(Backend):            
     def codegen(self, tree, metadata):
+        val_map = metadata['val_map']
         tree = passes.remove_appy(tree)
         tree = passes.block_loop(tree)
         tree = passes.to_unit_stmts_form(tree)
-        tree, type_map = passes.attach_types(tree, self.val_map)
-        ptx_code = passes.codegen_ptx(tree, self.val_map, type_map)
+        tree, type_map = passes.attach_types(tree, val_map)
+        ptx_code = passes.codegen_ptx(tree, val_map, type_map)
         with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False) as temp:
             temp.write(ptx_code)
             
@@ -31,7 +29,7 @@ class PTXBackend(Backend):
         print("Generated PTX Code:\n", ptx_code)
                 
         tree = passes.codegen_kernel_launch(tree)
-        tree = passes.codegen_data_movement(tree, self.val_map)
+        tree = passes.codegen_data_movement(tree, val_map)
         tree = passes.codegen_load_kernel(tree, temp.name)
         tree = passes.codegen_pycuda_imports(tree)
         

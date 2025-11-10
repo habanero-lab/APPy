@@ -7,9 +7,6 @@ from ..base import Backend
 from ...utils import load_module_from_str
 
 class TritonBackend(Backend):
-    def __init__(self, val_map=None):
-        self.val_map = val_map or {}   
-
     def codegen(self, tree, metadata):
         vec_add = ast.parse(tw.dedent('''
         for i in appy.prange(a_shape_0):

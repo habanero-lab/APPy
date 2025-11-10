@@ -37,11 +37,12 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
 
     tree = ast.parse(loop_source)
 
-    backend = Backend.create_backend(_options["backend"], val_map)
+    backend = Backend.create_backend(_options["backend"])
     target_code_ast = backend.codegen(tree, metadata={
         "loop_name": loop_name,
         "local_scope": scope,
         "global_scope": global_scope,
+        "val_map": val_map,
         "options": _options,
     })
 
