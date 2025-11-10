@@ -2,7 +2,6 @@ import os
 import ast
 import ast_comments as astc
 import textwrap as tw
-from pathlib import Path
 import ast_transforms as at
 from ..base import Backend
 from ...utils import load_module_from_str
@@ -22,8 +21,12 @@ class TritonBackend(Backend):
         val_map = metadata['val_map']
         from .passes import gen_imports
         from .passes import gen_data_movement
+        from .passes import gen_kernel_launch
+        from .passes import gen_kernel
         
         tree = gen_data_movement.transform(tree, val_map)
+        tree = gen_kernel_launch.transform(tree, val_map)
+        tree = gen_kernel.transform(tree)
 
         # Add imports at last!
         tree = gen_imports.transform(tree)
@@ -32,5 +35,5 @@ class TritonBackend(Backend):
         
     def exec(self, tree, namespace=None):
         src = astc.unparse(tree)
-        print("Generated:\n", src)
+        print("Generated:", src, sep="\n")
         m = load_module_from_str(src, namespace)
