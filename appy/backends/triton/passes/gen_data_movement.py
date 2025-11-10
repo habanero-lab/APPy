@@ -24,8 +24,8 @@ class InsertDataMovement(ast.NodeTransformer):
             ty = type(val)
             if f'{ty.__module__}.{ty.__name__}' == 'numpy.ndarray':
                 # For each `var` insert two statements:
-                # 1. `__torch_cpu_var = torch.from_numpy(var)`
-                # 2. `__torch_gpu_var = __torch_cpu_var.to('cuda')`
+                # 1. `__tc_var = torch.from_numpy(var)`
+                # 2. `__tg_var = __tc_var.to('cuda')`
                 to_device_assigns.append(ast.Assign(
                     targets=[ast.Name(id=f'__tc_{var}', ctx=ast.Store())],
                     value=ast.Call(
