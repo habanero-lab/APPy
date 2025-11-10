@@ -25,8 +25,8 @@ class TritonBackend(Backend):
         from .passes import gen_kernel
         
         tree, h2d_map = gen_data_movement.transform(tree, val_map)
-        tree = gen_kernel_launch.transform(tree, val_map, h2d_map)
-        tree = gen_kernel.transform(tree)
+        tree = gen_kernel_launch.transform(tree, val_map, h2d_map, metadata)
+        tree = gen_kernel.transform(tree, val_map, metadata)
 
         # Add imports at last!
         tree = gen_imports.transform(tree)
