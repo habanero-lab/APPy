@@ -8,9 +8,6 @@ import ast_transforms as at
 from .frontend import replace_pfor_with_stub
 from .backends.base import Backend
 
-# Util functions
-from .utils import load_func_from_str
-
 # Globals
 from .__version__ import __version__
 _options = None
@@ -60,7 +57,8 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
             raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
     else:
         #f = load_func_from_str(target_code, "kernel_appy")
-        backend.exec(target_code_ast, merged_scope.copy())
+        filtered_scope = {k: v for k,v in merged_scope.items() if k != '__name__' and k != '__loader__'}
+        backend.exec(target_code_ast, filtered_scope)
         
         # f = ns['kernel_appy']
         
