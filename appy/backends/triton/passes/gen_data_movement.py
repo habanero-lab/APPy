@@ -26,7 +26,7 @@ class InsertDataMovement(ast.NodeTransformer):
                 # 1. `__torch_cpu_var = torch.from_numpy(var)`
                 # 2. `__torch_gpu_var = __torch_cpu_var.to('cuda')`
                 to_device_assigns.append(ast.Assign(
-                    targets=[ast.Name(id=f'__torch_cpu_{var}', ctx=ast.Store())],
+                    targets=[ast.Name(id=f'__tc_{var}', ctx=ast.Store())],
                     value=ast.Call(
                         func=ast.Attribute(
                             value=ast.Name(id='torch', ctx=ast.Load()),
@@ -38,10 +38,10 @@ class InsertDataMovement(ast.NodeTransformer):
                     )
                 ))
                 to_device_assigns.append(ast.Assign(
-                    targets=[ast.Name(id=f'{var}_gpu', ctx=ast.Store())],
+                    targets=[ast.Name(id=f'__tg_{var}', ctx=ast.Store())],
                     value=ast.Call(
                         func=ast.Attribute(
-                            value=ast.Name(id=f'__torch_cpu_{var}', ctx=ast.Load()),
+                            value=ast.Name(id=f'__tc_{var}', ctx=ast.Load()),
                             attr='to',
                             ctx=ast.Load()
                         ),
@@ -63,11 +63,11 @@ class InsertDataMovement(ast.NodeTransformer):
                     ast.Expr(
                         value=ast.Call(
                             func=ast.Attribute(
-                                value=ast.Name(id=f'{var}_gpu', ctx=ast.Load()),
+                                value=ast.Name(id=f'__tg_{var}', ctx=ast.Load()),
                                 attr='copy_',
                                 ctx=ast.Load()
                             ),
-                            args=[ast.Name(id=f'__torch_cpu_{var}', ctx=ast.Load())],
+                            args=[ast.Name(id=f'__tc_{var}', ctx=ast.Load())],
                             keywords=[],                        
                         )
                     )
