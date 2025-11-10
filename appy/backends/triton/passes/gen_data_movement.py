@@ -63,11 +63,11 @@ class InsertDataMovement(ast.NodeTransformer):
                     ast.Expr(
                         value=ast.Call(
                             func=ast.Attribute(
-                                value=ast.Name(id=f'__tg_{var}', ctx=ast.Load()),
+                                value=ast.Name(id=f'__tc_{var}', ctx=ast.Load()),
                                 attr='copy_',
                                 ctx=ast.Load()
                             ),
-                            args=[ast.Name(id=f'__tc_{var}', ctx=ast.Load())],
+                            args=[ast.Name(id=f'__tg_{var}', ctx=ast.Load())],
                             keywords=[],                        
                         )
                     )
