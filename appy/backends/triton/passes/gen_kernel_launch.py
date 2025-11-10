@@ -37,8 +37,6 @@ class GenKernelLaunch(ast.NodeTransformer):
             else ast.Name(id=var, ctx=ast.Load())
             for var in self.val_map
         ]
-
-        kwarg_nodes = [ast.keyword(arg="num_warps", value=ast.Constant(4))]
         assigns.append(ast.Expr(
             value=ast.Call(
                 func=ast.Subscript(
@@ -46,7 +44,7 @@ class GenKernelLaunch(ast.NodeTransformer):
                     slice=ast.Name(id="grid", ctx=ast.Load())
                 ),
                 args=arg_nodes,
-                keywords=kwarg_nodes
+                keywords=[ast.keyword(arg="num_warps", value=ast.Constant(4))]
             )
         ))
         return assigns
