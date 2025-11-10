@@ -19,5 +19,5 @@ class TritonBackend(Backend):
         else:
             raise NotImplementedError()
         
-    def exec(self, str, namespace=None):
-        m = load_module_from_str(str)
+    def exec(self, str, namespace=None):        
+        m = load_module_from_str(str, namespace)
