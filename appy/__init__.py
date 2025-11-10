@@ -28,7 +28,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
     global_scope : dict 
         The global variables of the caller.
     """
-    used_names = at.get_used_names(ast.parse(loop_source).body[0])
+    used_names = at.get_used_names(ast.parse(loop_source))
     merged_scope = global_scope | scope
     val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
 
