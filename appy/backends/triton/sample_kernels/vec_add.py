@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 import triton
 import triton.language as tl
 
