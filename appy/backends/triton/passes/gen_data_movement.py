@@ -1,5 +1,14 @@
 import ast
 
+class AnalyzeStoredArrays(ast.NodeVisitor):
+    def __init__(self):
+        self.stored_arrays = set()
+
+    def visit_Subscript(self, node):
+        if isinstance(node.ctx, ast.Store):
+            self.stored_arrays.add(node.value.id)
+        self.generic_visit(node)
+
 class InsertDataMovement(ast.NodeTransformer):
     '''
     Insert data movement operations (e.g., host to device and device to host
@@ -41,8 +50,12 @@ class InsertDataMovement(ast.NodeTransformer):
                     )   
                 ))
 
+        store_analyzer = AnalyzeStoredArrays()
+        store_analyzer.visit(node)        
         to_host_assigns = []
         for var, val in self.val_map.items():
+            if var not in store_analyzer.stored_arrays:
+                continue
             ty = type(val)
             if f'{ty.__module__}.{ty.__name__}' == 'numpy.ndarray':
                 # Insert `__torch_gpu_var.copy_(__torch_cpu_var)` after the loop
