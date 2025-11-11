@@ -43,7 +43,7 @@ class GenKernel(ast.NodeTransformer):
 
     def visit_Module(self, node):
         self.init_func()
-        self.gen_func_params()        
+        self.gen_func_params()
         self.gen_triton_decorator()
         self.generic_visit(node)
         node.body = [self.func] + node.body

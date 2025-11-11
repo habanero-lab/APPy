@@ -3,7 +3,7 @@ import ast
 class BlockLoop(ast.NodeTransformer):
     def __init__(self, pragma):
         self.pragma = pragma
-        self.verbose = True
+        self.verbose = False
 
     def get_block_size(self):
         return 256  # Use a fixed block size for now

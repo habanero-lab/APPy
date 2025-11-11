@@ -11,7 +11,7 @@ class TritonBackend(Backend):
         '''
         Generate Triton GPU code for a single for loop.
         '''
-        print("Input AST:\n", ast.dump(tree))
+        #print("Input AST:\n", ast.dump(tree))
         from .passes import sanity_check, parse_pragma, rewrite_range, block_loop
         sanity_check.visit(tree)
         pragma = parse_pragma.visit(tree)
@@ -34,6 +34,5 @@ class TritonBackend(Backend):
         return tree
         
     def exec(self, tree, namespace=None):
-        src = astc.unparse(tree)
-        print("Generated:", src, sep="\n")
+        src = astc.unparse(tree)        
         m = load_module_from_str(src, namespace)
