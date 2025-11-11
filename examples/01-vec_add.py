@@ -1,6 +1,6 @@
 import torch
 import appy
-from appy.utils import allclose, bench
+from benchmark_utils import allclose, bench
 
 @appy.jit(auto_transfer=False) 
 def kernel_appy(a, b):
