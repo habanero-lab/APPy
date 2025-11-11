@@ -24,7 +24,7 @@ class BlockLoop(ast.NodeTransformer):
                         ctx=ast.Load()
                     ),
                     args=[
-                        iter_start,
+                        ast.Name(id=node.target.id, ctx=ast.Load()),
                         ast.Constant(block_size),
                         iter_end
                     ],
@@ -44,6 +44,6 @@ def transform(tree, pragma):
     1. assign the loop index to a call to vidx(...) and insert the assignment in the beginning of the loop body.
     2. rewrite the loop step to be the block size
 
-    The vidx call takes 3 arguments: the loop inde (start), the block size, and the upper bound of the loop.
+    The vidx call takes 3 arguments: the loop index (start), the block size, and the upper bound of the loop.
     '''
     return BlockLoop(pragma).visit(tree)
