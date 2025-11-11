@@ -46,7 +46,7 @@ class GenKernel(ast.NodeTransformer):
         self.gen_func_params()
         self.gen_triton_decorator()
         self.generic_visit(node)
-        node.body = [self.func] + node.body
+        node.body.insert(0, self.func)
         return node
     
 def transform(node, val_map, metadata):
