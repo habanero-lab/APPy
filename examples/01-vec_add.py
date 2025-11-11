@@ -2,7 +2,7 @@ import torch
 import appy
 from benchmark_utils import allclose, bench
 
-@appy.jit(auto_transfer=False) 
+@appy.jit(auto_transfer=False, dump_code=True) 
 def kernel_appy(a, b):
     c = torch.empty_like(a)
     #pragma parallel for simd

@@ -18,11 +18,16 @@ class InsertDataMovement(ast.NodeTransformer):
         self.val_map = val_map
         self.h2d_map = h2d_map
 
+    def is_numpy_array(self, val):
+        return f'{type(val).__module__}.{type(val).__name__}' == 'numpy.ndarray'
+    
+    def is_torch_cpu_tensor(self, val):
+        return f'{type(val).__module__}.{type(val).__name__}' == 'torch.Tensor' and val.device.type == 'cpu'
+
     def visit_Module(self, node):
         to_device_assigns = []
-        for var, val in self.val_map.items():
-            ty = type(val)
-            if f'{ty.__module__}.{ty.__name__}' == 'numpy.ndarray':
+        for var, val in self.val_map.items():            
+            if self.is_numpy_array(val):
                 # For each `var` insert two statements:
                 # 1. `__tc_var = torch.from_numpy(var)`
                 # 2. `__tg_var = __tc_var.to('cuda')`
