@@ -16,7 +16,7 @@ def kernel_lib(a, b):
 
 
 def test():
-    #torch.set_default_device('cuda')
+    torch.set_default_device('cuda')
     for N in [10000, 100000, 1000000, 10000000]:
         a = torch.randn(N)
         b = torch.randn(N)

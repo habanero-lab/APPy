@@ -33,6 +33,6 @@ class TritonBackend(Backend):
         ast.fix_missing_locations(tree)
         return tree
         
-    def exec(self, tree, namespace=None):
-        src = astc.unparse(tree)        
-        m = load_module_from_str(src, namespace)
+    def exec(self, tree, val_map):
+        src = astc.unparse(tree)
+        m = load_module_from_str(src, val_map)

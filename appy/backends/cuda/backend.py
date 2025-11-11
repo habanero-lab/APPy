@@ -17,5 +17,5 @@ class CUDABackend(Backend):
         else:
             raise NotImplementedError()
         
-    def exec(self, str, namespace=None):        
-        exec(str, namespace)
+    def exec(self, str, val_map):        
+        exec(str, val_map)
