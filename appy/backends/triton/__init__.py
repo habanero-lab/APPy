@@ -6,19 +6,31 @@ def codegen(loop_source, loop_name, val_map, options):
     '''
     Returns a dynamically generated function from the loop source.
     '''
-    src = '''
-import torch
-import triton
-import triton.language as tl
+    tree = astc.parse(loop_source)    
+    from .passes import sanity_check, parse_pragma, rewrite_range, block_loop
+    sanity_check.visit(tree)
+    pragma = parse_pragma.visit(tree)
+    tree = rewrite_range.transform(tree)
+    tree = block_loop.transform(tree, pragma)
+    
+    from .passes import gen_imports
+    from .passes import gen_data_movement
+    from .passes import gen_kernel_launch
+    from .passes import gen_device_code
+    
+    metadata = {'loop_name': loop_name, 'val_map': val_map, 'options': options}
+    tree, h2d_map = gen_data_movement.transform(tree, val_map)
+    tree = gen_device_code.transform(tree, val_map, metadata)
+    tree = gen_kernel_launch.transform(tree, val_map, h2d_map, metadata)        
 
-@triton.jit
-def _kernel_loop_1(a, a_shape_0, b, c):
-    i = tl.program_id(0) * 256 + tl.arange(0, 256)
-    tl.store(c + i, tl.load(a + i, mask=i < a_shape_0) + tl.load(b + i, mask=i < a_shape_0), mask=i < a_shape_0)
+    # Add imports at last!
+    tree = gen_imports.transform(tree)
+    ast.fix_missing_locations(tree)
+    src = astc.unparse(tree)
+    if options.get("dump_code"):
+        print(f"--- Dumped code for loop {loop_name} ---")
+        print(src)
+        print(f"--- End of dumped code for loop {loop_name} ---")
 
-def kernel_loop_1(a, a_shape_0, b, c):
-    grid = ((a_shape_0 - 0 + (256 - 1)) // 256,)
-    _kernel_loop_1[grid](a, a_shape_0, b, c, num_warps=4)
-    '''
     m = load_module_from_str(src)
     return getattr(m, loop_name)
