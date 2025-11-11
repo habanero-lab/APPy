@@ -11,6 +11,7 @@ from .backends.base import Backend
 # Globals
 from .__version__ import __version__
 _options = None
+_code_cache = {}
 
 def _kernel_launch(loop_source, loop_name, scope, global_scope):
     """
@@ -32,21 +33,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
     merged_scope = global_scope | scope
     val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
 
-    tree = ast.parse(loop_source)
-
-    backend = Backend.create_backend(_options["backend"])
-    target_code_ast = backend.codegen(tree, metadata={
-        "loop_name": loop_name,
-        "local_scope": scope,
-        "global_scope": global_scope,
-        "val_map": val_map,
-        "options": _options,
-    })
-
-    if _options.get("dump_code"):
-        print(f"--- Dumped code for loop {loop_name} ---")
-        print(ast.unparse(target_code_ast))
-        print(f"--- End of dumped code for loop {loop_name} ---")
+    f = Backend.codegen(_options.get("backend"), loop_source, loop_name, val_map, _options)
 
     if _options.get("dry_run"):
         # In dry_run mode, just execute the loop source in the caller's scope
@@ -56,9 +43,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         except Exception as e:
             raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
     else:
-        #f = load_func_from_str(target_code, "kernel_appy")
-        #filtered_scope = {k: v for k,v in merged_scope.items() if k != '__name__' and k != '__loader__'}
-        backend.exec(target_code_ast, val_map)
+        Backend.exec(f, val_map)
         
         # f = ns['kernel_appy']
         
