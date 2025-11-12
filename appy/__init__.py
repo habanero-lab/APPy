@@ -6,12 +6,11 @@ import ast_comments as ast
 # AST passes
 import ast_transforms as at
 from .frontend import replace_pfor_with_stub
-from .backends.base import Backend
 
 # Globals
 from .__version__ import __version__
+from . import compiler
 _options = None
-_code_cache = {}
 
 def _kernel_launch(loop_source, loop_name, scope, global_scope):
     """
@@ -33,7 +32,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
     merged_scope = global_scope | scope
     val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
 
-    f = Backend.codegen(_options.get("backend"), loop_source, loop_name, val_map, _options)
+    f = compiler.codegen(_options.get("backend"), loop_source, loop_name, val_map, _options)
 
     if _options.get("dry_run"):
         # In dry_run mode, just execute the loop source in the caller's scope
@@ -43,7 +42,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         except Exception as e:
             raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
     else:
-        Backend.exec(f, val_map)
+        compiler.exec(f, val_map)
         
         # f = ns['kernel_appy']
         
