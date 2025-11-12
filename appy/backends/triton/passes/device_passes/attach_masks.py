@@ -58,7 +58,7 @@ class MaskPropagation(ast.NodeTransformer):
         # The `appy.vidx` is a special function call which has a mask (root mask)
         if isinstance(node.func, ast.Attribute) and node.func.attr == 'vidx':
             args = node.args
-            node.mask = f'{unparse(args[0])} < {unparse(args[2])}'
+            node.mask = f'{unparse(args[0])} + tl.arange(0, {unparse(args[1])}) < {unparse(args[2])}'
             
         # Call `appy.where` has a special mask to attach. The first argument is a condition,
         # and if any of the other two arguments are array loads, they need to have an extra 

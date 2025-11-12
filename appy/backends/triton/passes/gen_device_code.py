@@ -32,15 +32,24 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     add_triton_decorator(func)
 
     # Add the replaced loop into the kernel function body, which will be transformed
-    func.body = replaced_loop.body
     tree.body.append(func)
-
+    func.body.append(replaced_loop)
+    
     # Run codegen pass on the function
+    from .device_passes import remove_loop_head
     from .device_passes import rewrite_vidx
     from .device_passes import attach_masks
     from .device_passes import lower_subscripts
+
+    func = remove_loop_head.transform(func)
+
     
     attach_masks.visit(func)
     func = rewrite_vidx.transform(func)
+
+    # ast.fix_missing_locations(tree)
+    # print(ast.unparse(tree))
+    # exit(0)
+
     func = lower_subscripts.transform(func)
     return tree

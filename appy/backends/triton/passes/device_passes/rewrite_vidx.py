@@ -7,19 +7,12 @@ class RewriteVidx(ast.NodeTransformer):
             start, stepsize, bound = node.args
             new_value = ast.BinOp(
                 op=ast.Add(),
-                left=ast.BinOp(
-                    op=ast.Mult(),
-                    left=ast.Call(
-                        func=ast.Attribute(value=ast.Name(id='tl', ctx=ast.Load()),
-                                           attr='program_id', ctx=ast.Load()),
-                        args=[ast.Constant(0)],
-                        keywords=[]
-                    ),
-                    right=stepsize
-                ),
+                left=start,
                 right=ast.Call(
-                    func=ast.Attribute(value=ast.Name(id='tl', ctx=ast.Load()),
-                                       attr='arange', ctx=ast.Load()),
+                    func=ast.Attribute(
+                        value=ast.Name(id='tl', ctx=ast.Load()),
+                        attr='arange'
+                    ),
                     args=[ast.Constant(0), stepsize],
                     keywords=[]
                 )
@@ -32,8 +25,8 @@ class RewriteVidx(ast.NodeTransformer):
 def transform(tree):
     '''
     This pass simplifies kernel codegen by rewriting vectorized index assignment like 
-    `i = appy.vidx(i, block_size, bound)` 
+    `__idx_i = appy.vidx(i, block_size, bound)` 
     to
-    `i = tl.program_id(0) * block_size + tl.arange(0, block_size)`.   
+    `__idx_i = i + tl.arange(0, block_size)`.   
     '''
     return RewriteVidx().visit(tree)
