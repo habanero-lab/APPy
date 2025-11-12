@@ -9,16 +9,15 @@ class Backend():
         
         f = None
         if backend_name == "triton":
-            from . import triton
-            f = triton.codegen(loop_source, loop_name, val_map, options)
+            from .triton.codegen import codegen            
         elif backend_name == "ptx":
-            from . import ptx
-            f = ptx.codegen(loop_source, loop_name, val_map, options)
+            from .ptx.codegen import codegen
         elif backend_name == "cuda":
-            from . import cuda
-            f = cuda.codegen(loop_source, loop_name, val_map, options)
+            from .cuda.codegen import codegen
         else:
             raise ValueError(f"Unknown backend: {backend_name}")
+        
+        f = codegen(loop_source, loop_name, val_map, options)
         Backend.code_cache[cache_key] = f        
         return f
         
