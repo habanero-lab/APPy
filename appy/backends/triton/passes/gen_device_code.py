@@ -40,9 +40,9 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     from .device_passes import rewrite_vidx
     from .device_passes import attach_masks
     from .device_passes import lower_subscripts
+    from .device_passes import lower_constants
 
     func = remove_loop_head.transform(func)
-
     
     attach_masks.visit(func)
     func = rewrite_vidx.transform(func)
@@ -52,4 +52,5 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     # exit(0)
 
     func = lower_subscripts.transform(func)
+    func = lower_constants.transform(func)
     return tree
