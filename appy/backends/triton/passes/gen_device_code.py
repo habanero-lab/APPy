@@ -36,9 +36,9 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     tree.body.append(func)
 
     # Run codegen pass on the function
-    from .kernel_passes import rewrite_vidx
-    from .kernel_passes import attach_masks
-    from .kernel_passes import lower_subscripts
+    from .device_passes import rewrite_vidx
+    from .device_passes import attach_masks
+    from .device_passes import lower_subscripts
     
     attach_masks.visit(func)
     func = rewrite_vidx.transform(func)
