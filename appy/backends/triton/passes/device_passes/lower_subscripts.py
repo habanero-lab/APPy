@@ -17,8 +17,7 @@ class LowerSubscripts(ast.NodeTransformer):
             self.tl_store = None
         return node
     
-    def visit_Subscript(self, node):
-        print(ast.dump(node))
+    def visit_Subscript(self, node):        
         self.generic_visit(node)
         assert hasattr(node, 'mask') and isinstance(ast.parse(node.mask).body[0], ast.Expr)
         mask = ast.parse(node.mask).body[0].value

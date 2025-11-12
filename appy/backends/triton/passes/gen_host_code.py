@@ -30,9 +30,9 @@ def transform(tree: ast.Module, metadata):
     tree.body = [func]
     
     # Run codegen pass on the function
-    from . import gen_data_movement
-    from . import gen_kernel_launch
-    
+    from .host_passes import gen_data_movement
+    from .host_passes import gen_kernel_launch
+
     func, h2d_map = gen_data_movement.transform(func, val_map)    
     func, replaced_loop = gen_kernel_launch.transform(func, h2d_map, metadata) 
     return tree, replaced_loop
