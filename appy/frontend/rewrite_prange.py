@@ -7,7 +7,7 @@ class RewritePrange(ast.NodeTransformer):
         if isinstance(node.func, ast.Name) and node.func.id == 'prange':
             node.func.id = 'range'
             # Add a keyword argument to indicate parallel=True
-            node.keywords.append(ast.keyword(arg='parallel', value=True))
+            node.keywords.append(ast.keyword(arg='parallel', value=ast.Constant(value=True)))
             return node
         elif isinstance(node.func, ast.Attribute) and ast.unparse(node.func) == 'appy.prange':
             node.func = ast.Name(id='range', ctx=ast.Load())
