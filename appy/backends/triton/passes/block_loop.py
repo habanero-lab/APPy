@@ -1,18 +1,28 @@
 import ast
 
 class BlockLoop(ast.NodeTransformer):
-    def __init__(self, pragma):
-        self.pragma = pragma
+    def __init__(self):        
         self.verbose = False
 
     def get_block_size(self):
         return 256  # Use a fixed block size for now
+    
+    def get_loop_property(self, loop: ast.For):
+        '''
+        Extract the keyword arguments of the range call as a dict and return it.
+        '''
+        for kw in loop.iter.keywords:
+            assert isinstance(kw.value, ast.Constant)
+
+        prop = {kw.arg: kw.value.value for kw in loop.iter.keywords}
+        return prop
 
     def visit_For(self, node):
+        prop = self.get_loop_property(node)
         if self.verbose:
-            print(f'[Block Loop] Got pragma: {self.pragma}')
+            print(f'[Block Loop] Got pragma: {prop}')        
         
-        if 'simd' in self.pragma:
+        if 'simd' in prop:
             iter_start, iter_end, iter_step = node.iter.args
             block_size = self.get_block_size()
             assign = ast.Assign(
@@ -38,7 +48,7 @@ class BlockLoop(ast.NodeTransformer):
         self.generic_visit(node)
         return node
 
-def transform(tree, pragma):
+def transform(tree):
     '''
     This pass rewrites a for-loop to blocked form, which consists of two steps:
     1. assign the loop index to a call to vidx(...) and insert the assignment in the beginning of the loop body.
@@ -46,4 +56,4 @@ def transform(tree, pragma):
 
     The vidx call takes 3 arguments: the loop index (start), the block size, and the upper bound of the loop.
     '''
-    return BlockLoop(pragma).visit(tree)
+    return BlockLoop().visit(tree)

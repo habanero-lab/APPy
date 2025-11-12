@@ -2,16 +2,12 @@ import ast
 import ast_comments as astc
 from ...utils import load_module_from_str
 
-def codegen(loop_source, loop_name, val_map, options):
+def codegen(tree, loop_name, val_map, options):
     '''
     Returns a dynamically generated function from the loop source.
-    '''
-    tree = astc.parse(loop_source)    
-    from .passes import sanity_check, parse_pragma, rewrite_range, block_loop
-    sanity_check.visit(tree)
-    pragma = parse_pragma.visit(tree)
-    tree = rewrite_range.transform(tree)
-    tree = block_loop.transform(tree, pragma)
+    '''   
+    from .passes import block_loop    
+    tree = block_loop.transform(tree)
     
     from .passes import gen_host_code
     from .passes import gen_device_code

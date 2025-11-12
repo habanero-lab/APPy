@@ -1,3 +1,5 @@
+import ast_comments as astc
+
 code_cache = {}
 
 def codegen(backend_name: str, loop_source, loop_name, val_map, options):
@@ -5,8 +7,19 @@ def codegen(backend_name: str, loop_source, loop_name, val_map, options):
     if cache_key in code_cache:            
         return code_cache[cache_key]
     
+    tree = astc.parse(loop_source)
     # Do frontend trasformations
-    # TODO
+    from .frontend import sanity_check
+    from .frontend import rewrite_prange
+    from .frontend import rewrite_range
+
+    sanity_check.visit(tree)
+    tree = rewrite_prange.transform(tree)
+    tree = rewrite_range.transform(tree)
+
+    # astc.fix_missing_locations(tree)
+    # print("New code:", astc.unparse(tree))
+    # exit(0)
 
     f = None
     if backend_name == "triton":
@@ -18,7 +31,7 @@ def codegen(backend_name: str, loop_source, loop_name, val_map, options):
     else:
         raise ValueError(f"Unknown backend: {backend_name}")
     
-    f = codegen(loop_source, loop_name, val_map, options)
+    f = codegen(tree, loop_name, val_map, options)
     code_cache[cache_key] = f        
     return f
         

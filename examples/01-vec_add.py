@@ -5,8 +5,7 @@ from benchmark_utils import allclose, bench
 @appy.jit(backend="triton", dump_code=True) 
 def kernel_appy(a, b):
     c = torch.empty_like(a)
-    #pragma parallel for simd
-    for i in range(a.shape[0]):
+    for i in appy.prange(a.shape[0], simd=True):
         c[i] = a[i] + b[i]
     return c
 
