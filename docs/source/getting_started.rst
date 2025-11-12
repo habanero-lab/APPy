@@ -20,7 +20,8 @@ Or you can install the latest development version from `source <https://github.c
     cd APPy
     pip install -e .
 
-To execute the APPy-generated code at runtime, you'd also need to install ``torch`` and ``triton`` (part of the ``torch`` package), which are used as APPy's backend:
+APPy is designed to have minimal dependencies and the ``appyc`` package only includes the code generator itself. 
+To use the ``triton`` backend, you will also need to have ``torch`` and ``triton`` (part of the ``torch`` package) installed.
 
 .. code-block:: bash
 
@@ -68,14 +69,29 @@ Reductions can be parallelized as well:
 
     # sum is now 10
 
-APPy automatically detects reductions on scalar variables and generates atomic operations for them.
-For reduction on array elements or slices, the user must explicitly annotate the statement with ``#pragma simd``.
+APPy automatically detects reductions and make them work properly in parallel.
 
 
 Will APPy work for my code?
 ---------------------------
 
-APPy is suitable for Python programs that use `Numba <https://numba.readthedocs.io/en/stable/user/parallel.html>`_ with ``numba.prange`` for CPU parallelization. It provides a drop-in replacement for ``numba.prange`` to parallelize Python loops on GPUs.
+APPy only supports the following operations in the parallel loop region, which should be sufficient to express a wide range of applications already.
+
+On scalar integer or float values:
+
+- Arithmetic operations
+- Math functions
+- Bitwise operations
+- Logical operations
+- Compare operations
+
+On arrays of integers or floats:
+
+    Array indexing (store or load)
+
+Structurally, control flows except ``break`` and ``return`` can be used.
+
+In general, APPy's usage scenarios are similar to `numba.prange <https://numba.readthedocs.io/en/stable/user/parallel.html>`_ which parallelizes Python loops on CPUs.
 
 When can ``appy.prange`` be used?
 ---------------------------------

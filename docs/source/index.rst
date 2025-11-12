@@ -11,8 +11,7 @@ Welcome to APPy's documentation!
    :caption: Contents:
    
    getting_started
-   high-level
-   low-level
+   legacy
    developer
    api
    release
