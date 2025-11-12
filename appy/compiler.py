@@ -12,8 +12,10 @@ def codegen(backend_name: str, loop_source, loop_name, val_map, options):
     from .frontend import sanity_check
     from .frontend import rewrite_prange
     from .frontend import rewrite_range
+    from .frontend import rewrite_aug_assign
 
     sanity_check.visit(tree)
+    tree = rewrite_aug_assign.transform(tree)
     tree = rewrite_prange.transform(tree)
     tree = rewrite_range.transform(tree)
 

@@ -78,3 +78,13 @@ def load_module_from_str(code_str, namespace=None):
     # os.remove(temp_path)
 
     return module
+
+def pretty_dump(src, loop_name):
+    print(f"--- Dumped code for loop {loop_name} ---")
+    # Try to use black to format if installed
+    try:
+        import black
+        print(black.format_str(src, mode=black.FileMode()))
+    except ImportError:
+        print(src)
+    print(f"--- End of dumped code for loop {loop_name} ---")

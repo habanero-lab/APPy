@@ -19,8 +19,9 @@ class LowerSubscripts(ast.NodeTransformer):
     
     def visit_Subscript(self, node):        
         self.generic_visit(node)
-        assert hasattr(node, 'mask') and isinstance(ast.parse(node.mask).body[0], ast.Expr)
-        mask = ast.parse(node.mask).body[0].value
+        if hasattr(node, 'mask'):
+            assert isinstance(ast.parse(node.mask).body[0], ast.Expr)
+        mask = ast.parse(node.mask).body[0].value if hasattr(node, 'mask') else ast.Constant(value=None)
         # Compute the load or store address
         addr = ast.BinOp(
             op=ast.Add(),
