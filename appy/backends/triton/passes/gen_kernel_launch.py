@@ -1,10 +1,11 @@
 import ast
 
 class GenKernelLaunch(ast.NodeTransformer):
-    def __init__(self, val_map, h2d_map, metadata):
-        self.val_map = val_map
+    def __init__(self, h2d_map, metadata):
+        self.val_map = metadata['val_map']
+        self.loop_name = metadata['loop_name']
         self.h2d_map = h2d_map
-        self.metadata = metadata
+        self.replaced_loop = None    
 
     def visit_For(self, node):
         iter_start, iter_end, iter_step = node.iter.args
@@ -38,17 +39,22 @@ class GenKernelLaunch(ast.NodeTransformer):
             else ast.Name(id=var, ctx=ast.Load())
             for var in self.val_map
         ]
+        # APPy's convention for kernel name
+        kernel_name = '_' + self.loop_name
         assigns.append(ast.Expr(
             value=ast.Call(
                 func=ast.Subscript(
-                    value=ast.Name(id=self.metadata['loop_name'], ctx=ast.Load()),
+                    value=ast.Name(id=kernel_name, ctx=ast.Load()),
                     slice=ast.Name(id="grid", ctx=ast.Load())
                 ),
                 args=arg_nodes,
                 keywords=[ast.keyword(arg="num_warps", value=ast.Constant(4))]
             )
         ))
+        self.replaced_loop = node
         return assigns
     
-def transform(tree, val_map, h2d_map, metadata):
-    return GenKernelLaunch(val_map, h2d_map, metadata).visit(tree)
+def transform(tree, h2d_map, metadata):
+    visitor = GenKernelLaunch(h2d_map, metadata)
+    tree = visitor.visit(tree)
+    return tree, visitor.replaced_loop

@@ -13,18 +13,14 @@ def codegen(loop_source, loop_name, val_map, options):
     tree = rewrite_range.transform(tree)
     tree = block_loop.transform(tree, pragma)
     
-    from .passes import gen_imports
-    from .passes import gen_data_movement
-    from .passes import gen_kernel_launch
+    from .passes import gen_host_code
     from .passes import gen_device_code
-    
+    from .passes import gen_imports
     metadata = {'loop_name': loop_name, 'val_map': val_map, 'options': options}
-    tree, h2d_map = gen_data_movement.transform(tree, val_map)
-    tree = gen_device_code.transform(tree, val_map, metadata)
-    tree = gen_kernel_launch.transform(tree, val_map, h2d_map, metadata)        
-
-    # Add imports at last!
+    tree, replaced_loop = gen_host_code.transform(tree, metadata)
+    tree = gen_device_code.transform(tree, replaced_loop, metadata)
     tree = gen_imports.transform(tree)
+
     ast.fix_missing_locations(tree)
     src = astc.unparse(tree)
     if options.get("dump_code"):

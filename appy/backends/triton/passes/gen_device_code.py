@@ -1,53 +1,46 @@
 import ast
 
-class GenKernel(ast.NodeTransformer):
-    def __init__(self, val_map, metadata):
-        self.val_map = val_map
-        self.metadata = metadata
-        self.func = None
+def create_new_func(name):
+    return ast.FunctionDef(
+        name=name,
+        args=ast.arguments(
+            args=[],
+            vararg=None,
+            kwarg=None,
+            defaults=[],
+        ),
+        body=[],
+    )
 
-    def init_func(self):
-        self.func = ast.FunctionDef(
-            name=self.metadata['loop_name'],
-            args=ast.arguments(
-                args=[],
-                vararg=None,
-                kwarg=None,
-                defaults=[],
-            ),
-            body=[],
-        )
+def set_func_params(func, val_map):
+    func.args.args = [ast.arg(arg=val, annotation=None) for val in val_map]
 
-    def gen_func_params(self):
-        for k, v in self.val_map.items():
-            self.func.args.args.append(ast.arg(arg=k))
-
-    def gen_triton_decorator(self):
-        self.func.decorator_list.append(ast.Attribute(
-            value=ast.Name(id='triton', ctx=ast.Load()),
-            attr='jit',
-            ctx=ast.Load(),
-        ))
-
-    def visit_For(self, node):
-        from .kernel_passes import rewrite_vidx
-        from .kernel_passes import attach_mask_info
-        from .kernel_passes import lower_subscripts
-        
-        attach_mask_info.visit(node)
-        node = rewrite_vidx.transform(node)
-        node = lower_subscripts.transform(node)
-        # Let the transformed loop body be the kernel function body
-        self.func.body = node.body
-        return node
-
-    def visit_Module(self, node):
-        self.init_func()
-        self.gen_func_params()
-        self.gen_triton_decorator()
-        self.generic_visit(node)
-        node.body.insert(0, self.func)
-        return node
+def add_triton_decorator(func):
+    func.decorator_list.append(ast.Attribute(
+        value=ast.Name(id='triton', ctx=ast.Load()),
+        attr='jit',
+        ctx=ast.Load(),
+    ))
     
-def transform(node, val_map, metadata):
-    return GenKernel(val_map, metadata).visit(node)
+def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
+    val_map = metadata['val_map']
+    loop_name = metadata['loop_name']
+
+    # Create function and set its parameters etc
+    func = create_new_func('_' + loop_name)
+    set_func_params(func, val_map)
+    add_triton_decorator(func)
+
+    # Add the replaced loop into the kernel function body, which will be transformed
+    func.body = replaced_loop.body
+    tree.body.append(func)
+
+    # Run codegen pass on the function
+    from .kernel_passes import rewrite_vidx
+    from .kernel_passes import attach_masks
+    from .kernel_passes import lower_subscripts
+    
+    attach_masks.visit(func)
+    func = rewrite_vidx.transform(func)
+    func = lower_subscripts.transform(func)
+    return tree

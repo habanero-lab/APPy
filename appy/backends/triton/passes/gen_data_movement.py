@@ -24,7 +24,7 @@ class InsertDataMovement(ast.NodeTransformer):
     def is_torch_cpu_tensor(self, val):
         return f'{type(val).__module__}.{type(val).__name__}' == 'torch.Tensor' and val.device.type == 'cpu'
 
-    def visit_Module(self, node):
+    def visit_FunctionDef(self, node):
         to_device_assigns = []
         for var, val in self.val_map.items():            
             if self.is_numpy_array(val) or self.is_torch_cpu_tensor(val):
