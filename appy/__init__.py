@@ -50,7 +50,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         # args = [merged_scope[x] for x in used_names if x in merged_scope]
         # f(*args)
 
-def compile_loops(fn, **options):
+def rewrite_loops(fn, **options):
     # 1. Get source and parse into AST
     source = textwrap.dedent(inspect.getsource(fn))
     tree = ast.parse(source)
@@ -85,10 +85,10 @@ def set_default_options(options):
 def jit(fn=None, **options):
     set_default_options(options)
     if fn:
-        return compile_loops(fn)
+        return rewrite_loops(fn)
     else:
         def jit_with_args(fn1):
-            return compile_loops(fn1, **options)
+            return rewrite_loops(fn1, **options)
         return jit_with_args
 
 # Built-in functions
