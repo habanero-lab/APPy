@@ -39,10 +39,20 @@ def codegen(backend_name: str, loop_source, loop_name, val_map, options):
     f = getattr(m, loop_name)
     if options["dump_code"]:
         print(f"--- Dumped code for loop {loop_name} ---")
+        try:
+            import black
+            code_src = black.format_str(code_src, mode=black.FileMode())
+        except ImportError:
+            pass
         print(code_src)
         print(f"--- End of dumped code for loop {loop_name} ---")
 
     if options.get("dump_code_to_file", False):
+        try:
+            import black
+            code_src = black.format_str(code_src, mode=black.FileMode())
+        except ImportError:
+            pass
         with open(options["dump_code_to_file"], "w") as f:
             f.write(code_src)
               
