@@ -15,6 +15,7 @@ def create_new_func(loop_name, val_map):
             defaults=[],
         ),
         body=[],
+        decorator_list=[],
     )
     return func
 
