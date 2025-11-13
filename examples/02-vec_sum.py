@@ -1,10 +1,10 @@
 import torch
 import appy
-from appy.utils import allclose, bench
+from benchmark_utils import allclose, bench
 
-@appy.jit(auto_transfer=False, dump_final_appy=True)  # Comment this line to run the function in the Python interpter (debug mode)
+@appy.jit(dump_code=True)  # Comment this line to run the function in the Python interpter (debug mode)
 def kernel_appy(a):
-    b = 0.0
+    b = 0.0    
     #pragma parallel for simd
     for i in range(a.shape[0]): 
         b += a[i]
