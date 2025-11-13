@@ -1,6 +1,5 @@
 import ast
 import ast_comments as astc
-from ...utils import load_module_from_str, pretty_dump
 
 def codegen(tree, loop_name, val_map, options):
     '''
@@ -19,8 +18,4 @@ def codegen(tree, loop_name, val_map, options):
 
     ast.fix_missing_locations(tree)
     src = astc.unparse(tree)
-    if options.get("dump_code"):
-        pretty_dump(src, loop_name)
-
-    m = load_module_from_str(src)
-    return getattr(m, loop_name)
+    return src
