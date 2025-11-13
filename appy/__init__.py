@@ -1,7 +1,8 @@
 # AST imports
 import inspect
 import textwrap
-import ast_comments as ast
+import ast
+import ast_comments as astc
 
 # AST passes
 import ast_transforms as at
@@ -52,17 +53,17 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
 def rewrite_loops(fn, **options):
     # 1. Get source and parse into AST
     source = textwrap.dedent(inspect.getsource(fn))
-    tree = ast.parse(source)
+    tree = astc.parse(source)
 
     # 2. Apply transformation
     tree = at.hoist_shape_attr(tree)
     tree = at.remove_func_decorator(tree)
     tree = replace_pfor_with_stub.transform(tree)
 
-    print("new code:", ast.unparse(tree))
-
-    # 3. Compile the new AST into a code object
-    code = compile(tree, filename="<ast>", mode="exec")
+    newcode = ast.unparse(tree)
+    print("new code:", newcode)
+    # 3. Compile the new code into a code object
+    code = compile(newcode, filename="<string>", mode="exec")
 
     # 4. Create a namespace for execution
     namespace = {}
