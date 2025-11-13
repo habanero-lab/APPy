@@ -35,8 +35,7 @@ def codegen(backend_name: str, loop_source, loop_name, val_map, options):
         raise ValueError(f"Unknown backend: {backend_name}")
     
     code_src = codegen(tree, loop_name, val_map, options)
-    m = load_module_from_str(code_src)
-    f = getattr(m, loop_name)
+
     if options["dump_code"]:
         print(f"--- Dumped code for loop {loop_name} ---")
         try:
@@ -55,11 +54,22 @@ def codegen(backend_name: str, loop_source, loop_name, val_map, options):
             pass
         with open(options["dump_code_to_file"], "w") as f:
             f.write(code_src)
-              
-    code_cache[cache_key] = f
+
+    if options.get("dry_run"):
+        # In dry_run mode, just execute the loop source in the caller's scope
+        try:
+            import importlib
+            code_obj = compile(loop_source, filename=f"<{loop_name}>", mode="exec") 
+            val_map["appy"] = importlib.import_module("appy")  
+            exec(code_obj, val_map)
+        except Exception as e:
+            raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
+    else:
+        m = load_module_from_str(code_src)
+        f = getattr(m, loop_name)   
+        code_cache[cache_key] = f
+        args = list(val_map.values())
+        f(*args)
+
     return f
         
-
-def exec(f, val_map):
-    args = list(val_map.values())
-    f(*args)

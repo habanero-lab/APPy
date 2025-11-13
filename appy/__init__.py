@@ -35,16 +35,6 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
     val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
 
     f = dispatcher.codegen(_options.get("backend"), loop_source, loop_name, val_map, _options)
-
-    if _options.get("dry_run"):
-        # In dry_run mode, just execute the loop source in the caller's scope
-        try:
-            code_obj = compile(loop_source, filename=f"<{loop_name}>", mode="exec")        
-            exec(code_obj, global_scope or scope, scope)
-        except Exception as e:
-            raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
-    else:
-        dispatcher.exec(f, val_map)
         
         # f = ns['kernel_appy']
         
