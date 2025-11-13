@@ -2,16 +2,18 @@ import torch
 import triton
 import triton.language as tl
 
+
 def kernel_loop_1(a, a_shape_0, b, c):
-    __tc_a = a
-    __tg_a = __tc_a.to('cuda')
-    __tc_b = b
-    __tg_b = __tc_b.to('cuda')
-    __tc_c = c
-    __tg_c = __tc_c.to('cuda')
+    __tc_a = torch.from_numpy(a)
+    __tg_a = __tc_a.to("cuda")
+    __tc_b = torch.from_numpy(b)
+    __tg_b = __tc_b.to("cuda")
+    __tc_c = torch.from_numpy(c)
+    __tg_c = __tc_c.to("cuda")
     grid = ((a_shape_0 - 0 + (256 - 1)) // 256,)
     _kernel_loop_1[grid](__tg_a, a_shape_0, __tg_b, __tg_c, num_warps=4)
     __tc_c.copy_(__tg_c)
+
 
 @triton.jit
 def _kernel_loop_1(a, a_shape_0, b, c):

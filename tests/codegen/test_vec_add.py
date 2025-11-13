@@ -1,7 +1,7 @@
 import os
 import ast
 from pathlib import Path
-import torch
+import numpy as np
 import appy
 
 
@@ -14,13 +14,13 @@ def test_vec_add(tmp_path: Path):
     # Define the kernel under test
     @appy.jit(backend="triton", dry_run=True, dump_code_to_file=out_path)
     def kernel_appy(a, b):
-        c = torch.empty_like(a)
+        c = np.empty_like(a)
         for i in appy.prange(a.shape[0], simd=True):
             c[i] = a[i] + b[i]
         return c
 
     # Trigger APPy compilation (dry-run)
-    kernel_appy(torch.ones(512), torch.ones(512))
+    kernel_appy(np.ones(100), np.ones(100))
 
     # Read generated and golden code
     generated = out_path.read_text()
