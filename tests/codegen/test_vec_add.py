@@ -12,7 +12,7 @@ def test_vec_add(tmp_path: Path):
     out_path = tmp_path / "vec_add_triton.py"
 
     # Define the kernel under test
-    @appy.jit(backend="triton", dry_run=True, dump_code_to_file=out_path)
+    @appy.jit(backend="triton", dry_run=False, dump_code_to_file=out_path)
     def kernel_appy(a, b):
         c = np.empty_like(a)
         for i in appy.prange(a.shape[0], simd=True):
