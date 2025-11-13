@@ -3,6 +3,7 @@ import inspect
 import textwrap
 import ast
 import ast_comments as astc
+import importlib
 
 # AST passes
 import ast_transforms as at
@@ -67,6 +68,7 @@ def rewrite_loops(fn, **options):
 
     # 4. Create a namespace for execution
     namespace = {}
+    fn.__globals__["appy"] = importlib.import_module("appy")
     exec(code, fn.__globals__, namespace)
 
     # 5. Return the new function object
