@@ -11,7 +11,7 @@ from .frontend import replace_pfor_with_stub
 
 # Globals
 from .__version__ import __version__
-from . import compiler
+from . import dispatcher
 _options = None
 
 def _kernel_launch(loop_source, loop_name, scope, global_scope):
@@ -34,7 +34,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
     merged_scope = global_scope | scope
     val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
 
-    f = compiler.codegen(_options.get("backend"), loop_source, loop_name, val_map, _options)
+    f = dispatcher.codegen(_options.get("backend"), loop_source, loop_name, val_map, _options)
 
     if _options.get("dry_run"):
         # In dry_run mode, just execute the loop source in the caller's scope
@@ -44,7 +44,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
         except Exception as e:
             raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
     else:
-        compiler.exec(f, val_map)
+        dispatcher.exec(f, val_map)
         
         # f = ns['kernel_appy']
         

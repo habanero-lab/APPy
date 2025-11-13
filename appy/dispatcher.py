@@ -40,7 +40,12 @@ def codegen(backend_name: str, loop_source, loop_name, val_map, options):
     if options["dump_code"]:
         print(f"--- Dumped code for loop {loop_name} ---")
         print(code_src)
-        print(f"--- End of dumped code for loop {loop_name} ---")    
+        print(f"--- End of dumped code for loop {loop_name} ---")
+
+    if options.get("dump_code_to_file", False):
+        with open(options["dump_code_to_file"], "w") as f:
+            f.write(code_src)
+              
     code_cache[cache_key] = f
     return f
         
