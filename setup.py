@@ -30,8 +30,12 @@ setup(
         'ast_transforms',        
     ],
     extras_require={
-        "gpu": [
-            "torch",
+        "triton": [
+            "torch",  # Triton depends on torch
+            "triton",
+        ],
+        "cuda": [
+            "pycuda",
         ],
         "dev": [
             "pytest",
