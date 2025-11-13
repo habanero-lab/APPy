@@ -10,12 +10,13 @@ def create_new_func(name):
             defaults=[],
         ),
         body=[],
+        decorator_list=[],
     )
 
 def set_func_params(func, val_map):
     func.args.args = [ast.arg(arg=val, annotation=None) for val in val_map]
 
-def add_triton_decorator(func):
+def add_triton_decorator(func: ast.FunctionDef):
     func.decorator_list.append(ast.Attribute(
         value=ast.Name(id='triton', ctx=ast.Load()),
         attr='jit',
