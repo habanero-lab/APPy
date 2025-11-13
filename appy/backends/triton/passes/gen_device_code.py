@@ -4,8 +4,11 @@ def create_new_func(name):
     return ast.FunctionDef(
         name=name,
         args=ast.arguments(
+            posonlyargs=[],      # required in 3.8+
             args=[],
             vararg=None,
+            kwonlyargs=[],
+            kw_defaults=[],
             kwarg=None,
             defaults=[],
         ),
