@@ -2,7 +2,7 @@ import torch
 import appy
 from benchmark_utils import allclose, bench
 
-@appy.jit(backend="triton", dump_code=True) 
+@appy.jit(backend="triton", dump_code=0) 
 def kernel_appy(a, b):
     c = torch.empty_like(a)
     for i in appy.prange(a.shape[0], simd=True):
