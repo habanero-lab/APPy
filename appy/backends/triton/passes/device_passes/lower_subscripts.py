@@ -6,10 +6,10 @@ class LowerSubscripts(ast.NodeTransformer):
         self.tl_store = None
 
     def visit_Assign(self, node):
-        self.visit(node.value)
+        node.value = self.visit(node.value)
         # This may be used when generating tl.store
         self.assign_value = node.value
-        self.visit(node.targets[0])
+        node.targets[0] = self.visit(node.targets[0])
         
         # Replace the node with tl.store if it exists
         if self.tl_store is not None:
