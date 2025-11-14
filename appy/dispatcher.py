@@ -1,10 +1,17 @@
+import os
 import ast_comments as astc
 from .utils import load_module_from_str, pretty_dump
 
 code_cache = {}
 
 def codegen(backend_name: str, loop_source, loop_name, val_map, options):
-    cache_key = (backend_name, loop_source)
+    types = tuple([type(v) for v in val_map.values()])
+    backend_name_key = backend_name
+    if backend_name == "triton" and os.environ.get("TRITON_INTERPRET") == "1":
+        # If TRITON_INTERPRET is set to 1, add it to the key as well
+        backend_name_key = f"{backend_name}_interpret"
+
+    cache_key = (backend_name_key, loop_source, types)
     if cache_key in code_cache:            
         f, code_src = code_cache[cache_key]
     else:
