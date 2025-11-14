@@ -8,6 +8,7 @@ import importlib
 # AST passes
 import ast_transforms as at
 from .frontend import replace_pfor_with_stub
+from .frontend import hoist_shape_attr
 
 # Globals
 from .__version__ import __version__
@@ -46,7 +47,7 @@ def rewrite_loops(fn, **options):
     tree = astc.parse(source)
 
     # 2. Apply transformation
-    tree = at.hoist_shape_attr(tree)
+    tree = hoist_shape_attr.transform(tree)
     tree = at.remove_func_decorator(tree)
     tree = replace_pfor_with_stub.transform(tree, options)
 
