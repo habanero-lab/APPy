@@ -38,4 +38,7 @@ jobs:
 
       - name: Run codegen tests
         run: |
-          pytest tests/codegen -v
+          pytest -v tests/codegen/triton/dry_run
+          TRITON_INTERPRET=1 pytest -v tests/codegen/triton/np_array
+          TRITON_INTERPRET=1 pytest -v tests/codegen/triton/torch_ct
+
