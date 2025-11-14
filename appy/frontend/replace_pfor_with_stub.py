@@ -11,8 +11,9 @@ class ReplacePForWithKernelLaunchStub(ast.NodeTransformer):
             global_scope=globals()
         )
     '''
-    def __init__(self):
+    def __init__(self, options):
         super().__init__()
+        self.options = options
         self.loop_counter = 0
         self.pragma = None
 
@@ -60,6 +61,10 @@ class ReplacePForWithKernelLaunchStub(ast.NodeTransformer):
                         ast.Constant(value=loop_name),
                         ast.Call(func=ast.Name(id="locals", ctx=ast.Load()), args=[], keywords=[]),
                         ast.Call(func=ast.Name(id="globals", ctx=ast.Load()), args=[], keywords=[]),
+                        ast.Dict(
+                            keys=[ast.Constant(value=x) for x in self.options.keys()],
+                            values=[ast.Constant(value=x) for x in self.options.values()],
+                        )
                     ],
                     keywords=[],
                 ),
@@ -73,5 +78,5 @@ class ReplacePForWithKernelLaunchStub(ast.NodeTransformer):
         return node
 
     
-def transform(node):
-    return ReplacePForWithKernelLaunchStub().visit(node)
+def transform(node, options):
+    return ReplacePForWithKernelLaunchStub(options).visit(node)

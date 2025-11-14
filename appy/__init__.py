@@ -12,9 +12,9 @@ from .frontend import replace_pfor_with_stub
 # Globals
 from .__version__ import __version__
 from . import dispatcher
-_options = None
 
-def _kernel_launch(loop_source, loop_name, scope, global_scope):
+
+def _kernel_launch(loop_source, loop_name, scope, global_scope, options):
     """
     Runtime stub invoked when a prange loop is encountered. The loop source 
     is compiled and dynamically executed.
@@ -33,8 +33,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
     used_names = at.get_used_names(ast.parse(loop_source))
     merged_scope = global_scope | scope
     val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
-
-    dispatcher.codegen(_options.get("backend"), loop_source, loop_name, val_map, _options)
+    dispatcher.codegen(options.get("backend"), loop_source, loop_name, val_map, options)
         
         # f = ns['kernel_appy']
         
@@ -49,7 +48,7 @@ def rewrite_loops(fn, **options):
     # 2. Apply transformation
     tree = at.hoist_shape_attr(tree)
     tree = at.remove_func_decorator(tree)
-    tree = replace_pfor_with_stub.transform(tree)
+    tree = replace_pfor_with_stub.transform(tree, options)
 
     newcode = ast.unparse(tree)
     print("new code:", newcode)
@@ -57,8 +56,7 @@ def rewrite_loops(fn, **options):
     code = compile(newcode, filename="<string>", mode="exec")
 
     # 4. Create a namespace for execution
-    namespace = {}
-    fn.__globals__["appy"] = importlib.import_module("appy")
+    namespace = {}    
     exec(code, fn.__globals__, namespace)
 
     # 5. Return the new function object
@@ -70,9 +68,6 @@ def set_default_options(options):
     options.setdefault("dry_run", False)
     options.setdefault("auto_transfer", True)
     options.setdefault("dump_code", False)
-
-    global _options
-    _options = options
 
 def jit(fn=None, **options):
     set_default_options(options)
