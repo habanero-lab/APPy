@@ -72,7 +72,7 @@ def set_default_options(options):
 def jit(fn=None, **options):
     set_default_options(options)
     if fn:
-        return rewrite_loops(fn)
+        return rewrite_loops(fn, **options)
     else:
         def jit_with_args(fn1):
             return rewrite_loops(fn1, **options)
