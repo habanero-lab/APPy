@@ -1,3 +1,4 @@
+import os
 import ast
 
 class AnalyzeStoredArrays(ast.NodeVisitor):
@@ -49,6 +50,10 @@ class InsertDataMovement(ast.NodeTransformer):
                 )
                 to_device_assigns.append(tc_assign)
 
+                target_device = 'cuda'
+                if os.getenv("TRITON_INTERPRET", "0") == "1":
+                    target_device = 'cpu'
+
                 to_device_assigns.append(ast.Assign(
                     targets=[ast.Name(id=f'__tg_{var}', ctx=ast.Store())],
                     value=ast.Call(
@@ -57,8 +62,8 @@ class InsertDataMovement(ast.NodeTransformer):
                             attr='to',
                             ctx=ast.Load()
                         ),
-                        args=[ast.Constant('cuda')],
-                        keywords=[],                        
+                        args=[ast.Constant(target_device)],
+                        keywords=[],
                     )   
                 ))
                 self.h2d_map[var] = f'__tg_{var}'
