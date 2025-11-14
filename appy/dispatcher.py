@@ -6,7 +6,10 @@ code_cache = {}
 def codegen(backend_name: str, loop_source, loop_name, val_map, options):
     cache_key = (backend_name, loop_source)
     if cache_key in code_cache:            
-        return code_cache[cache_key]
+        f = code_cache[cache_key]
+        args = list(val_map.values())
+        f(*args)
+        return
     
     tree = astc.parse(loop_source)
     # Do frontend trasformations
@@ -71,5 +74,4 @@ def codegen(backend_name: str, loop_source, loop_name, val_map, options):
         args = list(val_map.values())
         f(*args)
 
-    return f
         

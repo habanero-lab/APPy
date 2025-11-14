@@ -34,7 +34,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope):
     merged_scope = global_scope | scope
     val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
 
-    f = dispatcher.codegen(_options.get("backend"), loop_source, loop_name, val_map, _options)
+    dispatcher.codegen(_options.get("backend"), loop_source, loop_name, val_map, _options)
         
         # f = ns['kernel_appy']
         
