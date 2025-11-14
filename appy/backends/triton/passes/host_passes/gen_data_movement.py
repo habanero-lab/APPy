@@ -1,5 +1,6 @@
 import os
 import ast
+from ..utils import is_numpy_array, is_torch_cpu_tensor
 
 class AnalyzeStoredArrays(ast.NodeVisitor):
     def __init__(self):
@@ -19,16 +20,10 @@ class InsertDataMovement(ast.NodeTransformer):
         self.val_map = val_map
         self.h2d_map = h2d_map
 
-    def is_numpy_array(self, val):
-        return f'{type(val).__module__}.{type(val).__name__}' == 'numpy.ndarray'
-    
-    def is_torch_cpu_tensor(self, val):
-        return f'{type(val).__module__}.{type(val).__name__}' == 'torch.Tensor' and val.device.type == 'cpu'
-
     def visit_FunctionDef(self, node):
         to_device_assigns = []
         for var, val in self.val_map.items():            
-            if self.is_numpy_array(val) or self.is_torch_cpu_tensor(val):
+            if is_numpy_array(val) or is_torch_cpu_tensor(val):
                 # For each `var` insert two statements if is a numpy array:
                 # 1. `__tc_var = torch.from_numpy(var)`
                 # 2. `__tg_var = __tc_var.to('cuda')`
@@ -44,7 +39,7 @@ class InsertDataMovement(ast.NodeTransformer):
                         args=[ast.Name(id=var, ctx=ast.Load())],
                         keywords=[],                        
                     )
-                ) if self.is_numpy_array(val) else ast.Assign(
+                ) if is_numpy_array(val) else ast.Assign(
                     targets=[ast.Name(id=f'__tc_{var}', ctx=ast.Store())],
                     value=ast.Name(id=var, ctx=ast.Load())
                 )
@@ -75,7 +70,7 @@ class InsertDataMovement(ast.NodeTransformer):
             if var not in store_analyzer.stored_arrays:
                 continue
             
-            if self.is_numpy_array(val) or self.is_torch_cpu_tensor(val):
+            if is_numpy_array(val) or is_torch_cpu_tensor(val):
                 # Insert `__torch_gpu_var.copy_(__torch_cpu_var)` after the loop
                 to_host_assigns.append(
                     ast.Expr(
