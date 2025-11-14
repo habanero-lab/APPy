@@ -1,11 +1,15 @@
 import ast
 
-def create_new_func(name):
-    return ast.FunctionDef(
-        name=name,
+def create_new_func(loop_name, val_map):
+    '''
+    Create a new function which contains the host code. The name of the function
+    is simply the loop_name, and all variables in val_map become arguments.
+    '''
+    func = ast.FunctionDef(
+        name=loop_name,
         args=ast.arguments(
             posonlyargs=[],      # required in 3.8+
-            args=[],
+            args=[ast.arg(arg=val, annotation=None) for val in val_map],
             vararg=None,
             kwonlyargs=[],
             kw_defaults=[],
@@ -15,9 +19,7 @@ def create_new_func(name):
         body=[],
         decorator_list=[],
     )
-
-def set_func_params(func, val_map):
-    func.args.args = [ast.arg(arg=val, annotation=None) for val in val_map]
+    return func
 
 def add_triton_decorator(func: ast.FunctionDef):
     func.decorator_list.append(ast.Attribute(
@@ -31,8 +33,7 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     loop_name = metadata['loop_name']
 
     # Create function and set its parameters etc
-    func = create_new_func('_' + loop_name)
-    set_func_params(func, val_map)
+    func = create_new_func('_' + loop_name, val_map) 
     add_triton_decorator(func)
 
     # Add the replaced loop into the kernel function body, which will be transformed

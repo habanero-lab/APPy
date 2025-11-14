@@ -6,13 +6,11 @@ def create_new_func(loop_name, val_map):
     Create a new function which contains the host code. The name of the function
     is simply the loop_name, and all variables in val_map become arguments.
     '''
-    func_args = [ast.arg(arg=val, annotation=None) for val in val_map]
-
     func = ast.FunctionDef(
         name=loop_name,
         args=ast.arguments(
             posonlyargs=[],      # required in 3.8+
-            args=func_args,
+            args=[ast.arg(arg=val, annotation=None) for val in val_map],
             vararg=None,
             kwonlyargs=[],
             kw_defaults=[],
