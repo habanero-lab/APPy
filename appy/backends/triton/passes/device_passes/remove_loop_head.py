@@ -21,7 +21,7 @@ class InsertProgramID(ast.NodeTransformer):
         #prop = self.get_loop_property(node)
         prop = self.get_loop_pragma(node)
         _, _, step = node.iter.args
-        if 'parallel' in prop:
+        if 'parallel_for' in prop:
             assign = ast.Assign(
                 targets=[ast.Name(id=node.target.id, ctx=ast.Store())], 
                 value=ast.BinOp(
