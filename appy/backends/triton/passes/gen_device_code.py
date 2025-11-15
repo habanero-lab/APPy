@@ -1,4 +1,5 @@
 import ast
+from .utils import is_numpy_array, is_torch_tensor
 
 def create_new_func(loop_name, val_map):
     '''
@@ -20,6 +21,17 @@ def create_new_func(loop_name, val_map):
         decorator_list=[],
     )
     return func
+
+def add_stride_params(func, val_map):
+    extra_args = []
+    for var, val in val_map.items():
+        if is_numpy_array(val) or is_torch_tensor(val):
+            # Add a stride parameter for each dimension except the last one
+            # So basically only ndim >= 2 will have stride parameters
+            for d in range(len(val.shape) - 1):
+                extra_args.append(ast.arg(arg=f'{var}_stride_{d}', annotation=None))
+
+    func.args.args.extend(extra_args)
 
 def add_triton_decorator(func: ast.FunctionDef):
     func.decorator_list.append(ast.Attribute(
