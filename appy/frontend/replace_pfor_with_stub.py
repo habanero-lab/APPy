@@ -24,8 +24,6 @@ class ReplacePForWithKernelLaunchStub(ast.NodeTransformer):
         return node
 
     def visit_For(self, node):
-        self.generic_visit(node)
-
         # --- check for "prange" or "appy.prange"
         is_prange = (
             isinstance(node.iter, ast.Call)
@@ -74,7 +72,8 @@ class ReplacePForWithKernelLaunchStub(ast.NodeTransformer):
             ast.fix_missing_locations(new_call)
 
             return new_call
-
+        
+        self.generic_visit(node)
         return node
 
     
