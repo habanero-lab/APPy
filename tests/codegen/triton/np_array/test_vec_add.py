@@ -4,7 +4,8 @@ import appy
 @appy.jit(backend="triton", dump_code=True)
 def kernel_appy(a, b):
     c = np.empty_like(a)
-    for i in appy.prange(a.shape[0], simd=True):
+    #pragma parallel for simd
+    for i in range(a.shape[0]):
         c[i] = a[i] + b[i]
     return c
 
