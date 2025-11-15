@@ -16,9 +16,16 @@ class BlockLoop(ast.NodeTransformer):
 
         prop = {kw.arg: kw.value.value for kw in loop.iter.keywords}
         return prop
+    
+    def get_loop_pragma(self, node):
+        if hasattr(node, 'pragma'):
+            return node.pragma
+        else:
+            return {}
 
     def visit_For(self, node):
-        prop = self.get_loop_property(node)
+        #prop = self.get_loop_property(node)
+        prop = self.get_loop_pragma(node)
         if self.verbose:
             print(f'[Block Loop] Got pragma: {prop}')        
         
