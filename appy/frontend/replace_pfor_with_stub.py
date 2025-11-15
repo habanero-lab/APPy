@@ -18,7 +18,7 @@ class ReplacePForWithKernelLaunchStub(ast.NodeTransformer):
         self.pragma = None
 
     def visit_Comment(self, node):
-        if node.value.startswith("#pragma parallel for "):
+        if node.value.startswith("#pragma parallel for"):
             self.pragma = node.value
             return None  # remove the recorded pragma
         return node
