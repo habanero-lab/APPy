@@ -18,11 +18,11 @@ def kernel_loop_1(a, a_shape_0, b, c):
 
 @triton.jit
 def _kernel_loop_1(a, a_shape_0, b, c):
-    for __idx_i in range(0, a_shape_0, 256):
-        i = __idx_i + tl.arange(0, 256)
-        tl.store(
-            c + i,
-            tl.load(a + i, mask=__idx_i + tl.arange(0, 256) < a_shape_0)
-            + tl.load(b + i, mask=__idx_i + tl.arange(0, 256) < a_shape_0),
-            mask=__idx_i + tl.arange(0, 256) < a_shape_0,
-        )
+    __idx_i = tl.program_id(0) * 256
+    i = __idx_i + tl.arange(0, 256)
+    tl.store(
+        c + i,
+        tl.load(a + i, mask=__idx_i + tl.arange(0, 256) < a_shape_0)
+        + tl.load(b + i, mask=__idx_i + tl.arange(0, 256) < a_shape_0),
+        mask=__idx_i + tl.arange(0, 256) < a_shape_0,
+    )
