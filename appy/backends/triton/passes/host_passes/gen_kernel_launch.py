@@ -48,6 +48,8 @@ class GenKernelLaunch(ast.NodeTransformer):
             else ast.Name(id=var, ctx=ast.Load())
             for var in self.val_map
         ]
+        self.add_stride_args(arg_nodes, self.val_map)
+        
         # APPy's convention for kernel name
         kernel_name = '_' + self.loop_name
         assigns.append(ast.Expr(

@@ -46,6 +46,8 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
 
     # Create function and set its parameters etc
     func = create_new_func('_' + loop_name, val_map) 
+
+    add_stride_params(func, val_map)
     add_triton_decorator(func)
 
     # Add the replaced loop into the kernel function body, which will be transformed
