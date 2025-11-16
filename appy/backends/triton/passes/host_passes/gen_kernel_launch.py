@@ -1,11 +1,20 @@
 import ast
+from ..utils import is_numpy_array, is_torch_tensor
 
 class GenKernelLaunch(ast.NodeTransformer):
     def __init__(self, h2d_map, metadata):
         self.val_map = metadata['val_map']
         self.loop_name = metadata['loop_name']
         self.h2d_map = h2d_map
-        self.replaced_loop = None    
+        self.replaced_loop = None   
+
+    def add_stride_args(self, args, val_map):
+        for var, val in val_map.items():
+            if is_numpy_array(val) or is_torch_tensor(val):
+                # Add a stride parameter for each dimension except the last one
+                # So basically only ndim >= 2 will have stride parameters
+                for d in range(len(val.shape) - 1): 
+                    args.append(ast.arg(arg=f'{var}.stride({d})', annotation=None))
 
     def visit_For(self, node):
         iter_start, iter_end, iter_step = node.iter.args

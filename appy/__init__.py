@@ -3,7 +3,6 @@ import inspect
 import textwrap
 import ast
 import ast_comments as astc
-import importlib
 
 # AST passes
 import ast_transforms as at
