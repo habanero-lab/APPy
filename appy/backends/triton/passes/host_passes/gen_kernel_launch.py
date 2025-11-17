@@ -14,7 +14,7 @@ class GenKernelLaunch(ast.NodeTransformer):
                 # Add a stride parameter for each dimension except the last one
                 # So basically only ndim >= 2 will have stride parameters
                 for d in range(len(val.shape) - 1): 
-                    args.append(ast.arg(arg=f'{var}.stride({d})', annotation=None))
+                    args.append(ast.arg(arg=f'{self.h2d_map[var]}.stride({d})', annotation=None))
 
     def visit_For(self, node):
         iter_start, iter_end, iter_step = node.iter.args
