@@ -14,6 +14,7 @@ class AttachPragma(astc.NodeVisitor):
         if self.pragma:
             node.pragma = parse_pragma(self.pragma)
             self.pragma = None
+        self.generic_visit(node)
         return node
     
     def visit_Assign(self, node):
