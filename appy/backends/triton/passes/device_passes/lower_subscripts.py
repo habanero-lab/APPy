@@ -1,5 +1,29 @@
 import ast
 
+class RewriteMiltiDimensionalSubscripts(ast.NodeTransformer):
+    '''
+    Rewrites multi-demensional subscripts to single-dimensional subscripts, e.g.
+        A[i,j] is rewritten to A[i*A_stride_0 + j]
+        A[i,j,k] is rewritten to A[i*A_stride_0 + j*A_stride_1 + k]
+    '''
+    def visit_Subscript(self, node):
+        self.generic_visit(node)
+        if isinstance(node.slice, ast.Tuple):
+            elts = node.slice.elts
+            new_slice = elts[-1]
+            for i in range(len(elts)-1):
+                new_slice = ast.BinOp(
+                    op=ast.Add(),
+                    left=ast.BinOp(
+                        op=ast.Mult(),
+                        left=elts[i],
+                        right=ast.Name(id=f'{node.value.id}_stride_{i}', ctx=ast.Load()),
+                    ),
+                    right=new_slice
+                )
+            node.slice = new_slice
+        return node
+
 class LowerSubscripts(ast.NodeTransformer):
     def __init__(self):
         self.assign_value = None
@@ -57,4 +81,5 @@ def transform(node):
     '''
     This pass transforms array subscripts to calls to tl.load or tl.store.
     '''
+    node = RewriteMiltiDimensionalSubscripts().visit(node)
     return LowerSubscripts().visit(node)
