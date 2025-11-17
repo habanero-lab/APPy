@@ -68,6 +68,7 @@ def set_default_options(options):
     options.setdefault("dry_run", False)
     options.setdefault("auto_transfer", True)
     options.setdefault("dump_code", False)
+    options.setdefault("dump_code_to_file", None)
 
 def jit(fn=None, **options):
     set_default_options(options)
