@@ -41,7 +41,7 @@ setup(
             "pytest",
             "pytest-regressions",
             "black",
-            "numpy"
+            "numpy",
             "scipy"
         ],
     },
