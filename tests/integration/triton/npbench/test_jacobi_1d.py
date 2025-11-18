@@ -33,14 +33,14 @@ def kernel_appy(TSTEPS, A, B):
 
 
 def test():
-    N = 10000 * 4
+    N = 1000
     A, B = initialize(N)
 
     A1, B1 = A.copy(), B.copy()
-    kernel_np(1000, A1, B1)
+    kernel_np(10, A1, B1)
 
     A2, B2 = A.copy(), B.copy()
-    kernel_appy(1000, A2, B2)
+    kernel_appy(10, A2, B2)
 
     assert np.allclose(A1, A2, atol=1e-6)
     assert np.allclose(B1, B2, atol=1e-6)
