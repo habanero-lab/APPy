@@ -22,12 +22,14 @@ def codegen(backend_name: str, loop_source, loop_name, val_map, options):
         from .frontend import rewrite_range
         from .frontend import rewrite_aug_assign
         from .frontend import attach_pragma
+        from .frontend import reduction_detection
 
         sanity_check.visit(tree)
         tree = rewrite_aug_assign.transform(tree)
         #tree = rewrite_prange.transform(tree)
         tree = rewrite_range.transform(tree)
         attach_pragma.visit(tree)
+        tree = reduction_detection.transform(tree)
 
         # astc.fix_missing_locations(tree)
         # print("New code:", astc.unparse(tree))
