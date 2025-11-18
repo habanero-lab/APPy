@@ -20,22 +20,26 @@ class InsertProgramID(ast.NodeTransformer):
     def visit_For(self, node):
         #prop = self.get_loop_property(node)
         prop = self.get_loop_pragma(node)
-        _, _, step = node.iter.args
+        start, end, step = node.iter.args
         if 'parallel_for' in prop:
             assign = ast.Assign(
                 targets=[ast.Name(id=node.target.id, ctx=ast.Store())], 
                 value=ast.BinOp(
-                    op=ast.Mult(),
-                    left=ast.Call(
-                        func=ast.Attribute(
-                            value=ast.Name(id="tl", ctx=ast.Load()),
-                            attr="program_id",
-                            ctx=ast.Load()
+                    op=ast.Add(),
+                    left=start,
+                    right=ast.BinOp(
+                        op=ast.Mult(),
+                        left=ast.Call(
+                            func=ast.Attribute(
+                                value=ast.Name(id="tl", ctx=ast.Load()),
+                                attr="program_id",
+                                ctx=ast.Load()
+                            ),
+                            args=[ast.Constant(0)],
+                            keywords=[]
                         ),
-                        args=[ast.Constant(0)],
-                        keywords=[]
+                        right=step
                     ),
-                    right=step
                 )
             )
             node.body.insert(0, assign)
