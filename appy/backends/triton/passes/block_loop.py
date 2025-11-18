@@ -1,5 +1,64 @@
 import ast
 
+class RewriteReductionAssign(ast.NodeTransformer):
+    def __init__(self, reductions):        
+        self.reductions = reductions
+
+    def rewrite_reduction_value(self, reduction_op, val):
+        if reduction_op == '+':
+            return ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id='tl', ctx=ast.Load()),
+                    attr='sum',
+                    ctx=ast.Load()
+                ),
+                args=[val],
+                keywords=[]
+            )
+        elif reduction_op == '*':
+            return ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id='tl', ctx=ast.Load()),
+                    attr='prod',
+                    ctx=ast.Load()
+                ),
+                args=[val],
+                keywords=[]
+            )
+        elif reduction_op == 'max':
+            return ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id='tl', ctx=ast.Load()),
+                    attr='max',
+                    ctx=ast.Load()
+                ),
+                args=[val],
+                keywords=[]
+            )
+        elif reduction_op == 'min':
+            return ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id='tl', ctx=ast.Load()),
+                    attr='min',
+                    ctx=ast.Load()
+                ),
+                args=[val],
+                keywords=[]
+            )
+        else:
+            raise ValueError(f"Unsupported reduction operator: {reduction_op}")
+        
+    def visit_Assign(self, node):
+        target = node.targets[0]
+        if isinstance(target, ast.Name) and target.id in self.reductions and isinstance(node.value, ast.BinOp):
+            value_left = node.value.left
+            if isinstance(value_left, ast.Name) and value_left.id == target.id:
+                reduction_op = self.reductions[target.id]
+                node.value.right = self.rewrite_reduction_value(reduction_op, node.value.right)
+
+        return node
+    
+
 class BlockLoop(ast.NodeTransformer):
     def __init__(self):        
         self.verbose = 1
@@ -22,6 +81,17 @@ class BlockLoop(ast.NodeTransformer):
             return node.pragma
         else:
             return {}
+        
+    def rewrite_reduction_value(self, reductions, node):        
+        reduction_var_map = {}
+        for reduction in reductions:
+            op, var = reduction.split(':')
+            assert var not in reduction_var_map, f"Duplicate reduction variable: {var}"
+            reduction_var_map[var] = op
+
+        visitor = RewriteReductionAssign(reduction_var_map)
+        node = visitor.visit(node)
+        return node
 
     def visit_For(self, node):
         #prop = self.get_loop_property(node)
@@ -55,6 +125,10 @@ class BlockLoop(ast.NodeTransformer):
 
             # Set the loop index to the new index
             node.target.id = new_idx
+
+            # Rewrite reduction value if reduction is present
+            if 'reduction' in prop:
+                self.rewrite_reduction_value(prop['reduction'].split(','), node)
 
         self.generic_visit(node)
         return node
