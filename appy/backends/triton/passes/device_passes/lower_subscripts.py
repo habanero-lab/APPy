@@ -59,7 +59,9 @@ class LowerSubscripts(ast.NodeTransformer):
                     attr='load'
                 ),
                 args=[addr],
-                keywords=[ast.keyword(arg='mask', value=mask)]
+                keywords=[ast.keyword(arg='mask', value=mask), ast.keyword(arg='other', value=ast.Constant(value=0.0))] \
+                    if hasattr(node, 'mask') else []
+                    
             )
         elif isinstance(node.ctx, ast.Store):
             assert self.assign_value is not None
