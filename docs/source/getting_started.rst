@@ -124,3 +124,29 @@ APPy supports both a high-level and a low-level programming interface.
 The high-level interface is easy to use - parallelizing a Python loop on GPUs 
 is as simple as replacing ``range`` with ``appy.prange`` while
 the low-level interface is more flexible and allows for more control over the generated code via pragmas.
+
+
+Known Limitations/Bugs
+----------------------
+As of the current new implementation, automatic reduction supports only scalar variables, not array variables. For example,
+
+.. code-block:: python
+
+    @jit
+    def sum_vector(a, N):
+        sum = 0
+        for i in prange(N):
+            sum += a[i]
+        return sum
+
+is fine, and the compiler will recognize sum as a reduction variable. However, for loops like
+
+.. code-block:: python
+
+    #pragma parallel for
+    for i in range(M):
+        #pragma simd
+        for j in range(N):
+            y[i] += alpha * A[i, j] * x[j]
+
+The compiler won't be able to reliably recognize ``y[i]`` as a reduction pattern.
