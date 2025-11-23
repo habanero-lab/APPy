@@ -29,7 +29,7 @@ class GetAssignReductionOps(ast.NodeVisitor):
                         return op
                     elif isinstance(value.right, ast.Name) and target.id == value.right.id:
                         return op
-            elif isinstance(value, ast.Call):
+            elif isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
                 if value.func.id == 'max' or value.func.id == 'min':
                     op = value.func.id
                     if isinstance(value.args[0], ast.Name) and target.id == value.args[0].id:
