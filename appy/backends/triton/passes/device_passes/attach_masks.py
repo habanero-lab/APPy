@@ -28,6 +28,18 @@ class MaskPropagation(ast.NodeTransformer):
         if hasattr(node.operand, 'mask'):
             node.mask = node.operand.mask
         return node
+    
+    def visit_Compare(self, node: ast.Compare):
+        self.generic_visit(node)
+        # Get the masks of the elements
+        masks = [elt.mask for elt in node.comparators if hasattr(elt, 'mask')]
+        # Check if the masks are all the same
+        if masks:
+            if len(set(masks)) == 1:
+                node.mask = masks[0]
+            else:
+                raise NotImplementedError("Comparisons have different masks, this is not yet supported")
+        return node
 
     def visit_Subscript(self, node: ast.Subscript):
         self.generic_visit(node)
