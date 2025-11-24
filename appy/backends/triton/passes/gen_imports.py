@@ -15,7 +15,8 @@ class AddTritonImports(ast.NodeTransformer):
             ast.Import(names=[ast.alias(name='triton.language', asname='tl')]),
             ast.ImportFrom(
                 module='triton.language.extra',
-                names=[ast.alias(name='libdevice', asname=None)]
+                names=[ast.alias(name='libdevice', asname=None)],
+                level=0
             )
         ]
         node.body = import_statements + node.body
