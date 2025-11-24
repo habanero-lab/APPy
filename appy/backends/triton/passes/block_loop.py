@@ -63,7 +63,7 @@ class BlockLoop(ast.NodeTransformer):
     def __init__(self):        
         self.verbose = 1
 
-    def get_block_size(self):
+    def get_block_size(self, pragma):
         return 256  # Use a fixed block size for now
     
     def get_loop_property(self, loop: ast.For):
@@ -101,7 +101,7 @@ class BlockLoop(ast.NodeTransformer):
         
         if 'simd' in prop:
             iter_start, iter_end, iter_step = node.iter.args
-            block_size = self.get_block_size()
+            block_size = self.get_block_size(prop)
             new_idx = f'__idx_{node.target.id}'
             assign = ast.Assign(
                 targets=[ast.Name(id=node.target.id, ctx=ast.Store())], 

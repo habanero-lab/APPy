@@ -40,6 +40,16 @@ class MaskPropagation(ast.NodeTransformer):
             else:
                 raise NotImplementedError("Comparisons have different masks, this is not yet supported")
         return node
+    
+    def visit_IfExp(self, node: ast.IfExp):
+        self.generic_visit(node)
+        masks = [elt.mask for elt in [node.test, node.body, node.orelse] if hasattr(elt, 'mask')]
+        if masks:
+            if len(set(masks)) == 1:
+                node.mask = masks[0]
+            else:
+                raise NotImplementedError("If expressions have different masks, this is not yet supported")
+        return node
 
     def visit_Subscript(self, node: ast.Subscript):
         self.generic_visit(node)
