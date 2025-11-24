@@ -30,10 +30,8 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope, options):
     global_scope : dict 
         The global variables of the caller.
     """
-    used_names = at.get_used_names(ast.parse(loop_source))
-    merged_scope = global_scope | scope
-    val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
-    dispatcher.codegen(options.get("backend"), loop_source, loop_name, val_map, options)
+    
+    dispatcher.codegen(options.get("backend"), loop_source, loop_name, scope, global_scope, options)
         
         # f = ns['kernel_appy']
         

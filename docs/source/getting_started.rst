@@ -87,9 +87,11 @@ On scalar integer or float values:
 
 On arrays of integers or floats:
 
-    Array indexing (store or load)
+- Array indexing (store or load)
 
-Structurally, control flows except ``break`` and ``return`` can be used.
+Control flows:
+
+- Ternary operators
 
 In general, APPy's usage scenarios are similar to `numba.prange <https://numba.readthedocs.io/en/stable/user/parallel.html>`_ which parallelizes Python loops on CPUs.
 

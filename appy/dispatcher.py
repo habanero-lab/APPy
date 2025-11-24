@@ -1,10 +1,15 @@
 import os
 import ast_comments as astc
+import ast_transforms as at
 from .utils import load_module_from_str, pretty_dump
 
 code_cache = {}
 
-def codegen(backend_name: str, loop_source, loop_name, val_map, options):
+def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope, options):
+    merged_scope = global_scope | local_scope
+    used_names = at.get_used_names(astc.parse(loop_source))
+    val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
+
     types = tuple([type(v) for v in val_map.values()])
     backend_name_key = backend_name
     if backend_name == "triton" and os.environ.get("TRITON_INTERPRET") == "1":
@@ -67,13 +72,11 @@ def codegen(backend_name: str, loop_source, loop_name, val_map, options):
 
     if options.get("dry_run"):
         # In dry_run mode, just execute the loop source in the caller's scope
-        try:
-            import importlib
-            code_obj = compile(loop_source, filename=f"<{loop_name}>", mode="exec") 
-            val_map["appy"] = importlib.import_module("appy")  
-            exec(code_obj, val_map)
+        try: 
+            code_obj = compile(loop_source, filename=f"<{loop_name}>", mode="exec")             
+            exec(code_obj, local_scope, global_scope)
         except Exception as e:
-            raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")
+            raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")        
         return
 
     args = list(val_map.values())
