@@ -62,6 +62,7 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     from .device_passes import lower_constants
     from .device_passes import rewrite_np_calls
     from .device_passes import apply_mask_to_reduction
+    from .device_passes import rewrite_ternary
 
     func = remove_loop_head.transform(func)
     
@@ -76,4 +77,5 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     func = lower_subscripts.transform(func)
     func = lower_constants.transform(func)
     func = rewrite_np_calls.transform(func)
+    func = rewrite_ternary.transform(func)
     return tree
