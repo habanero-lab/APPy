@@ -29,7 +29,8 @@ def kernel_appy(path):
         for i in range(path.shape[0]):
             #pragma simd
             for j in range(path.shape[1]):
-                path[i, j] = np.minimum(path[i, j], path[i, k] + path[k, j])
+                #path[i, j] = np.minimum(path[i, j], path[i, k] + path[k, j])
+                path[i, j] = min(path[i, j], path[i, k] + path[k, j])
     return path
 
 
