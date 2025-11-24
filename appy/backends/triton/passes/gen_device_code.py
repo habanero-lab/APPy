@@ -61,10 +61,12 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     from .device_passes import lower_subscripts
     from .device_passes import lower_constants
     from .device_passes import rewrite_np_calls
+    from .device_passes import apply_mask_to_reduction
 
     func = remove_loop_head.transform(func)
     
     attach_masks.visit(func)
+    func = apply_mask_to_reduction.transform(func)
     func = rewrite_vidx.transform(func)
 
     # ast.fix_missing_locations(tree)

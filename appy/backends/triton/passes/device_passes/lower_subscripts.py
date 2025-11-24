@@ -59,7 +59,7 @@ class LowerSubscripts(ast.NodeTransformer):
                     attr='load'
                 ),
                 args=[addr],
-                keywords=[ast.keyword(arg='mask', value=mask), ast.keyword(arg='other', value=ast.Constant(value=0.0))] \
+                keywords=[ast.keyword(arg='mask', value=mask)] \
                     if hasattr(node, 'mask') else []
                     
             )

@@ -150,3 +150,7 @@ is fine, and the compiler will recognize sum as a reduction variable. However, f
             y[i] += alpha * A[i, j] * x[j]
 
 The compiler won't be able to reliably recognize ``y[i]`` as a reduction pattern.
+
+
+Each backend also has some backend-specific limitations. For the "triton" backend, using regular control flows
+inside a ``#pragma simd`` loop is not supported. Only ternary expressions can be used.
