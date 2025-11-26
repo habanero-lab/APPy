@@ -68,7 +68,6 @@ def rewrite_loops(fn, **options):
 def set_default_options(options):
     options.setdefault("backend", "triton")
     options.setdefault("dry_run", False)
-    options.setdefault("auto_transfer", True)
     options.setdefault("dump_code", False)
     options.setdefault("dump_code_to_file", None)
 
