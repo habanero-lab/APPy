@@ -8,6 +8,7 @@ import ast_comments as astc
 import ast_transforms as at
 from .frontend import replace_pfor_with_stub
 from .frontend import hoist_shape_attr
+from .frontend import process_shared
 
 # Globals
 from .__version__ import __version__
@@ -45,6 +46,7 @@ def rewrite_loops(fn, **options):
 
     # 2. Apply transformation
     tree = hoist_shape_attr.transform(tree)
+    tree = process_shared.transform(tree)
     tree = at.remove_func_decorator(tree)
     tree = replace_pfor_with_stub.transform(tree, options)
 
@@ -54,7 +56,9 @@ def rewrite_loops(fn, **options):
     code = compile(newcode, filename="<string>", mode="exec")
 
     # 4. Create a namespace for execution
-    namespace = {}    
+    namespace = {}
+    import numpy
+    fn.__globals__["numpy"] = numpy
     exec(code, fn.__globals__, namespace)
 
     # 5. Return the new function object

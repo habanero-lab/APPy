@@ -4,7 +4,7 @@ import ast_comments as astc
 def codegen(tree, loop_name, val_map, options):
     '''
     Returns a dynamically generated function from the loop source.
-    '''   
+    '''
     from .passes import block_loop    
     tree = block_loop.transform(tree)
     
