@@ -9,6 +9,12 @@ A statement is determined to be a reduction if
 
 import ast
 
+def is_name_or_constant_indexing(node):
+    return isinstance(node, ast.Name) or isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant)
+
+def to_str(node):
+    return ast.unparse(node)
+
 
 class GetAssignReductionOps(ast.NodeVisitor):
     def __init__(self):
@@ -21,29 +27,29 @@ class GetAssignReductionOps(ast.NodeVisitor):
         assert isinstance(node, ast.Assign)
         target = node.targets[0]
         value = node.value
-        if isinstance(target, ast.Name):
+        if is_name_or_constant_indexing(target):
             if isinstance(value, ast.BinOp):
                 if isinstance(value.op, ast.Add) or isinstance(value.op, ast.Mult):
                     op = '+' if isinstance(value.op, ast.Add) else '*'
-                    if isinstance(value.left, ast.Name) and target.id == value.left.id:
+                    if is_name_or_constant_indexing(value.left) and to_str(target) == to_str(value.left):
                         return op
-                    elif isinstance(value.right, ast.Name) and target.id == value.right.id:
+                    elif is_name_or_constant_indexing(value.right) and to_str(target) == to_str(value.right):
                         return op
             elif isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
                 if value.func.id == 'max' or value.func.id == 'min':
                     op = value.func.id
-                    if isinstance(value.args[0], ast.Name) and target.id == value.args[0].id:
+                    if is_name_or_constant_indexing(value.args[0]) and to_str(target) == to_str(value.args[0]):
                         return op
-                    elif isinstance(value.args[1], ast.Name) and target.id == value.args[1].id:
+                    elif is_name_or_constant_indexing(value.args[1]) and to_str(target) == to_str(value.args[1]):
                         return op
 
         return None
 
     def visit_Assign(self, node):
         target = node.targets[0]
-        if isinstance(target, ast.Name):
+        if is_name_or_constant_indexing(target):
             op = self.get_reduction_op(node)
-            self.reduction_ops.setdefault(target.id, set()).add(op)
+            self.reduction_ops.setdefault(to_str(target), set()).add(op)
         return node
 
 
