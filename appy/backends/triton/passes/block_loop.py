@@ -1,5 +1,12 @@
 import ast
 
+def is_name_or_constant_indexing(node):
+    return isinstance(node, ast.Name) or isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant)
+
+def to_str(node):
+    return ast.unparse(node)
+
+
 class RewriteReductionAssign(ast.NodeTransformer):
     def __init__(self, reductions):        
         self.reductions = reductions
@@ -50,10 +57,10 @@ class RewriteReductionAssign(ast.NodeTransformer):
         
     def visit_Assign(self, node):
         target = node.targets[0]
-        if isinstance(target, ast.Name) and target.id in self.reductions and isinstance(node.value, ast.BinOp):
+        if to_str(target) in self.reductions and isinstance(node.value, ast.BinOp):
             value_left = node.value.left
-            if isinstance(value_left, ast.Name) and value_left.id == target.id:
-                reduction_op = self.reductions[target.id]
+            if to_str(value_left) == to_str(target):
+                reduction_op = self.reductions[to_str(target)]
                 node.value.right = self.rewrite_reduction_value(reduction_op, node.value.right)
 
         return node
