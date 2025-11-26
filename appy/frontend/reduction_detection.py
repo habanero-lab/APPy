@@ -60,14 +60,20 @@ class MarkReductionStmts(ast.NodeTransformer):
 
     def visit_Assign(self, node):
         target = node.targets[0]
-        if is_name_or_constant_indexing(target):
-            if to_str(target) in self.reduction_ops and len(self.reduction_ops[to_str(target)]) == 1:
-                reduce_op = next(iter(self.reduction_ops[to_str(target)]))
-                if reduce_op is not None:
-                    self.reduction_vars[to_str(target)] = reduce_op
-                    node.reduce = reduce_op
-        return node
 
+        if not is_name_or_constant_indexing(target):
+            return node
+
+        key = to_str(target)
+        ops = self.reduction_ops.get(key, set())
+
+        if len(ops) == 1:
+            reduce_op = next(iter(ops))
+            if reduce_op is not None:
+                self.reduction_vars[key] = reduce_op
+                node.reduce = reduce_op
+
+        return node
 
 class MarkReductionStmtsInLoops(ast.NodeTransformer):
     def visit_For(self, node):
@@ -97,7 +103,7 @@ class MarkReductionStmtsInLoops(ast.NodeTransformer):
                         entries.append(entry)
 
                 pragma['reduction'] = ','.join(entries)
-            print("update pragma to", pragma)
+            print("[Reduction Detection] update pragma to", pragma)
         return node
 
 def transform(tree):
