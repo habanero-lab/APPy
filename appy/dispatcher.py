@@ -26,10 +26,12 @@ def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope
         #from .frontend import rewrite_prange
         from .frontend import rewrite_range
         from .frontend import rewrite_aug_assign
+        from .frontend import rewrite_tuple_assign
         from .frontend import attach_pragma
         from .frontend import reduction_detection
 
         sanity_check.visit(tree)
+        tree = rewrite_tuple_assign.transform(tree)
         tree = rewrite_aug_assign.transform(tree)
         #tree = rewrite_prange.transform(tree)
         tree = rewrite_range.transform(tree)
