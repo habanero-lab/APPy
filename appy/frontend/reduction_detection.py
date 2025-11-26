@@ -60,19 +60,16 @@ class MarkReductionStmts(ast.NodeTransformer):
 
     def visit_Assign(self, node):
         target = node.targets[0]
-
         if not is_name_or_constant_indexing(target):
             return node
 
         key = to_str(target)
         ops = self.reduction_ops.get(key, set())
-
         if len(ops) == 1:
             reduce_op = next(iter(ops))
             if reduce_op is not None:
                 self.reduction_vars[key] = reduce_op
                 node.reduce = reduce_op
-
         return node
 
 class MarkReductionStmtsInLoops(ast.NodeTransformer):
