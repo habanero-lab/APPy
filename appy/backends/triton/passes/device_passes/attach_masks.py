@@ -1,5 +1,6 @@
 import ast
 from ast import unparse
+from . import tl_libdevice as libdevice
 
 class MaskPropagation(ast.NodeTransformer):
     def __init__(self):
@@ -81,6 +82,14 @@ class MaskPropagation(ast.NodeTransformer):
         if isinstance(node.func, ast.Attribute) and node.func.attr == 'vidx':
             args = node.args
             node.mask = f'{unparse(args[0])} + tl.arange(0, {unparse(args[1])}) < {unparse(args[2])}'
+        elif isinstance(node.func, ast.Attribute) and hasattr(libdevice, node.func.attr):
+            # Get mask from the arguments
+            masks = [arg.mask for arg in node.args if hasattr(arg, 'mask')]
+            if masks:
+                if len(set(masks)) == 1:
+                    node.mask = masks[0]
+                else:
+                    assert False, "Math function arguments should not have different masks."       
             
         # Call `appy.where` has a special mask to attach. The first argument is a condition,
         # and if any of the other two arguments are array loads, they need to have an extra 
