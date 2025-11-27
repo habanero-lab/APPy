@@ -5,7 +5,7 @@ from benchmark_utils import allclose, bench
 @appy.jit(dump_code=True)  # Comment this line to run the function in the Python interpter (debug mode)
 def kernel_appy(a):
     b = 0.0    
-    #pragma parallel for simd
+    #pragma parallel for simd shared(b)
     for i in range(a.shape[0]): 
         b += a[i]
     return b
