@@ -64,9 +64,8 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     from .device_passes import apply_mask_to_reduction
     from .device_passes import rewrite_ternary
 
-    func = remove_loop_head.transform(func)
-    
     attach_masks.visit(func)
+    func = remove_loop_head.transform(func)
     func = apply_mask_to_reduction.transform(func)
     func = rewrite_vidx.transform(func)
 
