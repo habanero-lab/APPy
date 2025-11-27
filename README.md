@@ -14,11 +14,20 @@ News: A web-based version of APPy (https://tongzhou80.github.io/appy-web/index.h
 
 # Install
 
+APPy tries to keep dependences minimal, to install the minimal version of APPy which only includes the code generator itself, run:
+
 ```bash
 pip install -e .
 ```
 
-Note that due to APPy generates [Triton](https://github.com/openai/triton/tree/main) code under the hood, it requires a Linux platform with an NVIDIA GPU (Compute Capability 7.0+).
+In addition, if you want to be able to execute the generated GPU code, run:
+
+```bash
+pip install -e .[triton]
+```
+
+APPy currently has a [Triton](https://github.com/openai/triton/tree/main) backend, which requires `torch` and `triton` installed and a Linux platform with an NVIDIA GPU (Compute Capability 7.0+).
+
 
 # Quick Start
 
@@ -28,10 +37,8 @@ python examples/01-vec_add.py
 
 # Loop-Oriented programming interface
 ## Parallelization
-A loop can be parallelized by being annotated with `#pragma parallel for`, where the end of the loop acts as a synchronization point. Each loop iteration is said to be assigned to a *worker*, and the number of workers launched is always equal to the number of loop iterations, unless directive `#pragma sequential for` is used, which launches only one worker that executes all iterations, e.g. due to loop-carried dependences. Each worker is scheduled to a single vector processor, and executes its instructions sequentially. 
+A loop can be parallelized by being annotated with `#pragma parallel for`, where the end of the loop acts as a synchronization point. Each loop iteration is said to be assigned to a *worker*, and the number of workers launched is always equal to the number of loop iterations. Each worker is scheduled to a single vector processor, and executes its instructions sequentially. 
 A parallel for-loop must be a for-range loop, and the number of loop iterations must be known at kernel launch time, i.e. no dynamic parallelism.
-
-Tensors within the parallel region must already be a GPU tensor (data reside in the GPU memory), and currently `cupy` and `pytorch` are supported. Such libraries also provide APIs to create a GPU tensor from a NumPy array.
 
 A vector addition example is shown below. Parallelize a for loop with APPy via `#pragma parallel for`. `#pragma ...` is a regular comment in Python, but will be parsed and treated as a directive by APPy.
 
@@ -52,7 +59,7 @@ A key design of APPy is that it assumes a simple abstract machine model, i.e. a 
 
 
 ## Vectorization
-Although `#pragma parallel for` parallelizes a loop, maximum parallelism is achieved when the loop body is also vectorized, when applicable. APPy provides two high-level ways to achieve vectorization: 1) use tensor/array expressions (compiler generates a loop automatically); 2) annotate a loop with the `#pragma simd`, which divides the loop into smaller chunks.
+Although `#pragma parallel for` parallelizes a loop, maximum parallelism is achieved when the loop body is also vectorized, when applicable. APPy provides two high-level ways to achieve vectorization: 1) use tensor/array expressions (compiler generates a loop automatically, though this feature is not included as of v0.3.0); 2) annotate a loop with the `#pragma simd`, which divides the loop into smaller chunks.
 
 Vector addition example.
 
@@ -80,44 +87,42 @@ def spmv(A_row, A_col, A_val, x, y, N):
 
 A loop that is not applicable for parallelization may be vectorizable. One example is the `j` loop in the SpMV example, where it has dynamic loop bounds.
 
-## Data Sharing
-APPy does not require the programmer to manually specify whether each variable is private or shared. Instead, it enforces syntactical difference between array and non-array variables, and use simple rules to infer the scope of the variables. Array variables are always followed by a square bracket, such as `A[vi]`, and the rest are non-array variables. Array variables inside the parallel region are always considered shared (and their data reside in the global memory of the GPU). Non-array variables defined within the parallel region are considered private to each worker. Read-Only non-array variables are shared. APPy prohibits multiple reaching definitions from both inside and outside the parallel region of a non-array variable, which prevents writing into a shared non-array variable. To achieve such effects, the idiom is make the variable an array of size 1 (thus it has a global scope). 
+## Data Scope 
+Array variables must already be defined before executing the parallel region, while their data can either reside in CPU memory or GPU memory. For CPU arrays, the compiler will automatically move data to the device before launching the kernel and move data back to the host after the kernel finishes. For GPU arrays, the compiler does not do move them, e.g. they stay where they are throughout the kernel. 
+
+Scalar variables may be defined either outside the parallel region, or inside the parallel region. If defined outside and used inside, the variable has an "argument passing by value" semantic, where it gets the initial value from outside when the kernel is launched but any updates are only visible inside the kernel. To make the updates visible outside the kernel, the variable must be declared in the `shared` clause, which tells the compiler to copy the variable to GPU memory before the kernel is launched and copy it back after the kernel finishes. Scalar variables defined inside parallel region are considered local to each worker, e.g. can be safely parallelized.
 
 ## Parallel reduction
-The only synchronization across workers (loop iterations) supported is atomically updating a memory location. This can be achieved by either using "assembly-level" programming of the abstract machine via instruction `appy.atomic_<op>`, or by annotating a statement with compiler directive `#pragma atomic`. Note that within a worker, no synchronization is necessary even if it works on multiple elements.
-
 A parallel reduction example. 
 ```python
 @appy.jit
-def vector_sum(A, s, N):
-    #pragma parallel for simd
-    for i in range(N):
-        #pragma atomic
-        s[0] += A[i]
+def vector_sum(A):
+    s = 0.0
+    #pragma parallel for simd shared(s)
+    for i in range(A.shape[0]):
+        s += A[i]
 ```
+
+The compiler automatically recognizes the parallel reduction pattern, and generates correct code for it, e.g. using atomic operations. Clause `shared(s)` makes the update to `s` inside the kernel visible outside the kernel, which essentially treats `s` as a single-element array.
 
 # Tensor-Oriented programming interface 
-In addition to loops, APPy also allows users to use tensor/array expressions and the tensors can have arbitrary size. This often results in more natural and succinct program compared to the loop oriented version. 
+Supporting tensor expressions is future work! Currently only explicit loops are supported as of v0.3.0.
 
-```python
-@appy.jit(auto_simd=True)
-def gesummv(alpha, beta, A, B, x, y, tmp, M, N):
-    #pragma :M=>parallel :N=>reduce(sum)
-    y[:M] = mv(alpha * A[:M, :N], x[:N])
-    #pragma :M=>parallel :N=>reduce(sum)
-    tmp[:M] = mv(beta * B[:M, :N], x[:N])
-    #pragma :M=>parallel
-    y[:M] += tmp[:M]
+# Supported operations
+APPy supports the following kinds of operations inside the parallel region:
 
-@appy.jit(auto_simd=True)
-def jacobi_2d_one_iteration(A, B, M, N):
-    #pragma 1:M-1=>parallel 1:N-1=>parallel
-    B[1:M-1, 1:N-1] = 0.2 * (A[1:M-1, 1:N-1] + A[1:M-1, :N-2] + 
-               A[1:M-1, 2:N] + A[2:M, 1:N-1] + A[0:M-2, 1:N-1])
-    #pragma 1:M-1=>parallel 1:N-1=>parallel
-    A[1:M-1, 1:N-1] = 0.2 * (B[1:M-1, 1:N-1] + B[1:M-1, :N-2] + 
-               B[1:M-1, 2:N] + B[2:M, 1:N-1] + B[0:M-2, 1:N-1])
-```
+On scalar integer or float values:
 
-# Unsupported operations
-Within an APPy parallel region, only elementary mathematical function and reduction functions are supported. Other operations including higher-level functions such as matrix inversion, shuffling functions such as sorting are not supported (will not compile).
+    Arithmetic operations
+    Math functions (via the math package)
+    Bitwise operations
+    Logical operations
+    Compare operations
+
+On arrays of integers or floats:
+
+    Array indexing (store or load)
+
+Control flows:
+
+    Ternary operators
