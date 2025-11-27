@@ -2,10 +2,13 @@ import torch
 import appy
 from benchmark_utils import allclose, bench
 
-@appy.jit(backend="triton", dump_code=0) 
+torch.set_default_device('cuda')
+
+@appy.jit
 def kernel_appy(a, b):
     c = torch.empty_like(a)
-    for i in appy.prange(a.shape[0], simd=True):
+    #pragma parallel for simd
+    for i in range(a.shape[0]):
         c[i] = a[i] + b[i]
     return c
 

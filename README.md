@@ -65,9 +65,9 @@ Vector addition example.
 
 ```python
 @appy.jit
-def vector_add(A, B, C, N):
+def vector_add(A, B, C):
     #pragma parallel for simd
-    for i in range(N):
+    for i in range(A.shape[0]):
         C[i] = A[i] + B[i]
 ```
 
@@ -78,11 +78,11 @@ SpMV example.
 def spmv(A_row, A_col, A_val, x, y, N):
     #pragma parallel for
     for i in range(N - 1):
-        y[i] = 0.0
+        yi = 0.0
         #pragma simd
-        for j in range(A_row[i], A_row[1+i]):            
-            col = A_col[j]
-            y[i] += A_val[j] * x[col]
+        for j in range(A_row[i], A_row[1+i]):
+            yi += A_val[j] * x[A_col[j]]
+        y[i] = yi
 ```
 
 A loop that is not applicable for parallelization may be vectorizable. One example is the `j` loop in the SpMV example, where it has dynamic loop bounds.
