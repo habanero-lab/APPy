@@ -42,4 +42,4 @@ jobs:
 
       - name: Run others tests
         run: |
-          pytest -v tests/unit
+          TRITON_INTERPRET=1 pytest -v tests/unit
