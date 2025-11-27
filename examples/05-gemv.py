@@ -1,18 +1,19 @@
 import torch
 import appy
-from appy.utils import allclose, bench 
+from benchmark_utils import allclose, bench
 
 torch.set_default_device('cuda')
-# import cupy
-# appy.tensorlib = cupy
 
-@appy.jit(auto_simd=True)
+@appy.jit(dump_code=True)
 def kernel_appy(alpha, A, x):
-    M, N = A.shape
-    y = torch.empty(M, dtype=A.dtype)
-    ## parallel reduction in tensor-oriented model is not supported yet
-    #pragma :M=>parallel :N=>reduce(sum)
-    y[:M] = appy.mv(alpha * A[:M, :N], x[:N])
+    y = torch.empty(A.shape[0], dtype=x.dtype)
+    #pragma parallel for
+    for i in range(A.shape[0]):
+        yi = 0.0
+        #pragma simd
+        for j in range(A.shape[1]):
+            yi += alpha * A[i, j] * x[j]
+        y[i] = yi
     return y
 
 
@@ -23,8 +24,8 @@ def kernel_lib(alpha, A, x):
 
 def test():
     for N in [1000, 4000, 8000]:
-        A = torch.randn(N, N)
-        x = torch.randn(N)
+        A = torch.randn(N, N, dtype=torch.float64)
+        x = torch.randn(N, dtype=torch.float64)
         alpha = 1.0
         y_ref = kernel_lib(alpha, A, x)
         for f in [kernel_lib, kernel_appy]:
