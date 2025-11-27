@@ -32,7 +32,7 @@ class ProcessSharedPragmas(ast.NodeTransformer):
                 # Rewrite the shared variables to np.array, e.g. x = np.array(x)
                 pre_loop_code_str = "\n".join(
                     [
-                        f"{x} = numpy.array({x})" for x in shared_vars
+                        f"{x} = numpy.array([{x}])" for x in shared_vars
                     ]
                 )
 
