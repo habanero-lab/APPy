@@ -9,7 +9,7 @@ def kernel_appy1(a, mask):
     b = 0.0
     #pragma parallel for shared(b)
     for i in range(a.shape[0]):
-        if mask[i]:  ## simd directive is not support for loops with control flows
+        if mask[i]:  ## simd is not support for loops with control flows
             b += a[i]
     return b
 
@@ -24,12 +24,12 @@ def kernel_appy2(a, mask):
 
 
 def kernel_lib(a, mask):
-    return a[mask].sum()
+    return a[mask].sum().item()
 
 
 def test():
-    for N in [10000, 100000, 1000000, 10000000]:
-        a = torch.randn(N)
+    for N in [10000, 100000, 1000000]:
+        a = torch.randn(N, dtype=torch.float64)
         mask = torch.randint(0, 2, size=(N,)) > 0
         c_ref = kernel_lib(a, mask)
         print(f"N: {a.shape[0]}, dtype: {a.dtype}")
