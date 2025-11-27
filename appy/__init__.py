@@ -10,8 +10,7 @@ from .frontend import replace_pfor_with_stub
 from .frontend import hoist_shape_attr
 from .frontend import process_shared
 
-# Globals
-from .__version__ import __version__
+# Compiler
 from . import dispatcher
 
 
@@ -33,11 +32,7 @@ def _kernel_launch(loop_source, loop_name, scope, global_scope, options):
     """
     
     dispatcher.codegen(options.get("backend"), loop_source, loop_name, scope, global_scope, options)
-        
-        # f = ns['kernel_appy']
-        
-        # args = [merged_scope[x] for x in used_names if x in merged_scope]
-        # f(*args)
+
 
 def rewrite_loops(fn, **options):
     # 1. Get source and parse into AST
