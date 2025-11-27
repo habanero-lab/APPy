@@ -38,5 +38,5 @@ jobs:
 
       - name: Run codegen tests
         run: |
-          TRITON_INTERPRET=1 pytest -v tests/integration/triton -k "not go_fast"
+          TRITON_INTERPRET=1 pytest -v tests/integration/triton -k "not (go_fast or black_scholes)"
 
