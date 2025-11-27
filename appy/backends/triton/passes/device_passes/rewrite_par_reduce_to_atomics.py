@@ -23,7 +23,8 @@ class RewriteToAtomic(ast.NodeTransformer):
                             value=ast.Name(id='tl', ctx=ast.Load()),
                             attr='atomic_add'
                         ),
-                        args=[node.value.left, node.value.right]
+                        args=[node.value.left, node.value.right],
+                        keywords=[]
                     )
                 )
             elif reduce_op == 'max':
@@ -34,7 +35,8 @@ class RewriteToAtomic(ast.NodeTransformer):
                             value=ast.Name(id='tl', ctx=ast.Load()),
                             attr='atomic_max'
                         ),
-                        args=[node.value.args[0], node.value.args[1]]
+                        args=[node.value.args[0], node.value.args[1]],
+                        keywords=[]
                     )
                 )
             elif reduce_op == 'min':
