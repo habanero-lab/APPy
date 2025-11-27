@@ -17,7 +17,7 @@ class GenKernelLaunch(ast.NodeTransformer):
                     if is_torch_tensor(val):
                         args.append(ast.arg(arg=f'{var}.stride({d})', annotation=None))
                     else:
-                        args.append(ast.arg(arg=f'{[self.h2d_map[var]]}.stride({d})', annotation=None))
+                        args.append(ast.arg(arg=f'{self.h2d_map[var]}.stride({d})', annotation=None))
 
     def visit_For(self, node):
         iter_start, iter_end, iter_step = node.iter.args
