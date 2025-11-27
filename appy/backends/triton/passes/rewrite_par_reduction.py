@@ -45,7 +45,8 @@ class RewriteToAtomic(ast.NodeTransformer):
                             value=ast.Name(id='tl', ctx=ast.Load()),
                             attr='atomic_min'
                         ),
-                        args=[node.value.args[0], node.value.args[1]]
+                        args=[node.value.args[0], node.value.args[1]],
+                        keywords=[]
                     )
                 )
             else:
