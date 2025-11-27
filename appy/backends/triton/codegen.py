@@ -5,9 +5,8 @@ def codegen(tree, loop_name, val_map, options):
     '''
     Returns a dynamically generated function from the loop source.
     '''
-    from .passes import block_loop, rewrite_par_reduction
-    tree = block_loop.transform(tree)
-    tree = rewrite_par_reduction.transform(tree)
+    from .passes import block_loop
+    tree = block_loop.transform(tree)    
     
     from .passes import gen_host_code
     from .passes import gen_device_code
