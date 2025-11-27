@@ -55,6 +55,7 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     func.body.append(replaced_loop)
     
     # Run codegen pass on the function
+    from .device_passes import rewrite_par_reduce_to_atomics
     from .device_passes import remove_loop_head
     from .device_passes import rewrite_vidx
     from .device_passes import attach_masks
@@ -65,6 +66,7 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     from .device_passes import rewrite_ternary
 
     attach_masks.visit(func)
+    func = rewrite_par_reduce_to_atomics.transform(func)
     func = remove_loop_head.transform(func)
     func = apply_mask_to_reduction.transform(func)
     func = rewrite_vidx.transform(func)
