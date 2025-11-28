@@ -26,9 +26,11 @@ class ProcessSharedPragmas(ast.NodeTransformer):
     
     def visit_For(self, node):
         if self.pragma:
-            m = re.search(r"shared\(([^)]*)\)", self.pragma)
-            if m:
-                shared_vars = [v.strip() for v in m.group(1).split(',')]
+            shared_vars = []
+            for group in re.findall(r"shared\(([^)]*)\)", self.pragma):
+                shared_vars.extend(v.strip() for v in group.split(","))
+            
+            if shared_vars:
                 # Rewrite the shared variables to np.array, e.g. x = np.array(x)
                 pre_loop_code_str = "\n".join(
                     [
