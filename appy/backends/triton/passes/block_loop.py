@@ -67,14 +67,15 @@ class RewriteReductionAssign(ast.NodeTransformer):
                 assert node.value.func.id == reduction_op
                 node.value.args[1] = self.rewrite_reduction_value(reduction_op, node.value.args[1])
 
-            #print(f"[Block Loop] Rewrote simd reduction to {to_str(node)}")
+            if self.verbose:
+                print(f"[Block Loop] Rewrote simd reduction to {to_str(node)}")
 
         return node
     
 
 class BlockLoop(ast.NodeTransformer):
     def __init__(self):        
-        self.verbose = 1
+        self.verbose = False
 
     def get_block_size(self, pragma):
         return 256  # Use a fixed block size for now
