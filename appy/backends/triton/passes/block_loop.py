@@ -67,7 +67,7 @@ class RewriteReductionAssign(ast.NodeTransformer):
                 assert node.value.func.id == reduction_op
                 node.value.args[1] = self.rewrite_reduction_value(reduction_op, node.value.args[1])
 
-            print(f"[Block Loop] Rewrote simd reduction to {to_str(node)}")
+            #print(f"[Block Loop] Rewrote simd reduction to {to_str(node)}")
 
         return node
     
