@@ -57,11 +57,17 @@ class RewriteReductionAssign(ast.NodeTransformer):
         
     def visit_Assign(self, node):
         target = node.targets[0]
-        if to_str(target) in self.reductions and isinstance(node.value, ast.BinOp):
-            value_left = node.value.left
-            if to_str(value_left) == to_str(target):
-                reduction_op = self.reductions[to_str(target)]
+        # Should rewrite if target is a reduction
+        if to_str(target) in self.reductions:
+            reduction_op = self.reductions[to_str(target)]
+            if isinstance(node.value, ast.BinOp):
+                assert to_str(node.value.left) == to_str(target)      
                 node.value.right = self.rewrite_reduction_value(reduction_op, node.value.right)
+            elif isinstance(node.value, ast.Call):
+                assert node.value.func.id == reduction_op
+                node.value.args[1] = self.rewrite_reduction_value(reduction_op, node.value.args[1])
+
+            print(f"[Block Loop] Rewrote simd reduction to {to_str(node)}")
 
         return node
     

@@ -11,9 +11,16 @@ class RewriteNumpyCalls(ast.NodeTransformer):
                 attr=node.func.id
             )
         elif isinstance(node.func, ast.Name) and node.func.id in ["range", "min", "max", "abs", "sum", "pow"]:
-            pass # Built-in Python functions
+            # Built-in Python functions - functions that can be directly used inside Triton kernels
+            pass 
+        elif isinstance(node.func, ast.Name) and node.func.id == "float":
+            # Triton kernel only supports float argument "inf", "-inf" or "nan"
+            assert len(node.args) == 1 and isinstance(node.args[0], ast.Constant) and \
+                node.args[0].value in ["inf", "-inf", "nan"], ast.unparse(node)
         else:
+            # Triton tl.* functions are fine
             if not (isinstance(node.func, ast.Attribute) and node.func.value.id == "tl"):
+                print(ast.unparse(node))
                 raise ValueError(f"Unknown function: {ast.unparse(node.func)}")
         self.generic_visit(node)
         return node

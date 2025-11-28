@@ -71,12 +71,11 @@ def transform(tree: ast.Module, replaced_loop: ast.For, metadata):
     func = apply_mask_to_reduction.transform(func)
     func = rewrite_vidx.transform(func)
 
+    func = lower_subscripts.transform(func)
+    func = lower_constants.transform(func)
     # ast.fix_missing_locations(tree)
     # print(ast.unparse(tree))
     # exit(0)
-
-    func = lower_subscripts.transform(func)
-    func = lower_constants.transform(func)
     func = rewrite_np_calls.transform(func)
     func = rewrite_ternary.transform(func)
     return tree
