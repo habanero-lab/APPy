@@ -100,7 +100,7 @@ class MarkReductionStmtsInLoops(ast.NodeTransformer):
                         entries.append(entry)
 
                 pragma['reduction'] = ','.join(entries)
-            print("[Reduction Detection] update pragma to", pragma)
+                #print("[Reduction Detection] update pragma to", pragma)
         return node
 
 def transform(tree):
