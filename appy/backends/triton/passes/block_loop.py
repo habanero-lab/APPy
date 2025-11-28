@@ -8,8 +8,9 @@ def to_str(node):
 
 
 class RewriteReductionAssign(ast.NodeTransformer):
-    def __init__(self, reductions):        
+    def __init__(self, reductions, verbose=False):        
         self.reductions = reductions
+        self.verbose = verbose
 
     def rewrite_reduction_value(self, reduction_op, val):
         if reduction_op == '+':
@@ -103,7 +104,7 @@ class BlockLoop(ast.NodeTransformer):
             assert var not in reduction_var_map, f"Duplicate reduction variable: {var}"
             reduction_var_map[var] = op
 
-        visitor = RewriteReductionAssign(reduction_var_map)
+        visitor = RewriteReductionAssign(reduction_var_map, self.verbose)
         node = visitor.visit(node)
         return node
 
