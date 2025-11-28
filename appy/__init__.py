@@ -46,7 +46,8 @@ def rewrite_loops(fn, **options):
     tree = replace_pfor_with_stub.transform(tree, options)
 
     newcode = ast.unparse(tree)
-    print("new code:", newcode)
+    if options['verbose_static_rewrite']:
+        print("[Static Rewrite] new code:\n", newcode)
     # 3. Compile the new code into a code object
     code = compile(newcode, filename="<string>", mode="exec")
 
@@ -65,6 +66,8 @@ def set_default_options(options):
     options.setdefault("dry_run", False)
     options.setdefault("dump_code", False)
     options.setdefault("dump_code_to_file", None)
+    options.setdefault("verbose_static_rewrite", False)
+    options.setdefault("verbose_block_loop", False)
 
 def jit(fn=None, **options):
     set_default_options(options)
