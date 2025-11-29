@@ -28,3 +28,17 @@ def test_max():
     a = np.random.rand(n)
     b = vec_max(a)
     assert np.allclose(b, a.max())
+
+@appy.jit(backend="triton", dump_code=True, dry_run=0)
+def vec_min(a):
+    m = np.inf
+    #pragma parallel for simd shared(m)
+    for i in range(a.shape[0]):
+        m = min(m, a[i])
+    return m
+
+def test_min():
+    n = 1000
+    a = np.random.rand(n)
+    b = vec_min(a)
+    assert np.allclose(b, a.min())
