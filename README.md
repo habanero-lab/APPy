@@ -40,7 +40,7 @@ python examples/01-vec_add.py
 A loop can be parallelized by being annotated with `#pragma parallel for`, where the end of the loop acts as a synchronization point. Each loop iteration is said to be assigned to a *worker*, and the number of workers launched is always equal to the number of loop iterations. Each worker is scheduled to a single vector processor, and executes its instructions sequentially. 
 A parallel for-loop must be a for-range loop, and the number of loop iterations must be known at kernel launch time, i.e. no dynamic parallelism.
 
-A vector addition example is shown below. Parallelize a for loop with APPy via `#pragma parallel for`. `#pragma ...` is a regular comment in Python, but will be parsed and treated as a directive by APPy.
+A vector addition example is shown below to parallelize a for loop with APPy via `#pragma parallel for`. `#pragma ...` is a regular comment in Python, but will be parsed and treated as a directive by APPy.
 
 ```python
 @appy.jit
@@ -106,7 +106,7 @@ def vector_sum(A):
 The compiler automatically recognizes the parallel reduction pattern, and generates correct code for it, e.g. using atomic operations. Clause `shared(s)` makes the update to `s` inside the kernel visible outside the kernel, which essentially treats `s` as a single-element array.
 
 # Tensor-Oriented programming interface 
-Supporting tensor expressions is future work! Currently only explicit loops are supported as of v0.3.0.
+Supporting tensor expressions inside parallel regions is future work! Currently only explicit loops are supported as of v0.3.0.
 
 # Supported operations
 APPy supports the following kinds of operations inside the parallel region:

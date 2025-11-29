@@ -146,7 +146,7 @@ def parse_pragma(pragma_str):
     for key in result:
         if key not in recognized_clauses:
             raise ValueError(f"Unrecognized pragma clause: `{key}` in `{pragma_str}`")
-
+        
     return result
 
 # Code by ChatGPT :)
