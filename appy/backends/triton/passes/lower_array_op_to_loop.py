@@ -4,7 +4,7 @@ from .utils import is_numpy_array, is_torch_tensor
 class AttachShape(ast.NodeVisitor):
     def __init__(self, val_map):
         self.val_map = val_map
-        self.verbose = True
+        self.verbose = False
 
     def visit_Call(self, node):
         self.generic_visit(node)
@@ -180,14 +180,13 @@ class LowerToLoop(ast.NodeTransformer):
             return self.loop
             
         return node
-
-    def visit_BinOp(self, node):
-        shapes = [child.shape for child in [node.left, node.right] if child.shape]
-        if shapes:
+    
+    def visit_Subscript(self, node):
+        shape = node.shape
+        if shape:
             print("array expansion needed for", ast.unparse(node))
-            shape = shapes[0]
             assert len(shape) == 1, "Only 1D array expansion is supported"
-            print(shape)
+            #print(shape)
             low, up = shape[0]
             # Generate a for loop with range(low, up)
             if not self.loop:
@@ -204,13 +203,6 @@ class LowerToLoop(ast.NodeTransformer):
                 self.loop_bounds = (low, up)
                 
             node = ReplaceSliceWithVar(self.loop.target.id).visit(node)
-            
-            # self.loop.body.append(
-            #     ast.Assign(
-            #         targets=[ast.Name(id=self.get_new_temp_var(), ctx=ast.Store())],
-            #         value=node
-            #     )
-            # )
             
         return node
 
