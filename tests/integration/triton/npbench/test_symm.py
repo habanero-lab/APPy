@@ -73,9 +73,11 @@ def kernel_appy(alpha, beta, C, A, B):
 def test():
     M, N = 50, 50
     alpha, beta, C, A, B = initialize(M, N)
-    C1, C2 = C.copy(), C.copy()
+    C1, C2, C3 = C.copy(), C.copy(), C.copy()
 
     kernel_np(alpha, beta, C1, A, B)
-    kernel_appy1(alpha, beta, C2, A, B)
+    kernel_appy(alpha, beta, C2, A, B)
+    kernel_appy1(alpha, beta, C3, A, B)
 
     assert np.allclose(C1, C2)
+    assert np.allclose(C1, C3)
