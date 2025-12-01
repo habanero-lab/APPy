@@ -76,6 +76,6 @@ def test():
     C1, C2 = C.copy(), C.copy()
 
     kernel_np(alpha, beta, C1, A, B)
-    kernel_appy(alpha, beta, C2, A, B)
+    kernel_appy1(alpha, beta, C2, A, B)
 
     assert np.allclose(C1, C2)

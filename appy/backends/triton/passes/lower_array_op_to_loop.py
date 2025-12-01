@@ -50,7 +50,56 @@ class LowerToLoop(ast.NodeTransformer):
         return name
     
     def gen_reduction(self, node):
-        raise NotImplementedError("Lowering reduction array ops to loops is to be implemented:\n" + ast.unparse(node))
+        funcname = node.value.func.id
+        init_value_map = {
+            "sum": "0.0",
+            "min": "float('inf')",
+            "max": "float('-inf')"
+        }
+
+        acc_var = self.get_new_temp_var()
+        pre_loop_assign = ast.Assign(
+            targets=[ast.Name(id=acc_var, ctx=ast.Store())],
+            value=ast.parse(init_value_map[funcname]).body[0].value,
+            lineno=node.lineno
+        )
+
+        inloop_assign = ast.Assign(
+            targets=[ast.Name(id=acc_var, ctx=ast.Store())],
+            value=ast.BinOp(
+                op=ast.Add(),
+                left=ast.Name(id=acc_var, ctx=ast.Load()),
+                right=node.value.args[0]
+            ),
+            lineno=node.lineno
+        )
+
+        if funcname == 'min' or funcname == 'max':
+            inloop_assign = ast.Assign(
+                targets=[ast.Name(id=acc_var, ctx=ast.Store())],
+                value=ast.Call(
+                    func=ast.Name(id=funcname, ctx=ast.Load()),
+                    args=[ast.Name(id=acc_var, ctx=ast.Load()), node.value.args[0]],
+                    keywords=[]
+                ),
+                lineno=node.lineno
+            )
+
+        post_loop_assign = ast.Assign(
+            targets=[node.targets[0]],
+            value=ast.Name(id=acc_var, ctx=ast.Load()),
+            lineno=node.lineno
+        )
+
+        self.loop.body.append(inloop_assign)
+
+        self.loop.pragma = {
+            "simd": True,
+            "reduction": f"{'+' if funcname == 'sum' else funcname}:{acc_var}"
+        }
+      
+        return [pre_loop_assign, self.loop, post_loop_assign]
+        #raise NotImplementedError("Lowering reduction array ops to loops is to be implemented:\n" + ast.unparse(node))
     
     def visit_Assign(self, node):
         # Clear all the in-flight loop info
