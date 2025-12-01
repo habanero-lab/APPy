@@ -36,6 +36,23 @@ import appy
 
 
 @appy.jit(backend="triton", dump_code=True)
+def kernel_appy1(alpha, beta, C, A, B):
+
+    temp2 = np.empty((C.shape[1], ), dtype=C.dtype)
+    C *= beta
+    for i in range(C.shape[0]):
+        #pragma parallel for
+        for j in range(C.shape[1]):
+            C[:i, j] += alpha * B[i, j] * A[i, :i]
+            temp2[j] = sum(B[:i, j] * A[i, :i])
+        C[i, :] += alpha * B[i, :] * A[i, i] + alpha * temp2
+    return C
+
+
+import appy
+
+
+@appy.jit(backend="triton", dump_code=True)
 def kernel_appy(alpha, beta, C, A, B):
 
     temp2 = np.empty((C.shape[1], ), dtype=C.dtype)

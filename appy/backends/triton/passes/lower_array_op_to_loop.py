@@ -1,4 +1,25 @@
 import ast
+from ....ast_utils import is_call
+
+class RewriteReductionAssign(ast.NodeTransformer):
+    def visit_Assign(self, node):
+        self.generic_visit(node)
+
+        if isinstance(node, ast.Call) and ast.unparse(node.func) in ['sum', 'min', 'max'] and node.args[0].shape:
+            # This is reducing an array expression
+            # If is 'sum', rewrite the assignment to be 3 assigns:
+            #     __tmp_var = 0.0
+            #     __tmp_var = __tmp_var + node.args[0]
+            #     target = __tmp_var
+            # Similarly, for min and max, rewrite to 3 assigns:
+            #     __tmp_var = float('inf')
+            #     __tmp_var = min(__tmp_var, node.args[0])
+            #     target = __tmp_var
+            # 
+
+            # node.args[0] will be scalarized by the next pass
+            pass
+        return node
 
 class ReplaceSliceWithVar(ast.NodeTransformer):
     '''
@@ -28,6 +49,9 @@ class LowerToLoop(ast.NodeTransformer):
         self.temp_var_count += 1
         return name
     
+    def gen_reduction(self, node):
+        raise NotImplementedError("Lowering reduction array ops to loops is to be implemented:\n" + ast.unparse(node))
+    
     def visit_Assign(self, node):
         # Clear all the in-flight loop info
         self.loop = None
@@ -38,10 +62,14 @@ class LowerToLoop(ast.NodeTransformer):
         if self.loop:
             print(f"loop bound: {self.loop_bounds}")
             print(f"target shape: {node.targets[0].shape}")
+            if is_call(node.value, ["sum", "min", "max"]):
+                return self.gen_reduction(node)
+            
             # If so, check if the target also has matching shape
             assert len(node.targets[0].shape) == 1, "Only 1D array expansion is supported, but got shape: " + str(node.targets[0].shape)
             if node.targets[0].shape[0] != self.loop_bounds:
                 raise RuntimeError(f"Target shape and loop bound are not the same: {node.targets[0].shape} vs {self.loop_bounds}")
+            
             node.targets[0] = ReplaceSliceWithVar(self.loop.target.id).visit(node.targets[0])
 
             # Add to loop body
