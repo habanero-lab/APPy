@@ -76,7 +76,7 @@ class RewriteReductionAssign(ast.NodeTransformer):
 
 class BlockLoop(ast.NodeTransformer):
     def __init__(self):        
-        self.verbose = False
+        self.verbose = 1
 
     def get_block_size(self, pragma):
         return 256  # Use a fixed block size for now

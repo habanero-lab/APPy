@@ -6,6 +6,9 @@ def codegen(tree, loop_name, val_map, options):
     Returns a dynamically generated function from the loop source.
     '''
     from .passes import block_loop
+    from .passes import lower_array_op_to_loop
+
+    tree = lower_array_op_to_loop.transform(tree, val_map)
     tree = block_loop.transform(tree)    
     
     from .passes import gen_host_code
