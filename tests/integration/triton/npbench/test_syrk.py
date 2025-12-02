@@ -38,14 +38,25 @@ def kernel_appy(alpha, beta, C, A):
                 C[i, j] += alpha * A[i, k] * A[j, k]
     return C
 
+@appy.jit(backend="triton", dump_code=True)
+def kernel_appy1(alpha, beta, C, A):
+    #pragma parallel for
+    for i in range(A.shape[0]):
+        C[i, :i + 1] *= beta
+        for k in range(A.shape[1]):
+            C[i, :i + 1] += alpha * A[i, k] * A[:i + 1, k]
+    return C
+
 
 def test():
     M = 100
     N = 100
     alpha, beta, C, A = initialize(M, N)
-    C1, C2 = C.copy(), C.copy()
+    C1, C2, C3 = C.copy(), C.copy(), C.copy()
 
     kernel_np(alpha, beta, C1, A)
     kernel_appy(alpha, beta, C2, A)
+    kernel_appy1(alpha, beta, C3, A)
 
     assert np.allclose(C1, C2)
+    assert np.allclose(C1, C3)
