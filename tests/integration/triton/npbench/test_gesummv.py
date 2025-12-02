@@ -35,6 +35,14 @@ def kernel_appy(alpha, beta, A, B, x):
         y[i] = s
     return y
 
+@appy.jit(backend="triton", dump_code=True)
+def kernel_appy1(alpha, beta, A, B, x):    
+    y = np.empty((A.shape[0], ), dtype=x.dtype)
+    #pragma parallel for
+    for i in range(A.shape[0]):
+        y[i] = sum(alpha * A[i, :] * x[:] + beta * B[i, :] * x[:])
+    return y
+
 
 def test_float64():
     M = 100
@@ -42,4 +50,6 @@ def test_float64():
     alpha, beta, A, B, x = initialize(N, datatype=np.float64)
     y_ref = kernel_np(alpha, beta, A, B, x)
     y_appy = kernel_appy(alpha, beta, A, B, x)
+    y_appy1 = kernel_appy1(alpha, beta, A, B, x)
     assert np.allclose(y_ref, y_appy)
+    assert np.allclose(y_ref, y_appy1)
