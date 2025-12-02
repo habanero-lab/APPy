@@ -10,7 +10,25 @@ for i in range(N):
 
 The APPy compiler will recognize the pragma, JIT-compile the loop to GPU code, and execute the loop on the GPU. A detailed description of APPy can be found in [APPy: Annotated Parallelism for Python on GPUs](https://dl.acm.org/doi/10.1145/3640537.3641575). This document provides a quick guide to get started. 
 
-News: A web-based version of APPy (https://tongzhou80.github.io/appy-web/index.html) is now available to quickly try APPy online and view the generated code!
+<!-- News: A web-based version of APPy (https://tongzhou80.github.io/appy-web/index.html) is now available to quickly try APPy online and view the generated code! -->
+
+A simple example to show how to use APPy:
+
+```python
+import numpy as np
+import appy
+
+@appy.jit
+def inc_by_1(a):
+    #pragma parallel for simd
+    for i in range(a.shape[0]):
+        a[i] += 1
+
+
+a = np.arange(10)
+inc_by_1(a)
+print(a)  # Should print [ 1  2  3  4  5  6  7  8  9 10]
+```
 
 # Install
 
@@ -88,9 +106,9 @@ def spmv(A_row, A_col, A_val, x, y, N):
 A loop that is not applicable for parallelization may be vectorizable. One example is the `j` loop in the SpMV example, where it has dynamic loop bounds.
 
 ## Data Scope 
-Array variables must already be defined before executing the parallel region, while their data can either reside in CPU memory or GPU memory. For CPU arrays, the compiler will automatically move data to the device before launching the kernel and move data back to the host after the kernel finishes. For GPU arrays, the compiler does not do move them, e.g. they stay where they are throughout the kernel. 
+Array variables must already be defined before executing the parallel region, while their data can either reside in CPU memory or GPU memory. For CPU arrays, e.g. NumPy arrays, the compiler will automatically move data to the device before launching the kernel and move data back to the host after the kernel finishes. For GPU arrays, e.g. PyTorch CUDA tensors, the compiler does not do move them, e.g. they stay where they are throughout the kernel. 
 
-Scalar variables may be defined either outside the parallel region, or inside the parallel region. If defined outside and used inside, the variable has an "argument passing by value" semantic, where it gets the initial value from outside when the kernel is launched but any updates are only visible inside the kernel. To make the updates visible outside the kernel, the variable must be declared in the `shared` clause, which tells the compiler to copy the variable to GPU memory before the kernel is launched and copy it back after the kernel finishes. Scalar variables defined inside parallel region are considered local to each worker, e.g. can be safely parallelized.
+Scalar variables may be defined either outside the parallel region, or inside the parallel region. If defined outside and used inside, the variable has an "argument passing by value" semantic, where it gets the initial value from outside when the kernel is launched but any updates are only visible inside the kernel. To make the updates visible outside the kernel, the variable must be declared in the `shared` clause, which tells the compiler to copy the variable to the GPU memory where it can be updated and copy it back after the kernel finishes. Scalar variables defined inside parallel region are considered local to each worker, e.g. can be safely parallelized.
 
 ## Parallel reduction
 A parallel reduction example. 
@@ -105,13 +123,23 @@ def vector_sum(A):
 
 The compiler automatically recognizes the parallel reduction pattern, and generates correct code for it, e.g. using atomic operations. Clause `shared(s)` makes the update to `s` inside the kernel visible outside the kernel, which essentially treats `s` as a single-element array.
 
-# Tensor-Oriented programming interface 
-Supporting tensor expressions inside parallel regions is future work! Currently only explicit loops are supported as of v0.3.0.
+Besides pure loops, 1D array expressions can also be used inside a parallel for loop, for example:
+
+```python
+@appy.jit
+def syrk(alpha, beta, C, A):
+    #pragma parallel for
+    for i in range(A.shape[0]):
+        C[i, :i + 1] *= beta
+        for k in range(A.shape[1]):
+            C[i, :i + 1] += alpha * A[i, k] * A[:i + 1, k]
+    return C
+```
 
 # Supported operations
 APPy supports the following kinds of operations inside the parallel region:
 
-On scalar integer or float values:
+On scalar integer or float values or a 1D slice of an array:
 
     Arithmetic operations
     Math functions (via the math package)
