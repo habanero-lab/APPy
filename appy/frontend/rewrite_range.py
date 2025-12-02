@@ -17,6 +17,11 @@ class RewriteRange(ast.NodeTransformer):
                     up,
                     ast.Constant(1)
                 ]
+            else:
+                # Raise an exception if the step is not 1
+                step = node.args[2]
+                if not (isinstance(step, ast.Constant) and step.value == 1):
+                    raise Exception(f"Only step 1 is supported in range, got: {ast.unparse(node)}")
 
             assert len(node.args) == 3, ast.dump(node)
         return node
