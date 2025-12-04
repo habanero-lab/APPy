@@ -3,6 +3,9 @@ import metalcompute as mc
 
 device = mc.Device()
 
+# Create a global generator instance
+_rng = np.random.default_rng()
+
 class SharedArray:
     def __init__(self, arr, buf):
         self.arr = arr        # actual numpy array
@@ -67,5 +70,5 @@ def zeros(shape, dtype=np.float64):
 
 def randn(*shape, dtype=np.float64):
     out = empty(shape, dtype=dtype)
-    np.random.Generator.standard_normal(shape, dtype=dtype, out=out.arr)
+    _rng.standard_normal(shape, dtype=dtype, out=out.arr)
     return out

@@ -35,8 +35,8 @@ def gelu_numpy(x):
 
 
 def test():
-    x = nps.randn(100000)
-    y = nps.randn(100000)
+    x = nps.randn(100000, dtype=np.float32)
+    y = nps.randn(100000, dtype=np.float32)
 
     y_np = gelu_numpy(x)
     y_appy = gelu_appy(x, y)
