@@ -27,7 +27,8 @@ setup(
     python_requires='>=3.9',            # Minimum Python version requirement
     install_requires=[
         'ast_comments', 
-        'ast_transforms',        
+        'ast_transforms',
+        'numpy'     
     ],
     extras_require={
         "triton": [
@@ -44,8 +45,8 @@ setup(
             "pytest",
             "pytest-regressions",
             "black",
-            "numpy",
-            "scipy"
+            "scipy",
+            "numba"
         ],
     },
 )
