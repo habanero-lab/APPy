@@ -24,9 +24,5 @@ jobs:
         run: sysctl -n machdep.cpu.brand_string
 
       - name: Check Metal GPU availability
-        run: |
-          import metalcompute as mc
+        run: python -c "import metalcompute as mc; d = mc.Device(); print('Metal GPU detected:', d.name); print('Max threads per threadgroup:', d.max_threads_per_threadgroup)"
 
-          d = mc.Device()
-          print('Metal GPU detected:', d.name)
-          print('Max threads per threadgroup:', d.max_threads_per_threadgroup)
