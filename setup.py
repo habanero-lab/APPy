@@ -34,6 +34,9 @@ setup(
             "torch",  # Triton depends on torch
             "triton",
         ],
+        "metal": [
+            "metalcompute"
+        ],
         "cuda": [
             "pycuda",
         ],
