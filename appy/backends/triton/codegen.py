@@ -47,8 +47,8 @@ def codegen(loop_source, loop_name, val_map, options):
         tree = gen_imports.transform(tree)
 
         ast.fix_missing_locations(tree)
-        src = astc.unparse(tree)
-        m = load_module_from_str(src)
+        code_src = astc.unparse(tree)
+        m = load_module_from_str(code_src)
         f = getattr(m, loop_name)    
         code_cache[cache_key] = (f, code_src)
 
