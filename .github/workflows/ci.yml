@@ -1,3 +1,11 @@
+name: APPy CI
+
+on:
+  push:
+    branches: [ main, metal ]
+  pull_request:
+    branches: [ main ]
+    
 jobs:
   codegen-tests-ubuntu:
     runs-on: ubuntu-latest
