@@ -1,7 +1,8 @@
 name: macOS Arch Test
 
 on:
-  workflow_dispatch:   # allows you to manually trigger the test
+  push:
+    branches: [ main, metal ]
 
 jobs:
   check-macos-arch:
