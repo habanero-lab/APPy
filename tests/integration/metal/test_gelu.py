@@ -15,7 +15,7 @@ def gelu_numba(x):
     return y
 
 
-#@appy.jit
+@appy.jit(verbose_static_rewrite=True)
 def gelu_appy(x, y):
     y = nps.empty_like(x)
     for i in appy.prange(x.size):
