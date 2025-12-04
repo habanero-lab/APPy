@@ -86,8 +86,15 @@ def vidx(start, stepsize, bound=None):
         r = slice(start, start+stepsize)
     return r
 
-def prange(*args, simd=False):
-    return range(*args)
+# def prange(*args, simd=False):
+#     return range(*args)
+
+class prange(object):
+    """ Provides a 1D parallel iterator that generates a sequence of integers.
+    In non-parallel contexts, prange is identical to range.
+    """
+    def __new__(cls, *args, shared=None):
+        return range(*args)
 
 built_in_range = range
 
