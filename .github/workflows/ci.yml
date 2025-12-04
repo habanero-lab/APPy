@@ -20,5 +20,7 @@ jobs:
       - name: Check system architecture
         run: uname -m
 
-      - name: Check Python architecture
-        run: python -c "import platform; print(platform.machine())"
+      - name: Check Apple Silicon chip
+        run: sysctl -n machdep.cpu.brand_string
+
+    
