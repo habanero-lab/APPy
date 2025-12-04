@@ -1,27 +1,48 @@
-name: macOS Arch Test
+name: APPy CI
 
 on:
   push:
     branches: [ main, metal ]
-
+  pull_request:
+    branches: [ main ]
+    
 jobs:
-  check-macos-arch:
-    runs-on: macos-latest
-
+  codegen-tests-ubuntu:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev,triton]
+      - run: TRITON_INTERPRET=1 pytest -v tests/integration/triton -k "not (go_fast or black_scholes)"
+      - run: pytest -v tests/unit/general
 
-      - name: Check system architecture
-        run: uname -m
-
-      - name: Check Apple Silicon chip
-        run: sysctl -n machdep.cpu.brand_string
-
-      - name: Check Metal support
-        run: system_profiler SPDisplaysDataType | grep Metal
+  codegen-tests-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev,metal]
+      - run: pytest -v tests/integration/metal
+      - run: pytest -v tests/unit/metal
