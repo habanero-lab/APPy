@@ -14,7 +14,7 @@ def codegen(loop_source, loop_name, val_map, options):
     if cache_key in code_cache:            
         f, code_src = code_cache[cache_key]
     else:   
-        code_src = Path(f"{os.environ['HOME']}/projects/APPy/appy/backends/metal/sample_kernels/gelu.py").read_text()
+        code_src = Path(f"{Path(__file__).parent}/sample_kernels/gelu.py").read_text()
         m = load_module_from_str(code_src)
         f = getattr(m, loop_name)
 
