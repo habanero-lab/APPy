@@ -6,19 +6,17 @@ import ast_comments as astc
 import ast_transforms as at
 from .utils import load_module_from_str, pretty_dump
 
-code_cache = {}
-
 def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope, options):
     merged_scope = global_scope | local_scope
     used_names = at.get_used_names(astc.parse(loop_source))
     val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
 
-    print(sys.platform)
     if sys.platform == "darwin":
         if platform.machine() != "arm64":
             raise RuntimeError("macOS with x86_64 is not supported")
         
-        raise NotImplementedError()
+        from .backends.metal.codegen import codegen as metal_codegen
+        f, code_src = metal_codegen(loop_source, loop_name, val_map, options)
         
     elif sys.platform.startswith("linux"):
         if shutil.which("nvidia-smi") is None:

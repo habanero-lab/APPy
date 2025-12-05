@@ -10,6 +10,7 @@ class SharedArray:
     def __init__(self, arr, buf):
         self.arr = arr        # actual numpy array
         self.buf = buf        # unified memory buffer (Metal)
+        self.dev = device
     
     # auto unwrap to numpy array for any NumPy operation
     def __array__(self, dtype=None):

@@ -2,6 +2,7 @@ import numpy as np
 import numba
 import appy
 import appy.np_shared as nps
+from time import perf_counter
 
 @numba.njit(parallel=True)
 def gelu_numba(x):
@@ -35,18 +36,20 @@ def gelu_numpy(x):
 
 
 def test():
-    x = nps.randn(100000, dtype=np.float32)
-    y = nps.randn(100000, dtype=np.float32)
+    x = nps.randn(20_000_000, dtype=np.float32)
+    y = nps.randn(20_000_000, dtype=np.float32)
 
     y_np = gelu_numpy(x)
+    t0 = perf_counter()
     y_appy = gelu_appy(x, y)
+    t1 = perf_counter()
+    print(f"APPy (with JIT): {1000*(t1-t0):.4f} ms")
     y_numba = gelu_numba(x.arr)
 
     assert np.allclose(y_np, y_appy, atol=1e-6)
     assert np.allclose(y_np, y_numba, atol=1e-6)
 
     # Timing
-    from time import perf_counter
     t0 = perf_counter()
     _ = gelu_numpy(x)
     t1 = perf_counter()
