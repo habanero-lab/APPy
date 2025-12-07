@@ -38,6 +38,4 @@ def transform(tree: ast.Module, metadata):
  
     func, replaced_loop = gen_kernel_launch.transform(func, loop_name, val_map) 
 
-    ast.fix_missing_locations(tree)
-    print(ast.unparse(tree))
-    return tree
+    return tree, replaced_loop

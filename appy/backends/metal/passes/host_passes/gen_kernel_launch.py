@@ -23,7 +23,7 @@ class GenKernelLaunch(ast.NodeTransformer):
 
         code_str = f'''
             if not hasattr({self.loop_name}, "kernel"):
-                {self.loop_name}.kernel = {first_array_arg}.dev.kernel(kernel_str).function("gelu")
+                {self.loop_name}.kernel = {first_array_arg}.dev.kernel(kernel_str).function("_{self.loop_name}")
             handle = {self.loop_name}.kernel({", ".join(args)})
             del handle
         '''

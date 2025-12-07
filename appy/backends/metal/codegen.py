@@ -17,12 +17,21 @@ def codegen(loop_source, loop_name, val_map, options):
 
         from .passes import attach_types
         from .passes import gen_host_code
+        from .passes import gen_device_code
 
         attach_types.visit(tree, val_map)
 
-        tree = gen_host_code.transform(tree, {'loop_name': loop_name, 'val_map': val_map})
+        tree, replaced_loop = gen_host_code.transform(tree, {'loop_name': loop_name, 'val_map': val_map})
+        tree = gen_device_code.transform(tree, replaced_loop, loop_name, val_map)
 
-        code_src = Path(f"{Path(__file__).parent}/sample_kernels/gelu.py").read_text()
+        ast.fix_missing_locations(tree)
+        print(ast.unparse(tree))
+
+        # code_src = Path(f"{Path(__file__).parent}/sample_kernels/gelu.py").read_text()
+        # m = load_module_from_str(code_src)
+        # f = getattr(m, loop_name)
+
+        code_src = astc.unparse(tree)
         m = load_module_from_str(code_src)
         f = getattr(m, loop_name)
 
