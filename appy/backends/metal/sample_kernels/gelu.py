@@ -19,11 +19,9 @@ kernel void gelu(
 }
 """
 
-kernel = None
 
-def kernel_loop_1(x, y):
-    global kernel
-    if kernel is None:
-        kernel = x.dev.kernel(kernel_str).function("gelu")
-    handle = kernel(x.size, x.buf, y.buf)
+def kernel_loop_1(x, x_shape_0, y):
+    if not hasattr(kernel_loop_1, "kernel"):
+        kernel_loop_1.kernel = x.dev.kernel(kernel_str).function("gelu")
+    handle = kernel_loop_1.kernel(x_shape_0, x.buf, y.buf)
     del handle

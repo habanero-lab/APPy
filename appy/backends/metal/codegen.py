@@ -16,8 +16,11 @@ def codegen(loop_source, loop_name, val_map, options):
     else:   
 
         from .passes import attach_types
+        from .passes import gen_host_code
 
         attach_types.visit(tree, val_map)
+
+        tree = gen_host_code.transform(tree, {'loop_name': loop_name, 'val_map': val_map})
 
         code_src = Path(f"{Path(__file__).parent}/sample_kernels/gelu.py").read_text()
         m = load_module_from_str(code_src)
