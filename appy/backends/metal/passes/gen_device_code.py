@@ -12,21 +12,25 @@ def gen_func_header(loop_name, replaced_loop, val_map):
 
     niters = ast.unparse(replaced_loop.iter.args[0])
     count = 0
+    py_to_cpp = {
+        'int': 'int',
+        'float': 'float',
+        'float32': 'float',
+        'int32': 'int',
+    }
     for var, val in val_map.items():
         if var == niters:
             continue
 
-        assert hasattr(val, "buf")
-
-        dtype = val.dtype
-        if str(dtype) == 'float32':
-            dtype = 'float'
-        elif str(dtype) == 'int32':
-            dtype = 'int'
+        if hasattr(val, "buf"):
+            # Arrays
+            dtype = val.dtype
+            s += f"device {py_to_cpp[str(dtype)]}* {var} [[ buffer({count}) ]], "
         else:
-            assert False, f"Unsupported array dtype {dtype}"
-
-        s += f"device {dtype}* {var} [[ buffer({count}) ]], "
+            # Scalars
+            ty = type(val).__name__
+            assert ty in py_to_cpp, f"Unsupported type {ty} for variable {var}"
+            s += f"constant {py_to_cpp[ty]}& {var} [[ buffer({count}) ]], "
         count += 1
 
     s += f"uint grid_id [[ thread_position_in_grid ]])"
