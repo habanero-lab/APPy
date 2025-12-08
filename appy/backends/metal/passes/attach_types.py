@@ -14,7 +14,7 @@ class AttachTypes(ast.NodeVisitor):
         self.verbose = True
 
     def visit_For(self, node):
-        # loop index variable is int64 type by default
+        # loop index variable defauts to int type
         self.name_to_type[node.target.id] = 'int'
         for child in node.body:
             self.visit(child)
@@ -41,6 +41,7 @@ class AttachTypes(ast.NodeVisitor):
         node.appy_type = self.py_to_cpp[type(val).__name__]
     
     def visit_Subscript(self, node):
+        # Array variables are not visited
         assert isinstance(node.value, ast.Name) and node.value.id in self.val_map
         dtype = self.val_map[node.value.id].dtype
         node.appy_type = self.py_to_cpp[str(dtype)]
@@ -54,14 +55,13 @@ class AttachTypes(ast.NodeVisitor):
             assert False
 
     def visit_Name(self, node):
+        # Must be a scalar here since array variables are not visited (not needed for kernel codegen var decls)
         if node.id in self.val_map:
             node.appy_type = self.py_to_cpp[type(self.val_map[node.id]).__name__]
-            if self.verbose:
-                print("[AttachTypes] assign type to name", node.id, node.appy_type)
-            return
-
-        assert node.id in self.name_to_type, f"Type not found for name {node.id}"
-        node.appy_type = self.name_to_type[node.id]
+        else:
+            assert node.id in self.name_to_type, f"Type not found for name {node.id}"
+            node.appy_type = self.name_to_type[node.id]
+            
         if self.verbose:
             print("[AttachTypes] assign type to name", node.id, node.appy_type)
 
