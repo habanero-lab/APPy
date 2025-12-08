@@ -9,7 +9,7 @@ class AttachTypes(ast.NodeVisitor):
 
     def visit_For(self, node):
         # loop index variable is int64 type by default
-        self.name_to_type[node.target.id] = 'int32'
+        self.name_to_type[node.target.id] = 'int'
         for child in node.body:
             self.visit(child)
         return node
@@ -33,9 +33,9 @@ class AttachTypes(ast.NodeVisitor):
     def visit_Constant(self, node):
         val = node.value
         if isinstance(val, int):
-            node.appy_type = 'int32'
+            node.appy_type = 'int'
         elif isinstance(val, float):
-            node.appy_type = 'float32'
+            node.appy_type = 'float'
         else:
             assert False
     
@@ -43,13 +43,9 @@ class AttachTypes(ast.NodeVisitor):
         assert isinstance(node.value, ast.Name) and node.value.id in self.val_map
         dtype = self.val_map[node.value.id].dtype
         if str(dtype) == 'float32':
-            node.appy_type = 'float32'
+            node.appy_type = 'float'
         elif str(dtype) == 'int32':
-            node.appy_type = 'int32'
-        elif str(dtype) == 'float64':
-            node.appy_type = 'float64'
-        elif str(dtype) == 'int64':
-            node.appy_type = 'int64'
+            node.appy_type = 'int'
         else:
             assert False
     
