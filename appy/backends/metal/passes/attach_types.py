@@ -5,6 +5,12 @@ class AttachTypes(ast.NodeVisitor):
     def __init__(self, val_map):
         self.val_map = val_map
         self.name_to_type = {}
+        self.py_to_cpp = {
+            'int': 'int',
+            'float': 'float',
+            'float32': 'float',
+            'int32': 'int',
+        }
         self.verbose = True
 
     def visit_For(self, node):
@@ -32,22 +38,12 @@ class AttachTypes(ast.NodeVisitor):
 
     def visit_Constant(self, node):
         val = node.value
-        if isinstance(val, int):
-            node.appy_type = 'int'
-        elif isinstance(val, float):
-            node.appy_type = 'float'
-        else:
-            assert False
+        node.appy_type = self.py_to_cpp[type(val).__name__]
     
     def visit_Subscript(self, node):
         assert isinstance(node.value, ast.Name) and node.value.id in self.val_map
         dtype = self.val_map[node.value.id].dtype
-        if str(dtype) == 'float32':
-            node.appy_type = 'float'
-        elif str(dtype) == 'int32':
-            node.appy_type = 'int'
-        else:
-            assert False
+        node.appy_type = self.py_to_cpp[str(dtype)]
     
     def visit_BinOp(self, node):
         self.generic_visit(node)
@@ -58,6 +54,12 @@ class AttachTypes(ast.NodeVisitor):
             assert False
 
     def visit_Name(self, node):
+        if node.id in self.val_map:
+            node.appy_type = self.py_to_cpp[type(self.val_map[node.id]).__name__]
+            if self.verbose:
+                print("[AttachTypes] assign type to name", node.id, node.appy_type)
+            return
+
         assert node.id in self.name_to_type, f"Type not found for name {node.id}"
         node.appy_type = self.name_to_type[node.id]
         if self.verbose:
