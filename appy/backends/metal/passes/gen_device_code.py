@@ -7,14 +7,47 @@ using namespace metal;
 
 '''
 
-def gen_func_header(loop_name):
-    return f'''
-kernel void _{loop_name}(
-    const device float* x [[ buffer(0) ]],
-    device float* y [[ buffer(1) ]],
-    uint id [[ thread_position_in_grid ]])
+def gen_func_header(loop_name, replaced_loop, val_map):
+    s = f"kernel void _{loop_name}("
 
-'''
+    niters = ast.unparse(replaced_loop.iter.args[0])
+    count = 0
+    for var, val in val_map.items():
+        if var == niters:
+            continue
+
+        assert hasattr(val, "buf")
+
+        dtype = val.dtype
+        if str(dtype) == 'float32':
+            dtype = 'float'
+        elif str(dtype) == 'int32':
+            dtype = 'int'
+        else:
+            assert False, f"Unsupported array dtype {dtype}"
+
+        s += f"device {dtype}* {var} [[ buffer({count}) ]], "
+        count += 1
+
+    s += f"uint id [[ thread_position_in_grid ]])"
+    return s
+
+def gen_var_decls(tree, val_map):
+    # Check all assigned vars, declare them if they are not in val_map
+    var_to_type = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            target = node.targets[0]
+            if isinstance(target, ast.Name) and target.id not in val_map:
+                print(ast.unparse(node))
+                var_to_type[target.id] = target.appy_type
+
+    s = ""
+    for var, ty in var_to_type.items():
+        s += f"{ty} {var};\n"
+    print(s)
+    return s
+
 
 def gen_func_body(loop_name):
     return f'''
@@ -26,8 +59,9 @@ def gen_func_body(loop_name):
 
 def transform(tree, replaced_loop, loop_name, val_map):
     kernel_str = gen_headers()
-    kernel_str += gen_func_header(loop_name)
+    kernel_str += gen_func_header(loop_name, replaced_loop, val_map)
     kernel_str += "{\n"
+    # gen_var_decls(replaced_loop, val_map)
     kernel_str += gen_func_body(loop_name)
     kernel_str += "}\n"
 
