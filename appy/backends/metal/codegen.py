@@ -24,14 +24,17 @@ def codegen(loop_source, loop_name, val_map, options):
         tree, replaced_loop = gen_host_code.transform(tree, {'loop_name': loop_name, 'val_map': val_map})
         tree = gen_device_code.transform(tree, replaced_loop, loop_name, val_map)
 
-        ast.fix_missing_locations(tree)
-        print(ast.unparse(tree))
-
         # code_src = Path(f"{Path(__file__).parent}/sample_kernels/gelu.py").read_text()
         # m = load_module_from_str(code_src)
         # f = getattr(m, loop_name)
-
+        ast.fix_missing_locations(tree)
         code_src = astc.unparse(tree)
+      
+        if options['dump_code']:
+            print(f"--- Dumped code for loop {loop_name} ---")            
+            print(code_src)
+            print(f"--- End of dumped code for loop {loop_name} ---")
+
         m = load_module_from_str(code_src)
         f = getattr(m, loop_name)
 
