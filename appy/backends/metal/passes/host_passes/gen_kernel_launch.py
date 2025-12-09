@@ -17,9 +17,19 @@ class GenKernelLaunch(ast.NodeTransformer):
                 first_array_arg = var
                 break
 
-        args = [f"{k}.buf" if hasattr(v, "buf") else k for k,v in self.val_map.items()]
-        args = [x for x in args if x != num_iters]
-        args.insert(0, num_iters)
+        args = [num_iters]
+        for k, v in self.val_map.items():
+            if k == num_iters:
+                continue
+
+            if hasattr(v, "buf"):
+                args.append(f"{k}.buf")
+            elif type(v) == int:
+                args.append(f"np.int32({k})")
+            elif type(v) == float:
+                args.append(f"np.float32({k})")
+
+        print(args)
 
         code_str = f'''
             if not hasattr({self.loop_name}, "kernel"):

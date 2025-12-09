@@ -32,6 +32,11 @@ def transform(tree: ast.Module, metadata):
     func.body = tree.body
     # Now make host_func the only content of the tree
     tree.body = [func]
+
+    tree.body.insert(0, 
+        # import numpy as np
+        ast.Import(names=[ast.alias(name='numpy', asname='np')])
+    )
     
     # Run codegen pass on the function
     from .host_passes import gen_kernel_launch
