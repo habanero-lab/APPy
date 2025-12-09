@@ -11,7 +11,7 @@ def vec_add_numba(x, z, y):
         y[i] = x[i] + z[i]
 
 # APPy version: y = x + z
-@appy.jit(verbose_static_rewrite=True)
+@appy.jit(verbose_static_rewrite=True, dump_code=True)
 def vec_add_appy(x, z, y):
     for i in appy.prange(x.shape[0]):
         y[i] = x[i] + z[i]
@@ -21,7 +21,7 @@ def vec_add_numpy(x, z, y):
     y[:] = x + z
 
 def test_vec_add():
-    size = 20_000_007
+    size = 100_000_000
     x = nps.randn(size, dtype=np.float32)
     z = nps.randn(size, dtype=np.float32)
     y_appy = nps.empty_like(x)
@@ -52,6 +52,7 @@ def test_vec_add():
     vec_add_numba(x.arr, z.arr, y_numba)
     t1 = perf_counter()
     print(f"Numba: {1000*(t1-t0):.4f} ms")
+
 
 if __name__ == '__main__':
     test_vec_add()
