@@ -28,6 +28,8 @@ class GenKernelLaunch(ast.NodeTransformer):
                 args.append(f"np.int32({k})")
             elif type(v) == float:
                 args.append(f"np.float32({k})")
+            else:
+                args.append(k)
 
         print(args)
 
