@@ -14,7 +14,7 @@ def mat_add_numba(X, Z, Y):
 
 # APPy version with flattened 1D indexing
 @appy.jit(verbose_static_rewrite=True, dump_code=True)
-def mat_add_appy(X, Z, Y):
+def mat_add_appy1(X, Z, Y):
     n_rows, n_cols = X.shape
     size = n_rows * n_cols
     for idx in appy.prange(size):
@@ -23,11 +23,11 @@ def mat_add_appy(X, Z, Y):
         Y[i, j] = X[i, j] + Z[i, j]
 
 
-# @appy.jit(verbose_static_rewrite=True, dump_code=True)
-# def mat_add_appy2(X, Z, Y):
-#     for i in appy.prange(X.shape[0]):
-#         for j in appy.prange(X.shape[1]):
-#             Y[i, j] = X[i, j] + Z[i, j]
+@appy.jit(verbose_static_rewrite=True, dump_code=True)
+def mat_add_appy(X, Z, Y):
+    for i in appy.prange(X.shape[0]):
+        for j in appy.prange(X.shape[1]):
+            Y[i, j] = X[i, j] + Z[i, j]
 
 # NumPy version: Y = X + Z
 def mat_add_numpy(X, Z, Y):

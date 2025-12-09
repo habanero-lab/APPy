@@ -23,10 +23,12 @@ def codegen(loop_source, loop_name, val_map, options):
         tree = rewrite_aug_assign.transform(tree)
 
         # Metal specific codegen
+        from .passes import rewrite_nested_prange
         from .passes import attach_types
         from .passes import gen_host_code
         from .passes import gen_device_code
 
+        tree = rewrite_nested_prange.transform(tree)
         attach_types.visit(tree, val_map)
 
         tree, replaced_loop = gen_host_code.transform(tree, {'loop_name': loop_name, 'val_map': val_map})
