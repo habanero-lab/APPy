@@ -11,8 +11,7 @@ class RewriteNestedPrange(ast.NodeTransformer):
     def is_iter_prange(self, iter: ast.Call):
         return isinstance(iter, ast.Call) and ast.unparse(iter.func) in ["prange", "appy.prange"]
     
-    def visit_For(self, node):
-        print(ast.dump(node))
+    def visit_For(self, node):        
         # If this for is prange and its first child is also prange, we do transform
         if self.is_iter_prange(node.iter):
             firstchild = node.body[0]

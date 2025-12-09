@@ -6,10 +6,14 @@ class AttachTypes(ast.NodeVisitor):
         self.val_map = val_map
         self.name_to_type = {}
         self.py_to_cpp = {
+            # Python types
             'int': 'int',
             'float': 'float',
+
+            # NumPy dtypes
             'float32': 'float',
             'int32': 'int',
+            'uint8': 'uint8_t'
         }
         self.verbose = True
 

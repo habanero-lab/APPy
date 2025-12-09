@@ -17,6 +17,7 @@ def gen_func_header(loop_name, replaced_loop, val_map):
         'float': 'float',
         'float32': 'float',
         'int32': 'int',
+        'uint8': 'uint8_t'
     }
     for var, val in val_map.items():
         if var == niters:
