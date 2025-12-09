@@ -48,10 +48,10 @@ def gen_var_decls(loop, val_map):
 
     s = ""
     for var, ty in var_to_type.items():
-        s += f"{ty} {var};\n"
+        s += f"    {ty} {var};\n"
     
     loop_index = loop.target.id
-    s += f"uint {loop_index} = grid_id;"
+    s += f"    uint {loop_index} = grid_id;\n"
     return s
 
 

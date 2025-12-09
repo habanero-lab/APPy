@@ -3,6 +3,7 @@ import ast
 class CppUnparser(ast.NodeVisitor):
     def __init__(self):
         self.code = ""
+        self.curent_indent = 4
 
     def visit_Module(self, node):
         for stmt in node.body:
@@ -15,6 +16,7 @@ class CppUnparser(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         # Assume single target for simplicity
+        self.code += self.curent_indent * " "
         target = node.targets[0]
         self.visit(target)
         self.code += " = "
@@ -86,11 +88,15 @@ class CppUnparser(ast.NodeVisitor):
         self.code += "\n"
 
     def visit_While(self, node):
+        self.code += self.curent_indent * " "
         self.code += "while ("
+        self.curent_indent += 4
         self.visit(node.test)
         self.code += ") {\n"
         for stmt in node.body:
             self.visit(stmt)
+        self.curent_indent -= 4
+        self.code += self.curent_indent * " "
         self.code += "}\n"
 
     def visit_Compare(self, node):
