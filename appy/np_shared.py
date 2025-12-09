@@ -54,6 +54,9 @@ class SharedArray:
     def __setitem__(self, idx, val):
         self.arr[idx] = val
 
+    def fill(self, val): 
+        self.arr.fill(val)
+
 def empty(shape, dtype=np.float64):
     dtype = np.dtype(dtype)
     n = int(np.prod(shape))
