@@ -107,7 +107,7 @@ class CppUnparser(ast.NodeVisitor):
         for op, comparator in zip(node.ops, node.comparators):
             self.code += " " + ops[type(op)] + " "
             self.visit(comparator)
-        self.code += ")"gi
+        self.code += ")"
 
     def visit_Subscript(self, node):
         self.visit(node.value)
