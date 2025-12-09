@@ -71,7 +71,9 @@ def gen_func_body(replaced_loop):
 
 def transform(tree, replaced_loop, loop_name, val_map):
     from .device_passes import rewrite_func_calls
+    from .device_passes import rewrite_multi_dim_indexing
     replaced_loop = rewrite_func_calls.transform(replaced_loop)
+    replaced_loop = rewrite_multi_dim_indexing.transform(replaced_loop, val_map)
 
 
     kernel_str = gen_headers()
