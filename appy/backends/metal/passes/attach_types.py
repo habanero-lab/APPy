@@ -21,6 +21,15 @@ class AttachTypes(ast.NodeVisitor):
         return node
 
     def visit_Call(self, node):
+        # Handle special built-in functions
+        if isinstance(node.func, ast.Name):
+            if node.func.id == "int":
+                node.appy_type = "int"
+                return
+            elif node.func.id == "float":
+                node.appy_type = "float"
+                return
+
         func = None
         if isinstance(node.func, ast.Attribute):
             func = node.func.attr
