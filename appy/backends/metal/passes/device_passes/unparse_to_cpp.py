@@ -50,6 +50,18 @@ class CppUnparser(ast.NodeVisitor):
         self.visit(node.right)
         self.code += ")"
 
+    def visit_BoolOp(self, node):
+        self.code += "("
+        ops = {
+            ast.And: "&&",
+            ast.Or: "||",
+        }
+        for i, value in enumerate(node.values):
+            self.visit(value)
+            if i != len(node.values) - 1:
+                self.code += " " + ops[type(node.op)] + " "
+        self.code += ")"
+
     def visit_Call(self, node):
         self.visit(node.func)
         self.code += "("
@@ -82,6 +94,7 @@ class CppUnparser(ast.NodeVisitor):
         self.code += "}\n"
 
     def visit_Compare(self, node):
+        self.code += "("
         self.visit(node.left)
         ops = {
             ast.Eq: "==",
@@ -94,6 +107,7 @@ class CppUnparser(ast.NodeVisitor):
         for op, comparator in zip(node.ops, node.comparators):
             self.code += " " + ops[type(op)] + " "
             self.visit(comparator)
+        self.code += ")"gi
 
     def visit_Subscript(self, node):
         self.visit(node.value)
