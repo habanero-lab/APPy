@@ -14,7 +14,14 @@ def codegen(loop_source, loop_name, val_map, options):
     if cache_key in code_cache:            
         f, code_src = code_cache[cache_key]
     else:   
+        # Do frontend transformation
+        from ...frontend import rewrite_aug_assign
+        from ...frontend import rewrite_tuple_assign
 
+        tree = rewrite_tuple_assign.transform(tree)
+        tree = rewrite_aug_assign.transform(tree)
+
+        # Metal specific codegen
         from .passes import attach_types
         from .passes import gen_host_code
         from .passes import gen_device_code
@@ -31,8 +38,8 @@ def codegen(loop_source, loop_name, val_map, options):
         code_src = astc.unparse(tree)
       
         if options['dump_code']:
-            print(f"--- Dumped code for loop {loop_name} ---")            
-            print(code_src)
+            print(f"--- Dumped code for loop {loop_name} ---")          
+            print(code_src.replace("\\n", "\n"))
             print(f"--- End of dumped code for loop {loop_name} ---")
 
         m = load_module_from_str(code_src)
