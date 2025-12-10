@@ -13,12 +13,12 @@ class FixFloatDivTypes(ast.NodeTransformer):
                 node.appy_type = 'float'
         return node
     
-    def visit_Assign(self, node):
-        self.generic_visit(node)
-        if node.value.appy_type == 'float':
-            for target in node.targets:
-                target.appy_type = 'float'
-        return node
+    # def visit_Assign(self, node):
+    #     self.generic_visit(node)
+    #     if node.value.appy_type == 'float':
+    #         for target in node.targets:
+    #             target.appy_type = 'float'
+    #     return node
     
 
 def transform(tree):

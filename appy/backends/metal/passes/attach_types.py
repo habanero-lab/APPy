@@ -62,10 +62,12 @@ class AttachTypes(ast.NodeVisitor):
     def visit_BinOp(self, node):
         self.generic_visit(node)
         types = [child.appy_type for child in [node.left, node.right] if hasattr(child, "appy_type")]
-        if all(types):
+        if types[0] == types[1]:
             node.appy_type = types[0]
+        elif set(types) == {"float", "int"}:
+            node.appy_type = "float"
         else:
-            assert False
+            assert False, "Incompatible types for binary oprator: " + str(types)
 
     def visit_Name(self, node):
         # Must be a scalar here since array variables are not visited (not needed for kernel codegen var decls)
