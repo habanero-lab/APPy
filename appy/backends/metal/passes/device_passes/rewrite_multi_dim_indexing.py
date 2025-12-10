@@ -4,7 +4,7 @@ import math
 def transform(tree, val_map):
     for node in ast.walk(tree):
         if isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Tuple):
-            print(ast.dump(node))
+            
             val = val_map[node.value.id]
             assert len(val.shape) == len(node.slice.elts), f"Dimension mismatch: indexing array {node.value.id} with index {ast.unparse(node.slice)} but has shape {val.shape}"
 
