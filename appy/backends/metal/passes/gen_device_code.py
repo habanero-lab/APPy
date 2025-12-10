@@ -44,7 +44,6 @@ def gen_var_decls(loop, val_map):
         if isinstance(node, ast.Assign):
             target = node.targets[0]
             if isinstance(target, ast.Name) and target.id not in val_map:
-                print(ast.unparse(node))
                 var_to_type[target.id] = target.appy_type
 
     s = ""

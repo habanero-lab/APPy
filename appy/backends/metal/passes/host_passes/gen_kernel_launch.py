@@ -31,7 +31,7 @@ class GenKernelLaunch(ast.NodeTransformer):
             else:
                 args.append(k)
 
-        print(args)
+        #print(args)
 
         code_str = f'''
             if not hasattr({self.loop_name}, "kernel"):
