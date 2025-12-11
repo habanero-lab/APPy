@@ -47,6 +47,9 @@ class SharedArray:
     def dtype(self): return self.arr.dtype
     @property
     def size(self):  return self.arr.size
+    @property
+    def __array_interface__(self):
+        return self.arr.__array_interface__
     
     # make indexing behave transparently
     def __getitem__(self, idx):
