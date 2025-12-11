@@ -17,6 +17,7 @@ inline uint wang_hash(uint x) {
 inline float random(uint seed) {
     return float(wang_hash(seed)) / float(0xffffffffu);
 }
+
 '''
 
 def gen_func_header(loop_name, replaced_loop, val_map):
