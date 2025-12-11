@@ -109,3 +109,7 @@ def distance(x, y):
 def int(x): return "int"
 def float(x): return "float"
 def float3(x, y, z): return "float3"
+
+
+# --- My Functions ---
+def random(): return "float"

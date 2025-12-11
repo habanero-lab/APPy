@@ -5,6 +5,18 @@ def gen_headers():
 #include <metal_stdlib>
 using namespace metal;
 
+inline uint wang_hash(uint x) {
+    x = (x ^ 61u) ^ (x >> 16u);
+    x *= 9u;
+    x = x ^ (x >> 4u);
+    x *= 0x27d4eb2du;
+    x = x ^ (x >> 15u);
+    return x;
+}
+
+inline float random(uint seed) {
+    return float(wang_hash(seed)) / float(0xffffffffu);
+}
 '''
 
 def gen_func_header(loop_name, replaced_loop, val_map):
