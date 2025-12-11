@@ -65,7 +65,7 @@ def clz(x): return x
 def ctz(x): return x
 def extract_bits(x, offset, bits): return x
 def hadd(x, y): return x
-def insert_bits(base, insert, offset, bits): return x
+def insert_bits(base, insert, offset, bits): return base
 def mad24(x, y, z): return x
 def madhi(a, b, c): return a
 def madsat(a, b, c): return a
@@ -83,8 +83,8 @@ def rotate(v, i): return v
 def subsat(x, y): return x
 
 # --- Relational Functions ---
-def all(x): return x
-def any(x): return x
+def all(x): return "bool"
+def any(x): return "bool"
 def isfinite(x): return x
 def isinf(x): return x
 def isnan(x): return x
