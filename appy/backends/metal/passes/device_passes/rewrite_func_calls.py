@@ -10,7 +10,7 @@ class RewriteFuncCalls(ast.NodeTransformer):
                 node.func = ast.Name(id=f'static_cast<{node.func.id}>', ctx=ast.Load())
                 return node
 
-        from .. import metal_math
+        from .. import device_func_types
         funcname = None
         if isinstance(node.func, ast.Attribute):
             funcname = node.func.attr
@@ -20,7 +20,7 @@ class RewriteFuncCalls(ast.NodeTransformer):
         # if funcname in ['range', 'prange']:
         #     return node
 
-        assert hasattr(metal_math, funcname), "Unknown function: " + funcname
+        assert hasattr(device_func_types, funcname), "Unknown function: " + funcname
         node.func = ast.Name(id=funcname, ctx=ast.Load())
         self.generic_visit(node)
         return node
