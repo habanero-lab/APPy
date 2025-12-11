@@ -98,5 +98,30 @@ class AttachTypes(ast.NodeVisitor):
     
 
 def visit(tree, val_map):
+    '''
+    Attach a metal data type to each AST node. The following scalar types are supported:
+    * bool
+    * int8_t (char)
+    * uint8_t (uchar)
+    * int16_t (short)
+    * uint16_t (ushort)
+    * int32_t (int)
+    * uint32_t (uint)
+    * float (32 bits)
+
+    Three vector types are also supported: a vector of 2, 3 or 4 scalar elements shown above.
+    The vector type name has the suffix "2", "3" or "4", e.g. float2, int3 etc. The full list is as follows:
+    * booln
+    * charn
+    * ucharn
+    * shortn
+    * ushortn
+    * intn
+    * uintn
+    * floatn
+    where n is 2, 3 or 4.
+
+    If an AST node cannot be determined to have one of the above types, an unsupported type error is thrown.
+    '''
     visitor = AttachTypes(val_map)
     visitor.visit(tree)
