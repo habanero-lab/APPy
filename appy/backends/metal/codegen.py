@@ -12,7 +12,7 @@ def codegen(loop_source, loop_name, val_map, options):
     dtypes = tuple([v.dtype if hasattr(v, "dtype") else type(v) for v in val_map.values()])
     shapes = tuple([v.shape[1:] if hasattr(v, "shape") else None for v in val_map.values()])
     cache_key = (loop_source, types, dtypes, shapes)
-    if cache_key in code_cache:            
+    if options.get("clear_cache", False) == False and cache_key in code_cache:            
         f, code_src = code_cache[cache_key]
     else:   
         # Do frontend transformation

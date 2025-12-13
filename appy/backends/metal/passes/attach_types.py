@@ -15,7 +15,7 @@ class AttachTypes(ast.NodeVisitor):
             'int32': 'int',
             'uint8': 'uint8_t'
         }
-        self.verbose = True
+        self.verbose = False
 
     def visit_For(self, node):
         # loop index variable defauts to int type
