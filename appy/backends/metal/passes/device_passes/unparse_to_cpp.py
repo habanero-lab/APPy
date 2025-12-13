@@ -24,6 +24,14 @@ class CppUnparser(ast.NodeVisitor):
         self.code += ";"  # Add semicolon at end of assignment
         self.code += "\n"
 
+    def visit_Break(self, node):
+        self.code += self.curent_indent * " "
+        self.code += "break;\n"
+
+    def visit_Continue(self, node):
+        self.code += self.curent_indent * " "
+        self.code += "continue;\n"
+
     def visit_Name(self, node):
         self.code += node.id
 
@@ -74,11 +82,15 @@ class CppUnparser(ast.NodeVisitor):
         self.code += ")"
 
     def visit_If(self, node):
+        self.code += self.curent_indent * " "
         self.code += "if ("
         self.visit(node.test)
         self.code += ") {\n"
+        self.curent_indent += 4
         for stmt in node.body:
             self.visit(stmt)
+        self.curent_indent -= 4
+        self.code += self.curent_indent * " "
         self.code += "}"
         if node.orelse:
             self.code += " else {\n"
@@ -93,6 +105,24 @@ class CppUnparser(ast.NodeVisitor):
         self.curent_indent += 4
         self.visit(node.test)
         self.code += ") {\n"
+        for stmt in node.body:
+            self.visit(stmt)
+        self.curent_indent -= 4
+        self.code += self.curent_indent * " "
+        self.code += "}\n"
+
+    def visit_For(self, node: ast.For):
+        # Only for-range loops are supported
+        assert isinstance(node.iter, ast.Call) and ast.unparse(node.iter.func) == "range", "Only for-range loops are supported"
+        range_args = node.iter.args
+        assert len(range_args) == 1
+        start = 0
+        end = ast.unparse(range_args[0])
+        step = 1
+        target = node.target.id
+        self.code += self.curent_indent * " "
+        self.code += f"for (int {target} = {start}; {target} < {end}; {target} += {step}) " + "{\n"
+        self.curent_indent += 4
         for stmt in node.body:
             self.visit(stmt)
         self.curent_indent -= 4

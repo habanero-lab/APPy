@@ -110,7 +110,8 @@ def visit(tree, val_map):
     * float (32 bits)
 
     Three vector types are also supported: a vector of 2, 3 or 4 scalar elements shown above.
-    The vector type name has the suffix "2", "3" or "4", e.g. float2, int3 etc. The full list is as follows:
+    The vector type name has the suffix "2", "3" or "4", e.g. float2, int3 etc. The full list is 
+    as follows:
     * booln
     * charn
     * ucharn
@@ -121,7 +122,8 @@ def visit(tree, val_map):
     * floatn
     where n is 2, 3 or 4.
 
-    If an AST node cannot be determined to have one of the above types, an unsupported type error is thrown.
+    If an AST node cannot be determined to have one of the above types, an unsupported type error 
+    is thrown.
     '''
     visitor = AttachTypes(val_map)
     visitor.visit(tree)
