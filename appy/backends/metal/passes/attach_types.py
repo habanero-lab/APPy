@@ -54,7 +54,7 @@ class AttachTypes(ast.NodeVisitor):
             node.appy_type = self.py_to_cpp[str(val.dtype)]
         elif isinstance(node.value, ast.Name) and node.value.id in self.name_to_type:
             base_type = self.name_to_type[node.value.id]
-            assert base_type in ["int2", "int3", "int4", "float2", "float3", "float4"], f"Unknown vector type: {base_type}"
+            assert base_type[-1] in ['2', '3', '4'], f"Unknown vector type: {base_type}"
             node.appy_type = base_type[:-1]
         else:
             assert False, f"Unknown subscript: {node}"

@@ -109,6 +109,17 @@ def distance(x, y):
 def int(x): return "int"
 def float(x): return "float"
 def float3(x, y, z): return "float3"
+def vec2(x, y): 
+    assert x == y
+    return x + "2"
+
+def vec3(x, y, z): 
+    assert x == y == z
+    return x + "3"
+
+def vec4(x, y, z, w): 
+    assert x == y == z == w
+    return x + "4"
 
 
 # --- My Functions ---
