@@ -10,12 +10,13 @@ def create_new_func(loop_name, val_map):
         name=loop_name,
         args=ast.arguments(
             posonlyargs=[],      # required in 3.8+
-            args=[ast.arg(arg=val, annotation=None) for val in val_map],
+            args=[ast.arg(arg=var, annotation=None) for var in val_map] + \
+                [ast.arg(arg="device", annotation=None)],
             vararg=None,
             kwonlyargs=[],
             kw_defaults=[],
             kwarg=None,
-            defaults=[],
+            defaults=[ast.Constant(value=None)],
         ),
         body=[],
         decorator_list=[],
