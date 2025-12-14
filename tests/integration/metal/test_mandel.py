@@ -105,9 +105,7 @@ def test_mandelbrot():
     out_np    = mandelbrot_numpy(xmin, xmax, ymin, ymax, width, height, max_iter)
 
     # Warmup    
-    out_appy.arr = out_appy.arr.reshape(-1)
-    mandelbrot_appy(xmin, xmax, ymin, ymax, width, height, max_iter, out_appy)
-    out_appy.arr = out_appy.arr.reshape(height, width)
+    mandelbrot_appy(xmin, xmax, ymin, ymax, width, height, max_iter, out_appy.reshape(-1))
     mandelbrot_numba(xmin, xmax, ymin, ymax, width, height, max_iter, out_numba)
 
 
@@ -124,9 +122,7 @@ def test_mandelbrot():
 
     # Timing APPy
     t0 = perf_counter()
-    out_appy.arr = out_appy.arr.reshape(-1)
-    mandelbrot_appy(xmin, xmax, ymin, ymax, width, height, max_iter, out_appy)
-    out_appy.arr = out_appy.arr.reshape(height, width)
+    mandelbrot_appy(xmin, xmax, ymin, ymax, width, height, max_iter, out_appy.reshape(-1))
     t1 = perf_counter()
     print(f"APPy:   {1000*(t1-t0):.2f} ms")
 

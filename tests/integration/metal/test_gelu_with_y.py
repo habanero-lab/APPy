@@ -44,7 +44,7 @@ def test():
     y_appy = gelu_appy(x)
     t1 = perf_counter()
     print(f"APPy (with JIT): {1000*(t1-t0):.4f} ms")
-    y_numba = gelu_numba(x.arr)
+    y_numba = gelu_numba(x)
 
     assert np.allclose(y_np, y_appy, atol=1e-6)
     assert np.allclose(y_np, y_numba, atol=1e-6)
@@ -59,7 +59,7 @@ def test():
     t1 = perf_counter()
     print(f"APPy: {1000*(t1-t0):.4f} ms")
     t0 = perf_counter()
-    _ = gelu_numba(x.arr)
+    _ = gelu_numba(x)
     t1 = perf_counter()
     print(f"Numba: {1000*(t1-t0):.4f} ms")
 

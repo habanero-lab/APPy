@@ -25,13 +25,13 @@ def test_saxpy():
     a = np.float32(2.5)
     x = nps.randn(size, dtype=np.float32)
     y_appy = nps.randn(size, dtype=np.float32)
-    y_numba = y_appy.arr.copy()
-    y_np = y_appy.arr.copy()
+    y_numba = y_appy.copy()
+    y_np = y_appy.copy()
 
     # Warmup
     saxpy_appy(a, x, y_appy)
-    saxpy_numba(a, x.arr, y_numba)
-    saxpy_numpy(a, x.arr, y_np)
+    saxpy_numba(a, x, y_numba)
+    saxpy_numpy(a, x, y_np)
 
     # Check correctness
     assert np.allclose(y_np, y_appy, atol=1e-6)
@@ -39,7 +39,7 @@ def test_saxpy():
 
     # Timing
     t0 = perf_counter()
-    saxpy_numpy(a, x.arr, y_np)
+    saxpy_numpy(a, x, y_np)
     t1 = perf_counter()
     print(f"NumPy: {1000*(t1-t0):.4f} ms")
 
@@ -49,7 +49,7 @@ def test_saxpy():
     print(f"APPy: {1000*(t1-t0):.4f} ms")
 
     t0 = perf_counter()
-    saxpy_numba(a, x.arr, y_numba)
+    saxpy_numba(a, x, y_numba)
     t1 = perf_counter()
     print(f"Numba: {1000*(t1-t0):.4f} ms")
 

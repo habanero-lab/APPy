@@ -38,13 +38,13 @@ def test_mat_add():
     X = nps.randn(rows, cols, dtype=np.float32)
     Z = nps.randn(rows, cols, dtype=np.float32)
     Y_appy = nps.empty_like(X)
-    Y_numba = np.empty_like(X.arr)
-    Y_np = np.empty_like(X.arr)
+    Y_numba = np.empty_like(X)
+    Y_np = np.empty_like(X)
 
     # Warmup
     mat_add_appy(X, Z, Y_appy)
-    mat_add_numba(X.arr, Z.arr, Y_numba)
-    mat_add_numpy(X.arr, Z.arr, Y_np)
+    mat_add_numba(X, Z, Y_numba)
+    mat_add_numpy(X, Z, Y_np)
 
     # Check correctness
     assert np.allclose(Y_np, Y_appy, atol=1e-6)
@@ -52,7 +52,7 @@ def test_mat_add():
 
     # Timing
     t0 = perf_counter()
-    mat_add_numpy(X.arr, Z.arr, Y_np)
+    mat_add_numpy(X, Z, Y_np)
     t1 = perf_counter()
     print(f"NumPy: {1000*(t1-t0):.4f} ms")
 
@@ -62,7 +62,7 @@ def test_mat_add():
     print(f"APPy: {1000*(t1-t0):.4f} ms")
 
     t0 = perf_counter()
-    mat_add_numba(X.arr, Z.arr, Y_numba)
+    mat_add_numba(X, Z, Y_numba)
     t1 = perf_counter()
     print(f"Numba: {1000*(t1-t0):.4f} ms")
 

@@ -25,13 +25,13 @@ def test_vec_add():
     x = nps.randn(size, dtype=np.float32)
     z = nps.randn(size, dtype=np.float32)
     y_appy = nps.empty_like(x)
-    y_numba = np.empty_like(x.arr)
-    y_np = np.empty_like(x.arr)
+    y_numba = np.empty_like(x)
+    y_np = np.empty_like(x)
 
     # Warmup
     vec_add_appy(x, z, y_appy)
-    vec_add_numba(x.arr, z.arr, y_numba)
-    vec_add_numpy(x.arr, z.arr, y_np)
+    vec_add_numba(x, z, y_numba)
+    vec_add_numpy(x, z, y_np)
 
     # Check correctness
     assert np.allclose(y_np, y_appy, atol=1e-6)
@@ -39,7 +39,7 @@ def test_vec_add():
 
     # Timing
     t0 = perf_counter()
-    vec_add_numpy(x.arr, z.arr, y_np)
+    vec_add_numpy(x, z, y_np)
     t1 = perf_counter()
     print(f"NumPy: {1000*(t1-t0):.4f} ms")
 
@@ -49,7 +49,7 @@ def test_vec_add():
     print(f"APPy: {1000*(t1-t0):.4f} ms")
 
     t0 = perf_counter()
-    vec_add_numba(x.arr, z.arr, y_numba)
+    vec_add_numba(x, z, y_numba)
     t1 = perf_counter()
     print(f"Numba: {1000*(t1-t0):.4f} ms")
 

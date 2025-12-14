@@ -14,7 +14,7 @@ def gelu_numba(x, y):
         y[i] = 0.5 * xi * (1 + t)
 
 # APPy version: write into preallocated y
-@appy.jit(verbose_static_rewrite=True)
+@appy.jit(verbose_static_rewrite=True, dump_code=True)
 def gelu_appy(x, y):
     for i in appy.prange(x.shape[0]):
         xi = x[i]
@@ -32,13 +32,13 @@ def test():
     size = 20_000_000
     x = nps.randn(size, dtype=np.float32)
     y_appy = nps.empty_like(x)
-    y_numba = np.empty_like(x.arr)
-    y_np = np.empty_like(x.arr)
+    y_numba = np.empty_like(x)
+    y_np = np.empty_like(x)
 
     # Warmup
     gelu_appy(x, y_appy)
-    gelu_numba(x.arr, y_numba)
-    gelu_numpy(x.arr, y_np)
+    gelu_numba(x, y_numba)
+    gelu_numpy(x, y_np)
 
     # Check correctness
     assert np.allclose(y_np, y_appy, atol=1e-6)
@@ -46,7 +46,7 @@ def test():
 
     # Timing
     t0 = perf_counter()
-    gelu_numpy(x.arr, y_np)
+    gelu_numpy(x, y_np)
     t1 = perf_counter()
     print(f"NumPy: {1000*(t1-t0):.4f} ms")
 
@@ -56,7 +56,7 @@ def test():
     print(f"APPy: {1000*(t1-t0):.4f} ms")
 
     t0 = perf_counter()
-    gelu_numba(x.arr, y_numba)
+    gelu_numba(x, y_numba)
     t1 = perf_counter()
     print(f"Numba: {1000*(t1-t0):.4f} ms")
 
