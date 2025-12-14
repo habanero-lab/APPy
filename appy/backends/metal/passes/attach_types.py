@@ -66,12 +66,13 @@ class AttachTypes(ast.NodeVisitor):
     def visit_BinOp(self, node):
         self.generic_visit(node)
         types = [child.appy_type for child in [node.left, node.right] if hasattr(child, "appy_type")]
+        types.sort()
         if types[0] == types[1]:
             node.appy_type = types[0]
-        elif set(types) == {"float", "int"}:
-            node.appy_type = "float"
-        elif set(types) == {"float", "float3"}:
-            node.appy_type = "float3"
+        elif types == ["float", "int"]:
+            node.appy_type = types[0]
+        elif types[1] == types[0] + "2" or types[1] == types[0] + "3" or types[1] == types[0] + "4":
+            node.appy_type = types[1]
         else:
             assert False, "Incompatible types for binary oprator: " + str(types)
 
