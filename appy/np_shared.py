@@ -13,7 +13,7 @@ def empty(shape, dtype=np.float64):
     n = int(np.prod(shape))
     buf = device.buffer(n * dtype.itemsize)
     arr = np.frombuffer(buf, dtype=dtype, count=n).reshape(shape)
-    array_to_buffer[arr.ctypes.data] = (buf, device)
+    array_to_buffer[arr.ctypes.data] = buf
     return arr
 
 def empty_like(x, dtype=None):
