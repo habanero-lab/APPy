@@ -35,14 +35,14 @@ def gen_func_header(loop_name, replaced_loop, val_map):
     for var, val in val_map.items():
         if var == niters:
             continue
-
-        if hasattr(val, "buf"):
+        
+        ty = type(val).__name__
+        if ty == "ndarray":
             # Arrays
             dtype = val.dtype
             s += f"device {py_to_cpp[str(dtype)]}* {var} [[ buffer({count}) ]], "
         else:
             # Scalars
-            ty = type(val).__name__
             assert ty in py_to_cpp, f"Unsupported type {ty} for variable {var}"
             s += f"constant {py_to_cpp[ty]}& {var} [[ buffer({count}) ]], "
         count += 1

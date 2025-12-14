@@ -55,3 +55,21 @@ def codegen(loop_source, loop_name, val_map, options):
         code_cache[cache_key] = f, code_src
 
     return f, code_src
+
+
+def exec(f, val_map):
+    from ...np_shared import array_to_buffer
+    args = []
+    device = None
+    for k, v in val_map.items(): 
+        if type(v).__name__ == 'ndarray':
+            if v.ctypes.data not in array_to_buffer:
+                raise RuntimeError(f"Could not find buffer for array {k}")
+            else:
+                buf, device = array_to_buffer[v.ctypes.data]
+                args.append(buf)
+        else:
+            args.append(v)
+    assert device, "Could not find device - at least one of the argument should be a shared array!"
+    args.append(device)
+    f(*args)

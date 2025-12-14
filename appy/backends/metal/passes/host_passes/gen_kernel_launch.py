@@ -10,21 +10,13 @@ class GenKernelLaunch(ast.NodeTransformer):
     def visit_For(self, node):
         assert len(node.iter.args) == 1
         num_iters = ast.unparse(node.iter.args[0])
-       
-        first_array_arg = None
-        for var, val in self.val_map.items():
-            if hasattr(val, "dev"):
-                first_array_arg = var
-                break
 
         args = [num_iters]
         for k, v in self.val_map.items():
             if k == num_iters:
                 continue
 
-            if hasattr(v, "buf"):
-                args.append(f"{k}.buf")
-            elif type(v) == int:
+            if type(v) == int:
                 args.append(f"np.int32({k})")
             elif type(v) == float:
                 args.append(f"np.float32({k})")
@@ -35,7 +27,7 @@ class GenKernelLaunch(ast.NodeTransformer):
 
         code_str = f'''
             if not hasattr({self.loop_name}, "kernel"):
-                {self.loop_name}.kernel = {first_array_arg}.dev.kernel(kernel_str).function("_{self.loop_name}")
+                {self.loop_name}.kernel = device.kernel(kernel_str).function("_{self.loop_name}")
             handle = {self.loop_name}.kernel({", ".join(args)})
             del handle
         '''

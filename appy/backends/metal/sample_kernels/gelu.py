@@ -20,8 +20,8 @@ kernel void gelu(
 """
 
 
-def kernel_loop_1(x, x_shape_0, y):
+def kernel_loop_1(x, x_shape_0, y, device):
     if not hasattr(kernel_loop_1, "kernel"):
-        kernel_loop_1.kernel = x.dev.kernel(kernel_str).function("gelu")
-    handle = kernel_loop_1.kernel(x_shape_0, x.buf, y.buf)
+        kernel_loop_1.kernel = device.kernel(kernel_str).function("gelu")
+    handle = kernel_loop_1.kernel(x_shape_0, x, y)
     del handle
