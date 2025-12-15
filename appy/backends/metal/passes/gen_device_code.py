@@ -1,4 +1,5 @@
 import ast
+from . import type_map
 
 def gen_headers():
     return '''
@@ -25,13 +26,6 @@ def gen_func_header(loop_name, replaced_loop, val_map):
 
     niters = ast.unparse(replaced_loop.iter.args[0])
     count = 0
-    py_to_cpp = {
-        'int': 'int',
-        'float': 'float',
-        'float32': 'float',
-        'int32': 'int',
-        'uint8': 'uint8_t'
-    }
     for var, val in val_map.items():
         if var == niters:
             continue
@@ -40,11 +34,11 @@ def gen_func_header(loop_name, replaced_loop, val_map):
         if ty == "ndarray":
             # Arrays
             dtype = val.dtype
-            s += f"device {py_to_cpp[str(dtype)]}* {var} [[ buffer({count}) ]], "
+            s += f"device {type_map.get_metal_type(str(dtype))}* {var} [[ buffer({count}) ]], "
         else:
             # Scalars
-            assert ty in py_to_cpp, f"Unsupported type {ty} for variable {var}"
-            s += f"constant {py_to_cpp[ty]}& {var} [[ buffer({count}) ]], "
+            #assert ty in py_to_cpp, f"Unsupported type {ty} for variable {var}"
+            s += f"constant {type_map.get_metal_type(ty)}& {var} [[ buffer({count}) ]], "
         count += 1
 
     s += f"uint grid_id [[ thread_position_in_grid ]])"

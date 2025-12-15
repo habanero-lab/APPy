@@ -1,20 +1,11 @@
 import ast
 from . import device_func_types
+from . import type_map
 
 class AttachTypes(ast.NodeVisitor):
     def __init__(self, val_map):
         self.val_map = val_map
         self.name_to_type = {}
-        self.py_to_cpp = {
-            # Python types
-            'int': 'int',
-            'float': 'float',
-
-            # NumPy dtypes
-            'float32': 'float',
-            'int32': 'int',
-            'uint8': 'uint8_t'
-        }
         self.verbose = False
 
     def visit_For(self, node):
@@ -44,14 +35,14 @@ class AttachTypes(ast.NodeVisitor):
 
     def visit_Constant(self, node):
         val = node.value
-        node.appy_type = self.py_to_cpp[type(val).__name__]
+        node.appy_type = type_map.get_metal_type(val)
     
     def visit_Subscript(self, node):
         # Array variables are not visited
         if isinstance(node.value, ast.Name) and node.value.id in self.val_map:
             val = self.val_map[node.value.id]
             assert hasattr(val, "dtype"), f"Non-array found: {node.value.id}, a variable needs to be either an array or a vector type to be subscripted"            
-            node.appy_type = self.py_to_cpp[str(val.dtype)]
+            node.appy_type = type_map.get_metal_type(val)
         elif isinstance(node.value, ast.Name) and node.value.id in self.name_to_type:
             base_type = self.name_to_type[node.value.id]
             assert base_type[-1] in ['2', '3', '4'], f"Unknown vector type: {base_type}"
@@ -79,7 +70,7 @@ class AttachTypes(ast.NodeVisitor):
     def visit_Name(self, node):
         # Must be a scalar here since array variables are not visited (not needed for kernel codegen var decls)
         if node.id in self.val_map:
-            node.appy_type = self.py_to_cpp[type(self.val_map[node.id]).__name__]
+            node.appy_type = type_map.get_metal_type(self.val_map[node.id])
         else:
             assert node.id in self.name_to_type, f"Type not found for name {node.id}"
             node.appy_type = self.name_to_type[node.id]
