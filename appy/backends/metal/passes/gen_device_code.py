@@ -51,7 +51,7 @@ def gen_var_decls(loop, val_map):
         if isinstance(node, ast.Assign):
             target = node.targets[0]
             if isinstance(target, ast.Name) and target.id not in val_map:
-                var_to_type[target.id] = target.appy_type
+                var_to_type[target.id] = target.metal_type
 
     s = ""
     for var, ty in var_to_type.items():

@@ -5,19 +5,19 @@ class FixFloatDivTypes(ast.NodeTransformer):
         self.generic_visit(node)
         if isinstance(node.op, ast.Div):
             a, b = node.left, node.right
-            if a.appy_type == 'int' and b.appy_type == 'int':
+            if a.metal_type == 'int' and b.metal_type == 'int':
                 node.left = ast.Call(func=ast.Name(id='float', ctx=ast.Load()), args=[a], keywords=[])
                 node.right = ast.Call(func=ast.Name(id='float', ctx=ast.Load()), args=[b], keywords=[])
-                node.left.appy_type = 'float'
-                node.right.appy_type = 'float'
-                node.appy_type = 'float'
+                node.left.metal_type = 'float'
+                node.right.metal_type = 'float'
+                node.metal_type = 'float'
         return node
     
     # def visit_Assign(self, node):
     #     self.generic_visit(node)
-    #     if node.value.appy_type == 'float':
+    #     if node.value.metal_type == 'float':
     #         for target in node.targets:
-    #             target.appy_type = 'float'
+    #             target.metal_type = 'float'
     #     return node
     
 

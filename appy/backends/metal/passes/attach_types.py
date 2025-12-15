@@ -29,63 +29,63 @@ class AttachTypes(ast.NodeVisitor):
         arg_types = []
         for arg in node.args:
             self.visit(arg)
-            arg_types.append(arg.appy_type)
+            arg_types.append(arg.metal_type)
         # Assume the return value has the same type as the first argument
-        node.appy_type = getattr(device_func_types, func)(*arg_types)
+        node.metal_type = getattr(device_func_types, func)(*arg_types)
 
     def visit_Constant(self, node):
         val = node.value
-        node.appy_type = type_map.get_metal_type(val)
+        node.metal_type = type_map.get_metal_type(val)
     
     def visit_Subscript(self, node):
         # Array variables are not visited
         if isinstance(node.value, ast.Name) and node.value.id in self.val_map:
             val = self.val_map[node.value.id]
             assert hasattr(val, "dtype"), f"Non-array found: {node.value.id}, a variable needs to be either an array or a vector type to be subscripted"            
-            node.appy_type = type_map.get_metal_type(val)
+            node.metal_type = type_map.get_metal_type(val)
         elif isinstance(node.value, ast.Name) and node.value.id in self.name_to_type:
             base_type = self.name_to_type[node.value.id]
             assert base_type[-1] in ['2', '3', '4'], f"Unknown vector type: {base_type}"
-            node.appy_type = base_type[:-1]
+            node.metal_type = base_type[:-1]
         else:
             assert False, f"Unknown subscript: {node}"
 
     def visit_UnaryOp(self, node: ast.UnaryOp):
         self.generic_visit(node)
-        node.appy_type = node.operand.appy_type
+        node.metal_type = node.operand.metal_type
     
     def visit_BinOp(self, node):
         self.generic_visit(node)
-        types = [child.appy_type for child in [node.left, node.right] if hasattr(child, "appy_type")]
+        types = [child.metal_type for child in [node.left, node.right]]
         types.sort()
         if types[0] == types[1]:
-            node.appy_type = types[0]
+            node.metal_type = types[0]
         elif types == ["float", "int"]:
-            node.appy_type = types[0]
+            node.metal_type = types[0]
         elif types[1] == types[0] + "2" or types[1] == types[0] + "3" or types[1] == types[0] + "4":
-            node.appy_type = types[1]
+            node.metal_type = types[1]
         else:
             assert False, "Incompatible types for binary oprator: " + str(types)
 
     def visit_Name(self, node):
         # Must be a scalar here since array variables are not visited (not needed for kernel codegen var decls)
         if node.id in self.val_map:
-            node.appy_type = type_map.get_metal_type(self.val_map[node.id])
+            node.metal_type = type_map.get_metal_type(self.val_map[node.id])
         else:
             assert node.id in self.name_to_type, f"Type not found for name {node.id}"
-            node.appy_type = self.name_to_type[node.id]
+            node.metal_type = self.name_to_type[node.id]
             
         if self.verbose:
-            print("[AttachTypes] assign type to name", node.id, node.appy_type)
+            print("[AttachTypes] assign type to name", node.id, node.metal_type)
 
     def visit_Assign(self, node):
         self.visit(node.value)
         target = node.targets[0]
         if isinstance(target, ast.Name):
             if target.id not in self.name_to_type:
-                self.name_to_type[target.id] = node.value.appy_type
+                self.name_to_type[target.id] = node.value.metal_type
             else:
-                assert self.name_to_type[target.id] == node.value.appy_type, f"{self.name_to_type[target.id]} != {node.value.appy_type}; var: {target.id}"
+                assert self.name_to_type[target.id] == node.value.metal_type, f"{self.name_to_type[target.id]} != {node.value.metal_type}; var: {target.id}"
         self.visit(target)
     
 
