@@ -65,8 +65,10 @@ class AttachTypes(ast.NodeVisitor):
             if isinstance(node.op, ast.Div) and types[0] == "int":
                 node.metal_type = "float"
 
-        elif types == ["float", "int"]:
-            node.metal_type = types[0]
+        elif types[0] == 'float' and types[1] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
+            node.metal_type = 'float'
+        elif types[1] == 'float' and types[0] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
+            node.metal_type = 'float'
         elif types[1] == types[0] + "2" or types[1] == types[0] + "3" or types[1] == types[0] + "4":
             node.metal_type = types[1]
         else:
