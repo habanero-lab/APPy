@@ -23,10 +23,10 @@ def test_store_py_bool():
     assert np.all(out == True)
 
 # Error: metalcompute.error: Could not make buffer
-# def test_store_py_bool1():
-#     out = nps.empty((10,), dtype=np.bool)
-#     store_scalar(out, False)
-#     assert np.all(out == False)
+def test_store_py_bool1():
+    out = nps.empty((10,), dtype=np.bool)
+    store_scalar(out, False)
+    assert np.all(out == False)
 
 def test_store_bool():
     out = nps.empty((10,), dtype=np.bool)
