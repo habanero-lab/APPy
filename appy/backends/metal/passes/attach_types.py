@@ -76,23 +76,31 @@ class AttachTypes(ast.NodeVisitor):
         # Must be a scalar here since array variables are not visited (not needed for kernel codegen var decls)
         if node.id in self.val_map:
             node.metal_type = type_map.get_metal_type(self.val_map[node.id])
-        else:
-            assert node.id in self.name_to_type, f"Type not found for name {node.id}"
+        elif node.id in self.name_to_type:
             node.metal_type = self.name_to_type[node.id]
+        else:
+            node.metal_type = None
             
         if self.verbose:
             print("[AttachTypes] assign type to name", node.id, node.metal_type)
 
+    def bind_type_to_name(self, var, ty):
+        self.name_to_type[var] = ty
+
     def visit_Assign(self, node):
-        self.visit(node.value)
+        self.generic_visit(node)
         target = node.targets[0]
-        if isinstance(target, ast.Name):
-            if target.id not in self.name_to_type:
-                self.name_to_type[target.id] = node.value.metal_type
+        value = node.value
+        if target.metal_type != value.metal_type:
+            if isinstance(target, ast.Name) and target.metal_type is None:
+                # Bind type to name
+                self.bind_type_to_name(target.id, value.metal_type)
+                target.metal_type = value.metal_type
             else:
-                assert self.name_to_type[target.id] == node.value.metal_type, f"{self.name_to_type[target.id]} != {node.value.metal_type}; var: {target.id}"
-        self.visit(target)
-    
+                # Type mismatch, throw an exception
+                raise TypeError(f"Type mismatch: {target.metal_type} != {value.metal_type}")
+
+        assert target.metal_type is not None and target.metal_type == value.metal_type
 
 def visit(tree, val_map):
     '''
