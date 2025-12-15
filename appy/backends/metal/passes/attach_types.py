@@ -98,6 +98,13 @@ class AttachTypes(ast.NodeVisitor):
                 # Bind type to name
                 self.bind_type_to_name(target.id, value.metal_type)
                 target.metal_type = value.metal_type
+            # Check type compatibility
+            elif target.metal_type == 'float' and value.metal_type in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
+                # Implicit cast from any form of integer to float
+                pass
+            elif target.metal_type == 'bool' and value.metal_type in ['char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float']:
+                # Implicit cast from numerical to bool => only evaluates to False if the number equals 0 or 0.0
+                pass
             else:
                 # Type mismatch, throw an exception
                 raise TypeError(f"Type mismatch: {target.metal_type} != {value.metal_type}")
