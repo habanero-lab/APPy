@@ -60,6 +60,11 @@ class AttachTypes(ast.NodeVisitor):
         types.sort()
         if types[0] == types[1]:
             node.metal_type = types[0]
+            # Special div semantic: int / int -> float
+            # In Python, / is always float while in Metal, / is int if both operands are int
+            if isinstance(node.op, ast.Div) and types[0] == "int":
+                node.metal_type = "float"
+
         elif types == ["float", "int"]:
             node.metal_type = types[0]
         elif types[1] == types[0] + "2" or types[1] == types[0] + "3" or types[1] == types[0] + "4":
