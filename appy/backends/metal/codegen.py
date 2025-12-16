@@ -17,7 +17,8 @@ def codegen(loop_source, loop_name, val_map, options):
     else:   
         # Do frontend transformation
         from ...frontend import rewrite_aug_assign
-        from ...frontend import rewrite_tuple_assign
+        #from ...frontend import rewrite_tuple_assign
+        from .passes import rewrite_tuple_assign
 
         tree = rewrite_tuple_assign.transform(tree)
         tree = rewrite_aug_assign.transform(tree)
