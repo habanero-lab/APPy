@@ -5,7 +5,8 @@ class FixFloatDivTypes(ast.NodeTransformer):
         self.generic_visit(node)
         if isinstance(node.op, ast.Div):
             a, b = node.left, node.right
-            if a.metal_type == 'int' and b.metal_type == 'int':
+            if a.metal_type in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint'] and \
+                b.metal_type in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
                 node.left = ast.Call(func=ast.Name(id='float', ctx=ast.Load()), args=[a], keywords=[])
                 node.right = ast.Call(func=ast.Name(id='float', ctx=ast.Load()), args=[b], keywords=[])
                 node.left.metal_type = 'float'
