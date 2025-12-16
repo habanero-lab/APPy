@@ -41,3 +41,6 @@ def get_metal_type(val):
         return m[type(val).__name__]
     else:
         raise NotImplementedError(f"Type mapping not implemented for value of type {type(val)}")
+    
+def is_arithmetic_scalar_metal_type(ty):
+    return ty in m.values()
