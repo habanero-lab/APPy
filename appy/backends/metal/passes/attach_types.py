@@ -107,7 +107,6 @@ class AttachTypes(ast.NodeVisitor):
                 # Type mismatch, throw an exception
                 raise TypeError(f"Type mismatch: {target.metal_type} != {value.metal_type}")
 
-        assert target.metal_type is not None and target.metal_type == value.metal_type
 
 def visit(tree, val_map):
     '''
