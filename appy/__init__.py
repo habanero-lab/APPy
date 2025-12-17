@@ -9,6 +9,7 @@ import ast_transforms as at
 from .frontend import replace_pfor_with_stub
 from .frontend import hoist_shape_attr
 from .frontend import process_shared
+from .frontend import rewrite_shader_loops
 
 # Compiler
 from . import dispatcher
@@ -40,6 +41,8 @@ def rewrite_loops(fn, **options):
     tree = astc.parse(source)
 
     # 2. Apply transformation
+    if options.get('shader', False):
+        tree = rewrite_shader_loops.transform(tree)
     tree = hoist_shape_attr.transform(tree)
     tree = process_shared.transform(tree)
     tree = at.remove_func_decorator(tree)
@@ -77,6 +80,17 @@ def jit(fn=None, **options):
         def jit_with_args(fn1):
             return rewrite_loops(fn1, **options)
         return jit_with_args
+    
+def shader(fn=None, **options):
+    set_default_options(options)
+    options['shader'] = True
+    if fn:
+        return rewrite_loops(fn, **options)
+    else:
+        def jit_with_args(fn1):
+            return rewrite_loops(fn1, **options)
+        return jit_with_args
+
 
 # Built-in functions
 def vidx(start, stepsize, bound=None):
