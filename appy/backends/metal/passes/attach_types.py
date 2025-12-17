@@ -58,17 +58,16 @@ class AttachTypes(ast.NodeVisitor):
         self.generic_visit(node)
         types = [child.metal_type for child in [node.left, node.right]]
         types.sort()
-        if types[0] == types[1]:
-            node.metal_type = types[0]
-
-        elif types[0] == 'float' and types[1] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
-            node.metal_type = 'float'
-        elif types[1] == 'float' and types[0] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
-            node.metal_type = 'float'
-        elif isinstance(node.op, ast.Div) and \
+        if isinstance(node.op, ast.Div) and \
             types[0] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint'] and \
             types[1] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
             # Python semantic: divsion between any kind of integers is float
+            node.metal_type = 'float'
+        elif types[0] == types[1]:
+            node.metal_type = types[0]
+        elif types[0] == 'float' and types[1] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
+            node.metal_type = 'float'
+        elif types[1] == 'float' and types[0] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
             node.metal_type = 'float'
         elif types[1] == types[0] + "2" or types[1] == types[0] + "3" or types[1] == types[0] + "4":
             node.metal_type = types[1]
