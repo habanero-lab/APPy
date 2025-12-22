@@ -7,25 +7,25 @@ on:
     branches: [ main ]
     
 jobs:
-  # codegen-tests-ubuntu:
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-python@v5
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-  #     - uses: actions/cache@v4
-  #       with:
-  #         path: ~/.cache/pip
-  #         key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
-  #     - run: |
-  #         python -m pip install --upgrade pip
-  #         pip install -e .[dev,triton]
-  #     - run: TRITON_INTERPRET=1 pytest -v tests/integration/triton -k "not (go_fast or black_scholes)"
-  #     - run: pytest -v tests/unit/general
+  codegen-tests-ubuntu:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev,triton]
+      - run: TRITON_INTERPRET=1 pytest -v tests/integration/triton -k "not (go_fast or black_scholes)"
+      - run: pytest -v tests/unit/general
 
   codegen-tests-macos:
     runs-on: macos-latest
