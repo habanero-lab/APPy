@@ -19,7 +19,7 @@ def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope
         f, code_src = metal_codegen(loop_source, loop_name, val_map, options)
         
     elif sys.platform.startswith("linux"):
-        if shutil.which("nvidia-smi") is None:
+        if os.environ.get("TRITON_INTERPRET") != "1" and shutil.which("nvidia-smi") is None:
             raise RuntimeError("NVIDIA GPU not found")
         
         from .backends.triton.codegen import codegen as triton_codegen
