@@ -82,14 +82,8 @@ def jit(fn=None, **options):
         return jit_with_args
     
 def shader(fn=None, **options):
-    set_default_options(options)
     options['shader'] = True
-    if fn:
-        return rewrite_loops(fn, **options)
-    else:
-        def jit_with_args(fn1):
-            return rewrite_loops(fn1, **options)
-        return jit_with_args
+    return jit(fn, **options)
 
 
 # Built-in functions
