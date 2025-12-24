@@ -11,19 +11,28 @@ def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope
     used_names = at.get_used_names(astc.parse(loop_source))
     val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
 
-    if sys.platform == "darwin":
-        if platform.machine() != "arm64":
-            raise RuntimeError("macOS with x86_64 is not supported")
-        
-        from .backends.metal.codegen import codegen as metal_codegen
-        f, code_src = metal_codegen(loop_source, loop_name, val_map, options)
-        
-    elif sys.platform.startswith("linux"):
-        if os.environ.get("TRITON_INTERPRET") != "1" and shutil.which("nvidia-smi") is None:
-            raise RuntimeError("NVIDIA GPU not found")
-        
-        from .backends.triton.codegen import codegen as triton_codegen
-        f, code_src = triton_codegen(loop_source, loop_name, val_map, options)
+    if backend_name:
+        if backend_name == "numba":
+            from .backends.numba.codegen import codegen as numba_codegen
+            f, code_src = numba_codegen(loop_source, loop_name, val_map, options)
+        else:
+            raise NotImplementedError
+    else:
+        if sys.platform == "darwin":
+            if platform.machine() != "arm64":
+                raise RuntimeError("macOS with x86_64 is not supported")
+            
+            from .backends.metal.codegen import codegen as metal_codegen
+            f, code_src = metal_codegen(loop_source, loop_name, val_map, options)
+            
+        elif sys.platform.startswith("linux"):
+            if os.environ.get("TRITON_INTERPRET") != "1" and shutil.which("nvidia-smi") is None:
+                raise RuntimeError("NVIDIA GPU not found")
+            
+            from .backends.triton.codegen import codegen as triton_codegen
+            f, code_src = triton_codegen(loop_source, loop_name, val_map, options)
+        else:
+            raise NotImplementedError
 
 
     if options.get("dry_run"):

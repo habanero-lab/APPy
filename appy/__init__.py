@@ -65,7 +65,7 @@ def rewrite_loops(fn, **options):
     return new_fn
 
 def set_default_options(options):
-    options.setdefault("backend", "triton")
+    options.setdefault("backend", None)
     options.setdefault("dry_run", False)
     options.setdefault("dump_code", False)
     options.setdefault("dump_code_to_file", None)
@@ -82,6 +82,11 @@ def jit(fn=None, **options):
         return jit_with_args
     
 def shader(fn=None, **options):
+    options['shader'] = True
+    return jit(fn, **options)
+
+def cpu_shader(fn=None, **options):
+    options['backend'] = 'numba'
     options['shader'] = True
     return jit(fn, **options)
 
