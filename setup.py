@@ -38,6 +38,9 @@ setup(
         "metal": [
             "metalcompute"
         ],
+        "numba": [
+            "numba"
+        ],
         "cuda": [
             "pycuda",
         ],
