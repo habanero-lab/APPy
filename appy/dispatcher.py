@@ -44,7 +44,7 @@ def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope
             raise RuntimeError(f"Error executing loop {loop_name} in dry_run mode: {e}")        
         return
 
-    if sys.platform == "darwin":
+    if backend_name == None and sys.platform == "darwin":
         from .backends.metal.codegen import exec as metal_exec
         metal_exec(f, val_map)
     else:
