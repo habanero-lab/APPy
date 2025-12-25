@@ -15,7 +15,7 @@ def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope
         if backend_name == "numba":
             from .backends.numba.codegen import codegen as numba_codegen
             f, code_src = numba_codegen(loop_source, loop_name, val_map, options)
-        if backend_name == "triton":
+        elif backend_name == "triton":
             from .backends.triton.codegen import codegen as triton_codegen
             f, code_src = triton_codegen(loop_source, loop_name, val_map, options)
         else:
