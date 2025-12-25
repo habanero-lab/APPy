@@ -39,7 +39,8 @@ class RewriteNestedPrange(ast.NodeTransformer):
                         )],
                         keywords=[]
                     ),
-                    body=[]
+                    body=[],
+                    orelse=[]
                 )
 
                 new_loop.body = [
