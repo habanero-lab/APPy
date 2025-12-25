@@ -19,7 +19,7 @@ def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope
             from .backends.triton.codegen import codegen as triton_codegen
             f, code_src = triton_codegen(loop_source, loop_name, val_map, options)
         else:
-            raise NotImplementedError
+            raise NotImplementedError('Unknown backend:' + backend_name)
     else:
         if sys.platform == "darwin":
             if platform.machine() != "arm64":
