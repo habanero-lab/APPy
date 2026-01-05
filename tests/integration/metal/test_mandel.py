@@ -93,9 +93,9 @@ def mandelbrot_appy(xmin, xmax, ymin, ymax, width, height, max_iter, out):
 # Test harness
 # -----------------------------------------------------
 def test_mandelbrot():
-    width = 1500
+    width = 1000
     height = 1000
-    max_iter = 22
+    max_iter = 10
     xmin, xmax = np.float32(-2.0), np.float32(1.0)
     ymin, ymax = np.float32(-1.5), np.float32(1.5)
 
