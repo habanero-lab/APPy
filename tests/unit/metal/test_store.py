@@ -18,19 +18,19 @@ def test_store_py_float():
     assert np.all(out == 3.3)
 
 def test_store_py_bool():
-    out = nps.empty((10,), dtype=np.bool)
+    out = nps.empty((10,), dtype=np.bool_)
     store_scalar(out, True)
     assert np.all(out == True)
 
 # Error: metalcompute.error: Could not make buffer
 def test_store_py_bool1():
-    out = nps.empty((10,), dtype=np.bool)
+    out = nps.empty((10,), dtype=np.bool_)
     store_scalar(out, False)
     assert np.all(out == False)
 
 def test_store_bool():
-    out = nps.empty((10,), dtype=np.bool)
-    store_scalar(out, np.bool(True))
+    out = nps.empty((10,), dtype=np.bool_)
+    store_scalar(out, np.bool_(True))
     assert np.all(out == True)
 
 def test_store_int8():

@@ -21,7 +21,7 @@ class GenKernelLaunch(ast.NodeTransformer):
             elif type(v) == float:
                 args.append(f"np.float32({k})")
             elif type(v) == bool:
-                args.append(f"np.bool({k})")
+                args.append(f"np.bool_({k})")
             else:
                 args.append(k)
 
