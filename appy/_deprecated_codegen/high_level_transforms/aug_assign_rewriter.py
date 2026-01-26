@@ -1,5 +1,5 @@
 import ast_comments as ast
-from ast_transforms.utils import *
+from copy import deepcopy
 
 class RewriteAugAssign(ast.NodeTransformer):
     '''
@@ -7,14 +7,15 @@ class RewriteAugAssign(ast.NodeTransformer):
     x += 1 is rewritten to x = x + 1
     '''
     def visit_AugAssign(self, node):
-        left = node.target
-        right = node.value
+        copy_of_target = deepcopy(node.target)
+        copy_of_target.ctx = ast.Load()
+        
         newnode = ast.Assign(
-                targets=[left], 
+                targets=[node.target], 
                 value=ast.BinOp(
-                    left=deepcopy_ast_node(left, ctx=ast.Load()), 
+                    left=copy_of_target, 
                     op=node.op, 
-                    right=right
+                    right=node.value
                 ),
                 lineno=node.lineno,
             )
