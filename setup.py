@@ -28,6 +28,7 @@ setup(
     install_requires=[
         'ast_comments', 
         'ast_transforms',
+        'astpass',
         'numpy'     
     ],
     extras_require={

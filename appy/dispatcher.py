@@ -3,12 +3,12 @@ import sys
 import shutil
 import platform
 import ast_comments as astc
-import ast_transforms as at
+from astpass.passes import get_used_names
 from .utils import load_module_from_str, pretty_dump
 
 def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope, options):
     merged_scope = global_scope | local_scope
-    used_names = at.get_used_names(astc.parse(loop_source))
+    used_names = get_used_names.analyze(astc.parse(loop_source), no_funcname=True)
     val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
 
     if backend_name:
