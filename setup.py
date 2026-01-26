@@ -24,7 +24,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.9',            # Minimum Python version requirement
+    python_requires='>=3.10',            # Minimum Python version requirement
     install_requires=[
         'ast_comments', 
         'ast_transforms',
