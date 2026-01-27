@@ -5,7 +5,7 @@ import ast
 import ast_comments as astc
 
 # AST passes
-import ast_transforms as at
+from astpass.passes import remove_func_decorator
 from .frontend import replace_pfor_with_stub
 from .frontend import hoist_shape_attr
 from .frontend import process_shared
@@ -45,7 +45,7 @@ def rewrite_loops(fn, **options):
         tree = rewrite_shader_loops.transform(tree)
     tree = hoist_shape_attr.transform(tree)
     tree = process_shared.transform(tree)
-    tree = at.remove_func_decorator(tree)
+    tree = remove_func_decorator.transform(tree)
     tree = replace_pfor_with_stub.transform(tree, options)
 
     newcode = ast.unparse(tree)
