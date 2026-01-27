@@ -16,6 +16,10 @@ class AddSIMDAnnotation(ast.NodeTransformer):
         return self.generic_visit(node)
 
 def transform(tree, rt_vals):
+    # A quick fix
+    import numpy as np
+    rt_vals['np'] = np
+    
     tree = vector_op_to_loop.transform(tree, rt_vals)
     tree = normalize_ranges.transform(tree)
     tree = AddSIMDAnnotation().visit(tree)
