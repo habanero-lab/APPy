@@ -30,12 +30,10 @@ def codegen(loop_source, loop_name, val_map, options):
         attach_pragma.visit(tree)
         tree = reduction_detection.transform(tree)
 
-        from .passes import attach_shapes
         from .passes import block_loop
         from .passes import lower_array_op_to_loop
 
-        attach_shapes.visit(tree, val_map)
-        tree = lower_array_op_to_loop.transform(tree)
+        tree = lower_array_op_to_loop.transform(tree, val_map)
         tree = block_loop.transform(tree)    
         
         from .passes import gen_host_code
