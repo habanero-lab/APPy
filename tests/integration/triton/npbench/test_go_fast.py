@@ -18,13 +18,12 @@ def go_fast_np(a):
 
 
 import appy
-import math
 @appy.jit(backend="triton", dump_code=True)
 def go_fast_appy(a):
     trace = 0.0
     #pragma parallel for simd shared(trace)
     for i in range(a.shape[0]):
-        trace += math.tanh(a[i, i])
+        trace += np.tanh(a[i, i])
     print("trace", trace)
     return a + trace
 
