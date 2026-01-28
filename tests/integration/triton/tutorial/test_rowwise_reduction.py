@@ -22,7 +22,7 @@ def matrix_rowwise_max(a, b):
     #pragma parallel for
     for i in range(a.shape[0]):
         
-        s = float("-inf")
+        s = -1e308
         #pragma simd
         for j in range(a.shape[1]):
             s = max(s, a[i, j])
@@ -40,7 +40,7 @@ def matrix_rowwise_min(a, b):
     #pragma parallel for
     for i in range(a.shape[0]):
         
-        s = float("inf")
+        s = 1e308
         #pragma simd
         for j in range(a.shape[1]):
             s = min(s, a[i, j])
