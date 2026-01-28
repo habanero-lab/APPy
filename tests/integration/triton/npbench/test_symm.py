@@ -44,7 +44,7 @@ def kernel_appy1(alpha, beta, C, A, B):
         #pragma parallel for
         for j in range(C.shape[1]):
             C[:i, j] += alpha * B[i, j] * A[i, :i]
-            temp2[j] = sum(B[:i, j] * A[i, :i])
+            temp2[j] = np.sum(B[:i, j] * A[i, :i])
         C[i, :] += alpha * B[i, :] * A[i, i] + alpha * temp2
     return C
 
