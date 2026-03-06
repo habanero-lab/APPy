@@ -14,8 +14,10 @@ def increment_by_1(a):
 
 # Create the input array
 a = np.arange(10)
+
 # Apply the increment_by_1 function
 increment_by_1(a)
+
 # Inspect the array after
 print(a)  # Should print [ 1  2  3  4  5  6  7  8  9 10]
 ```
@@ -45,64 +47,23 @@ The `examples` directory contains some more examples to get started:
 python examples/01-vec_add.py
 ```
 
-# Loop-Oriented programming interface
-## Parallelization
-A loop can be parallelized by being annotated with `#pragma parallel for`, where the end of the loop acts as a synchronization point. Each loop iteration is said to be assigned to a *worker*, and the number of workers launched is always equal to the number of loop iterations. Each worker is scheduled to a single vector processor, and executes its instructions sequentially. 
-A parallel for-loop must be a for-range loop, and the number of loop iterations must be known at kernel launch time, i.e. no dynamic parallelism.
+# Key Innovations
+APPy offers three key innovations which makes it intuitive for Python programmers who'd like to accelerate loops on GPUs:
 
-A vector addition example is shown below to parallelize a for loop with APPy via `#pragma parallel for`. `#pragma ...` is a regular comment in Python, but will be parsed and treated as a directive by APPy.
-
-```python
-@appy.jit
-def vector_add(A, B, C, N):
-    #pragma parallel for
-    for i in range(N):
-        C[i] = A[i] + B[i]
-```
-
-## APPy's Machine Model
-A key design of APPy is that it assumes a simple abstract machine model, i.e. a multi-vector processor, instead of directly exposing the complex GPU architecture to the programmer. In this multi-vector processor, there are 2 layers of parallelism: 1) each vector processor is able to do vector processing (SIMD); 2) different vector processors run independently and simultaneously (MIMD). Pragma `#pragma parallel for` corresponds to the MIMD parallelism, which is also referred to as parallelization. The SIMD parallelism is referred to as vectorization, as described in more detail in the next section. Maximum parallelism is achieved with the loop is both parallelized and vectorized.
-
-<p align="center">
-  <img src="https://github.com/habanero-lab/APPy/assets/7697776/6425b55c-4148-4bac-9eae-e0fbab3cfa31" width=50% height=50%>
-</p>
+* Sequential loop structure is maintained, which brings minimal code change
+    - User intents are communicated via very simple annotations
+* Automatic memory management between host and device
+    - No need to manage host-device data movement by default
+* Automatic parallelism mapping depending on loop body code
+    - Compiler detects the degree of data parallelism in the loop body and maps efficiently to hardware threads
 
 
-## Vectorization
-Although `#pragma parallel for` parallelizes a loop, maximum parallelism is achieved when the loop body is also vectorized, when applicable. APPy provides two high-level ways to achieve vectorization: 1) use tensor/array expressions (compiler generates a loop automatically, though this feature is not included as of v0.3.0); 2) annotate a loop with the `#pragma simd`, which divides the loop into smaller chunks.
-
-Vector addition example.
-
-```python
-@appy.jit
-def vector_add(A, B, C):
-    #pragma parallel for simd
-    for i in range(A.shape[0]):
-        C[i] = A[i] + B[i]
-```
-
-SpMV example. 
-
-```python
-@appy.jit
-def spmv(A_row, A_col, A_val, x, y, N):
-    #pragma parallel for
-    for i in range(N - 1):
-        yi = 0.0
-        #pragma simd
-        for j in range(A_row[i], A_row[1+i]):
-            yi += A_val[j] * x[A_col[j]]
-        y[i] = yi
-```
-
-A loop that is not applicable for parallelization may be vectorizable. One example is the `j` loop in the SpMV example, where it has dynamic loop bounds.
-
-## Data Scope 
+# Data Scope 
 Array variables must already be defined before executing the parallel region, while their data can either reside in CPU memory or GPU memory. For CPU arrays, e.g. NumPy arrays, the compiler will automatically move data to the device before launching the kernel and move data back to the host after the kernel finishes. For GPU arrays, e.g. PyTorch CUDA tensors, the compiler does not do move them, e.g. they stay where they are throughout the kernel. 
 
 Scalar variables may be defined either outside the parallel region, or inside the parallel region. If defined outside and used inside, the variable has an "argument passing by value" semantic, where it gets the initial value from outside when the kernel is launched but any updates are only visible inside the kernel. To make the updates visible outside the kernel, the variable must be declared in the `shared` clause, which tells the compiler to copy the variable to the GPU memory where it can be updated and copy it back after the kernel finishes. Scalar variables defined inside parallel region are considered local to each worker, e.g. can be safely parallelized.
 
-## Parallel reduction
+# Parallel reduction
 A parallel reduction example. 
 ```python
 @appy.jit
