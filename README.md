@@ -1,6 +1,12 @@
 <!-- [![Documentation Status](https://readthedocs.org/projects/appy/badge/?version=latest)](https://appy.readthedocs.io/en/latest/?badge=latest) -->
 
-APPy (Annotated Parallelism for Python) makes it easy to run Python for loops on GPUs. Here's a simple example to get started:
+# APPy
+
+**APPy (Annotated Parallelism for Python)** enables Python `for` loops to run efficiently on GPUs with minimal code changes.
+
+Instead of rewriting code using GPU frameworks, users simply annotate ordinary Python loops. The APPy compiler then automatically generates GPU kernels and manages data movement between the CPU and GPU.
+
+Below is a simple example.
 
 ```python
 import numpy as np
@@ -15,24 +21,35 @@ def increment_by_1(a):
 # Create the input array
 a = np.arange(10)
 
-# Apply the increment_by_1 function
+# Execute the function
 increment_by_1(a)
 
-# Inspect the array after
-print(a)  # Should print [ 1  2  3  4  5  6  7  8  9 10]
+# Inspect the result
+print(a)  # [ 1  2  3  4  5  6  7  8  9 10]
 ```
 
-Under the hood, the compiler will generate a GPU device function that performs the increment operation, and pass input array `a` to the GPU kernel to execute on the GPU. In addition, the compiler also emits code to move data from CPU main memory to GPU memory before the kernel invocation, and move the data back to CPU after.
+Under the hood, APPy compiles the annotated loop into a GPU device function and launches it as a GPU kernel. The compiler also automatically generates code to:
 
-# Install
+* transfer input data from CPU memory to GPU memory before kernel execution
+* execute the generated kernel on the GPU
+* copy results back to the CPU after execution
 
-For a minimal installation which only includes the APPy code generator itself, run:
+This allows programmers to benefit from GPU acceleration while writing code that remains close to standard Python.
+
+
+# Installation
+
+To install the core APPy compiler:
 
 ```bash
 pip install -e .
 ```
 
-To run the APPy generated code, you'd also need to install the backend packages, e.g. PyCUDA, Triton etc, depending on the platform. For example, to install the Triton backend, you could run 
+This installs the APPy code generator itself.
+
+To execute the generated GPU code, you also need to install a backend runtime such as PyCUDA or Triton, depending on the platform.
+
+For example, to install the Triton backend:
 
 ```bash
 pip install -e .[triton]
@@ -41,30 +58,85 @@ pip install -e .[triton]
 
 # Quick Start
 
-The `examples` directory contains some more examples to get started:
+Additional examples are available in the `examples` directory.
+
+To run a simple vector addition example:
 
 ```bash
 python examples/01-vec_add.py
 ```
 
-# Key Innovations
-APPy offers three key innovations which makes it intuitive for Python programmers who'd like to accelerate loops on GPUs:
 
-* Sequential loop structure is maintained, which brings minimal code change
-    - User intents are communicated via very simple annotations
-* Automatic memory management between host and device
-    - No need to manage host-device data movement by default
-* Automatic parallelism mapping depending on loop body code
-    - Compiler detects the degree of data parallelism in the loop body and maps efficiently to hardware threads
+# Key Ideas
+
+APPy introduces several design choices that make GPU acceleration accessible to Python programmers.
+
+### 1. Preserve the Sequential Programming Model
+
+APPy keeps the original sequential loop structure.
+
+* Programmers write standard Python loops
+* Parallelism is expressed through lightweight annotations
+
+This minimizes code changes compared to GPU frameworks that require rewriting kernels.
 
 
-# Data Scope 
-Array variables must already be defined before executing the parallel region, while their data can either reside in CPU memory or GPU memory. For CPU arrays, e.g. NumPy arrays, the compiler will automatically move data to the device before launching the kernel and move data back to the host after the kernel finishes. For GPU arrays, e.g. PyTorch CUDA tensors, the compiler does not do move them, e.g. they stay where they are throughout the kernel. 
+### 2. Automatic Host–Device Memory Management
 
-Scalar variables may be defined either outside the parallel region, or inside the parallel region. If defined outside and used inside, the variable has an "argument passing by value" semantic, where it gets the initial value from outside when the kernel is launched but any updates are only visible inside the kernel. To make the updates visible outside the kernel, the variable must be declared in the `shared` clause, which tells the compiler to copy the variable to the GPU memory where it can be updated and copy it back after the kernel finishes. Scalar variables defined inside parallel region are considered local to each worker, e.g. can be safely parallelized.
+APPy automatically manages data transfers between CPU and GPU memory.
 
-# Parallel reduction
-A parallel reduction example. 
+By default, users do not need to manually move arrays between host and device memory.
+
+
+### 3. Automatic Parallelism Mapping
+
+The compiler analyzes the loop body to determine available data parallelism and maps the computation efficiently to GPU threads.
+
+
+# Data Scope
+
+## Arrays
+
+Array variables must be defined before entering a parallel region.
+
+Their data may reside either in:
+
+* **CPU memory** (e.g., NumPy arrays)
+* **GPU memory** (e.g., PyTorch CUDA tensors)
+
+For arrays located in CPU memory, APPy automatically:
+
+1. copies data to the GPU before launching the kernel
+2. executes the kernel
+3. copies the results back to the CPU
+
+For arrays already located on the GPU, APPy leaves them in place and does not perform additional transfers.
+
+
+## Scalar Variables
+
+Scalar variables can be defined either outside or inside the parallel region.
+
+If a scalar variable is defined **outside** the parallel region and used inside it, the value is passed to the kernel using **pass-by-value semantics**:
+
+* the kernel receives the initial value
+* updates inside the kernel are not visible outside by default
+
+To make updates visible after the kernel finishes, the variable must be declared in the `shared` clause.
+
+This instructs the compiler to:
+
+1. copy the scalar value to GPU memory
+2. allow it to be updated during kernel execution
+3. copy the final value back to the CPU
+
+Scalar variables defined **inside the parallel region** are treated as **local variables to each looop iteration**, which makes them safe for parallel execution.
+
+
+# Parallel Reduction
+
+The following example illustrates a parallel reduction:
+
 ```python
 @appy.jit
 def vector_sum(A):
@@ -74,9 +146,16 @@ def vector_sum(A):
         s += A[i]
 ```
 
-The compiler automatically recognizes the parallel reduction pattern, and generates correct code for it, e.g. using atomic operations. Clause `shared(s)` makes the update to `s` inside the kernel visible outside the kernel, which essentially treats `s` as a single-element array.
+The compiler automatically detects the reduction pattern and generates correct parallel code (for example, using atomic operations).
 
-Besides pure loops, 1D array expressions can also be used inside a parallel for loop, for example:
+The clause `shared(s)` ensures that updates to `s` inside the kernel are visible after kernel execution.
+
+
+# Array Expressions
+
+In addition to simple loops, APPy also supports **1D array expressions inside parallel loops**.
+
+Example:
 
 ```python
 @appy.jit
@@ -89,26 +168,30 @@ def syrk(alpha, beta, C, A):
     return C
 ```
 
-# Supported operations
-APPy supports the following kinds of operations inside the parallel region:
 
-On scalar integer or float values or a 1D slice of an array:
+# Supported Operations
 
-    Arithmetic operations
-    Math functions (via the math package)
-    Bitwise operations
-    Logical operations
-    Compare operations
+APPy supports the following operations within a parallel region.
 
-On arrays of integers or floats:
+### Scalar operations (integers or floats)
 
-    Array indexing (store or load)
+* Arithmetic operations
+* Mathematical functions (via the `math` package)
+* Bitwise operations
+* Logical operations
+* Comparison operations
 
-Control flows:
+### Array operations
 
-    Ternary operators
+* Array indexing (load and store)
 
-# Citations
-We'll be grateful if you could cite the following publications for APPy:
+### Control flow
 
-- [APPy: Annotated Parallelism for Python on GPUs](https://dl.acm.org/doi/10.1145/3640537.3641575)
+* Ternary operators
+
+
+# Citation
+
+If you use APPy in your research, please cite:
+
+* [APPy: Annotated Parallelism for Python on GPUs](https://dl.acm.org/doi/10.1145/3640537.3641575)
