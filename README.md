@@ -1,53 +1,45 @@
-[![Documentation Status](https://readthedocs.org/projects/appy/badge/?version=latest)](https://appy.readthedocs.io/en/latest/?badge=latest)
+<!-- [![Documentation Status](https://readthedocs.org/projects/appy/badge/?version=latest)](https://appy.readthedocs.io/en/latest/?badge=latest) -->
 
-APPy (Annotated Parallelism for Python) enables users to parallelize generic Python loops and tensor expressions for execution on GPUs by adding OpenMP-like compiler directives (annotations) to Python code. With APPy, parallelizing a Python for loop on the GPU can be as simple as adding a `#pragma parallel for` before the loop, like the following:
-
-```python
-#pragma parallel for
-for i in range(N):
-    C[i] = A[i] + B[i]
-```
-
-The APPy compiler will recognize the pragma, JIT-compile the loop to GPU code, and execute the loop on the GPU. A detailed description of APPy can be found in [APPy: Annotated Parallelism for Python on GPUs](https://dl.acm.org/doi/10.1145/3640537.3641575). This document provides a quick guide to get started. 
-
-<!-- News: A web-based version of APPy (https://tongzhou80.github.io/appy-web/index.html) is now available to quickly try APPy online and view the generated code! -->
-
-A simple example to show how to use APPy:
+APPy (Annotated Parallelism for Python) makes it easy to run Python for loops on GPUs. Here's a simple example to get started:
 
 ```python
 import numpy as np
 import appy
 
 @appy.jit
-def inc_by_1(a):
+def increment_by_1(a):
     #pragma parallel for simd
     for i in range(a.shape[0]):
         a[i] += 1
 
-
+# Create the input array
 a = np.arange(10)
-inc_by_1(a)
+# Apply the increment_by_1 function
+increment_by_1(a)
+# Inspect the array after
 print(a)  # Should print [ 1  2  3  4  5  6  7  8  9 10]
 ```
 
+Under the hood, the compiler will generate a GPU device function that performs the increment operation, and pass input array `a` to the GPU kernel to execute on the GPU. In addition, the compiler also emits code to move data from CPU main memory to GPU memory before the kernel invocation, and move the data back to CPU after.
+
 # Install
 
-APPy tries to keep dependences minimal, to install the minimal version of APPy which only includes the code generator itself, run:
+For a minimal installation which only includes the APPy code generator itself, run:
 
 ```bash
 pip install -e .
 ```
 
-In addition, if you want to be able to execute the generated GPU code, run:
+To run the APPy generated code, you'd also need to install the backend packages, e.g. PyCUDA, Triton etc, depending on the platform. For example, to install the Triton backend, you could run 
 
 ```bash
 pip install -e .[triton]
 ```
 
-APPy currently has a [Triton](https://github.com/openai/triton/tree/main) backend, which requires `torch` and `triton` installed and a Linux platform with an NVIDIA GPU (Compute Capability 7.0+).
-
 
 # Quick Start
+
+The `examples` directory contains some more examples to get started:
 
 ```bash
 python examples/01-vec_add.py
@@ -154,3 +146,8 @@ On arrays of integers or floats:
 Control flows:
 
     Ternary operators
+
+# Citations
+We'll be grateful if you could cite the following publications for APPy:
+
+- [APPy: Annotated Parallelism for Python on GPUs](https://dl.acm.org/doi/10.1145/3640537.3641575)
