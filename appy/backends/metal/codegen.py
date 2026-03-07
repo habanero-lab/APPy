@@ -1,20 +1,22 @@
 import os
 import ast
+import types as _types
 import ast_comments as astc
 from pathlib import Path
 from ...utils import load_module_from_str
 
 code_cache = {}
 
-def codegen(loop_source, loop_name, val_map, options):    
+def codegen(loop_source, loop_name, val_map, options):
+    kernel_val_map = {k: v for k, v in val_map.items() if not isinstance(v, _types.ModuleType)}
     tree = astc.parse(loop_source)
-    types = tuple([type(v) for v in val_map.values()])
-    dtypes = tuple([v.dtype if hasattr(v, "dtype") else type(v) for v in val_map.values()])
-    shapes = tuple([v.shape[1:] if hasattr(v, "shape") else None for v in val_map.values()])
+    types = tuple([type(v) for v in kernel_val_map.values()])
+    dtypes = tuple([v.dtype if hasattr(v, "dtype") else type(v) for v in kernel_val_map.values()])
+    shapes = tuple([v.shape[1:] if hasattr(v, "shape") else None for v in kernel_val_map.values()])
     cache_key = (loop_source, types, dtypes, shapes)
-    if options.get("clear_cache", False) == False and cache_key in code_cache:            
+    if options.get("clear_cache", False) == False and cache_key in code_cache:
         f, code_src = code_cache[cache_key]
-    else:   
+    else:
         # Do frontend transformation
         from ...frontend import rewrite_aug_assign
         #from ...frontend import rewrite_tuple_assign
@@ -34,8 +36,8 @@ def codegen(loop_source, loop_name, val_map, options):
         attach_types.visit(tree, val_map)
         tree = fix_int_div_types.transform(tree)
 
-        tree, replaced_loop = gen_host_code.transform(tree, {'loop_name': loop_name, 'val_map': val_map})
-        tree = gen_device_code.transform(tree, replaced_loop, loop_name, val_map)
+        tree, replaced_loop = gen_host_code.transform(tree, {'loop_name': loop_name, 'val_map': kernel_val_map})
+        tree = gen_device_code.transform(tree, replaced_loop, loop_name, kernel_val_map)
 
         # code_src = Path(f"{Path(__file__).parent}/sample_kernels/gelu.py").read_text()
         # m = load_module_from_str(code_src)
@@ -58,8 +60,9 @@ def codegen(loop_source, loop_name, val_map, options):
 
 def exec(f, val_map):
     from ...np_shared import array_to_buffer, device
+    val_map = {k: v for k, v in val_map.items() if not isinstance(v, _types.ModuleType)}
     args = []
-    for k, v in val_map.items(): 
+    for k, v in val_map.items():
         if type(v).__name__ == 'ndarray':
             if v.ctypes.data not in array_to_buffer:
                 raise RuntimeError(f"Could not find buffer for array {k}")

@@ -1,5 +1,6 @@
 import os
 import ast
+import types as _types
 import ast_comments as astc
 from ...utils import load_module_from_str
 
@@ -41,7 +42,8 @@ def codegen(loop_source, loop_name, val_map, options):
         from .passes import gen_host_code
         from .passes import gen_device_code
         from .passes import gen_imports
-        metadata = {'loop_name': loop_name, 'val_map': val_map, 'options': options}
+        kernel_val_map = {k: v for k, v in val_map.items() if not isinstance(v, _types.ModuleType)}
+        metadata = {'loop_name': loop_name, 'val_map': kernel_val_map, 'options': options}
         tree, replaced_loop = gen_host_code.transform(tree, metadata)
         tree = gen_device_code.transform(tree, replaced_loop, metadata)
         tree = gen_imports.transform(tree)
