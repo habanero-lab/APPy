@@ -30,7 +30,5 @@ class RewriteVectorDot(ast.NodeTransformer):
         return node
     
 def transform(tree, val_map):
-    # A quick fix to add numpy into the scope
-    import numpy as np
-    shape_info = shape_analysis.analyze(tree, val_map | {'np': np})
+    shape_info = shape_analysis.analyze(tree, val_map)
     return RewriteVectorDot(shape_info).visit(tree)

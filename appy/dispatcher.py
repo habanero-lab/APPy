@@ -1,7 +1,9 @@
 import os
 import sys
+import math
 import shutil
 import platform
+import numpy as np
 import ast_comments as astc
 from astpass.passes import get_used_names
 from .utils import load_module_from_str, pretty_dump
@@ -10,6 +12,8 @@ def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope
     merged_scope = global_scope | local_scope
     used_names = get_used_names.analyze(astc.parse(loop_source), no_funcname=True)
     val_map = {k: merged_scope[k] for k in used_names if k in merged_scope}
+    val_map.setdefault('np', np)
+    val_map.setdefault('math', math)
 
     if backend_name:
         if backend_name == "numba":
