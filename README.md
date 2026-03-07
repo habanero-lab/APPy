@@ -90,7 +90,7 @@ By default, users do not need to manually move arrays between host and device me
 
 ### 3. Automatic Parallelism Mapping
 
-The compiler analyzes the loop body to determine available data parallelism and maps the computation efficiently to GPU threads.
+The compiler analyzes the loop body to determine available data parallelism and maps the computation efficiently to GPU threads. As a result, the programmer only needs to focus on "maximizing the amount of parallelism".
 
 
 # Data Scope

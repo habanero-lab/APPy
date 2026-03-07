@@ -6,7 +6,7 @@ from ...utils import load_module_from_str
 
 code_cache = {}
 
-def codegen(loop_source, loop_name, val_map, options):
+def codegen(loop_source, loop_name, val_map, options):    
     tree = astc.parse(loop_source)
     types = tuple([type(v) for v in val_map.values()])
     dtypes = tuple([v.dtype if hasattr(v, "dtype") else type(v) for v in val_map.values()])

@@ -23,6 +23,11 @@ def zeros(shape, dtype=np.float64):
     out = empty(shape, dtype=dtype)
     return out
 
+def copy(x):
+    out = empty_like(x)
+    out[:] = x
+    return out
+
 def randn(*shape, dtype=np.float64):
     out = empty(shape, dtype=dtype)
     _rng.standard_normal(shape, dtype=dtype, out=out)
