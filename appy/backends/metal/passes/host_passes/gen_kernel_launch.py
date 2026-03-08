@@ -8,7 +8,8 @@ class GenKernelLaunch(ast.NodeTransformer):
         self.replaced_loop = None
 
     def visit_For(self, node):
-        assert len(node.iter.args) == 1
+        assert len(node.iter.args) == 1, \
+            f"The parallel for-range loop must have exactly one argument, got: {ast.unparse(node.iter)}"
         num_iters = ast.unparse(node.iter.args[0])
 
         args = [num_iters]

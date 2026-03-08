@@ -115,10 +115,12 @@ class CppUnparser(ast.NodeVisitor):
         # Only for-range loops are supported
         assert isinstance(node.iter, ast.Call) and ast.unparse(node.iter.func) == "range", "Only for-range loops are supported"
         range_args = node.iter.args
-        assert len(range_args) == 1
-        start = 0
-        end = ast.unparse(range_args[0])
-        step = 1
+        assert len(range_args) in (1, 2), \
+            f"for-range loops must have 1 or 2 arguments, got: {ast.unparse(node.iter)}"
+        if len(range_args) == 1:
+            start, end, step = "0", ast.unparse(range_args[0]), "1"
+        else:
+            start, end, step = ast.unparse(range_args[0]), ast.unparse(range_args[1]), "1"
         target = node.target.id
         self.code += self.curent_indent * " "
         self.code += f"for (int {target} = {start}; {target} < {end}; {target} += {step}) " + "{\n"

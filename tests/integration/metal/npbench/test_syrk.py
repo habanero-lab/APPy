@@ -58,7 +58,7 @@ def test():
 
     kernel_np(alpha, beta, C1, A)
     kernel_appy(alpha, beta, C2, A)
-    #kernel_appy1(alpha, beta, C3, A)
+    kernel_appy1(alpha, beta, C3, A)
 
     assert np.allclose(C1, C2)
-    #assert np.allclose(C1, C3)
+    assert np.allclose(C1, C3)
