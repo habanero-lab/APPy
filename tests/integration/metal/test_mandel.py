@@ -65,7 +65,8 @@ def mandelbrot_numba(xmin, xmax, ymin, ymax, width, height, max_iter, out):
 @appy.jit(verbose_static_rewrite=True, dump_code=True)
 def mandelbrot_appy(xmin, xmax, ymin, ymax, width, height, max_iter, out):
     size = width * height
-    for idx in appy.prange(size):
+    #pragma parallel for
+    for idx in range(size):
         i = idx // width
         j = idx % width
 

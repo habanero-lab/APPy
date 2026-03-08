@@ -1,5 +1,6 @@
 import ast
 from . import type_map
+from .constants import SIMD_WIDTH
 
 def gen_headers():
     return '''
@@ -44,7 +45,7 @@ def gen_func_header(loop_name, replaced_loop, val_map):
     s += f"uint grid_id [[ thread_position_in_grid ]])"
     return s
 
-def gen_var_decls(loop, val_map):
+def gen_var_decls(loop, val_map, use_simd=False):
     # Check all assigned vars, declare them if they are not in val_map
     var_to_type = {}
     for node in ast.walk(loop):
@@ -56,9 +57,13 @@ def gen_var_decls(loop, val_map):
     s = ""
     for var, ty in var_to_type.items():
         s += f"    {ty} {var};\n"
-    
+
     loop_index = loop.target.id
-    s += f"    uint {loop_index} = grid_id;\n"
+    if use_simd:
+        s += f"    uint {loop_index} = grid_id / {SIMD_WIDTH};\n"
+        s += f"    uint lane = grid_id % {SIMD_WIDTH};\n"
+    else:
+        s += f"    uint {loop_index} = grid_id;\n"
     return s
 
 
@@ -76,19 +81,25 @@ def gen_func_body(replaced_loop):
 #     y[id] = 0.5f * xi * (1.0f + t);
 # '''
 
-def transform(tree, replaced_loop, loop_name, val_map):
+def transform(tree, replaced_loop, metadata):
+    loop_name = metadata['loop_name']
+    val_map = metadata['val_map']
+    use_simd = metadata.get('use_simd', False)
+
     from .device_passes import rewrite_func_calls
     from .device_passes import rewrite_multi_dim_indexing
     from .device_passes import fix_random_call
+    from .device_passes import rewrite_simd_loops
     replaced_loop = rewrite_func_calls.transform(replaced_loop)
     replaced_loop = rewrite_multi_dim_indexing.transform(replaced_loop, val_map)
     replaced_loop = fix_random_call.transform(replaced_loop)
-
+    if use_simd:
+        replaced_loop = rewrite_simd_loops.transform(replaced_loop)
 
     kernel_str = gen_headers()
     kernel_str += gen_func_header(loop_name, replaced_loop, val_map)
     kernel_str += "{\n"
-    kernel_str += gen_var_decls(replaced_loop, val_map)
+    kernel_str += gen_var_decls(replaced_loop, val_map, use_simd)
     kernel_str += gen_func_body(replaced_loop)
     kernel_str += "}\n"
 

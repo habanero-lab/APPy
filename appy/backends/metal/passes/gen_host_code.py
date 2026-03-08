@@ -42,6 +42,6 @@ def transform(tree: ast.Module, metadata):
     # Run codegen pass on the function
     from .host_passes import gen_kernel_launch
  
-    func, replaced_loop = gen_kernel_launch.transform(func, loop_name, val_map) 
+    func, replaced_loop = gen_kernel_launch.transform(func, loop_name, val_map, metadata.get('use_simd', False))
 
     return tree, replaced_loop

@@ -7,6 +7,13 @@ from ...utils import load_module_from_str
 
 code_cache = {}
 
+def _has_simd_inner_loops(tree):
+    import ast
+    for node in ast.walk(tree):
+        if isinstance(node, ast.For) and hasattr(node, 'pragma') and node.pragma.get('simd'):
+            return True
+    return False
+
 def codegen(loop_source, loop_name, val_map, options):
     kernel_val_map = {k: v for k, v in val_map.items() if not isinstance(v, _types.ModuleType)}
     tree = astc.parse(loop_source)
@@ -26,6 +33,7 @@ def codegen(loop_source, loop_name, val_map, options):
         tree = rewrite_aug_assign.transform(tree)
 
         # Metal specific codegen
+        from ...frontend import attach_pragma
         from .passes import lower_array_op_to_loop
         from .passes import rewrite_nested_prange
         from .passes import attach_types
@@ -33,13 +41,16 @@ def codegen(loop_source, loop_name, val_map, options):
         from .passes import gen_host_code
         from .passes import gen_device_code
 
-        tree = lower_array_op_to_loop.transform(tree, kernel_val_map)
+        attach_pragma.visit(tree)
+        tree = lower_array_op_to_loop.transform(tree, val_map)
+        use_simd = _has_simd_inner_loops(tree)
         tree = rewrite_nested_prange.transform(tree)
         attach_types.visit(tree, val_map)
         tree = fix_int_div_types.transform(tree)
 
-        tree, replaced_loop = gen_host_code.transform(tree, {'loop_name': loop_name, 'val_map': kernel_val_map})
-        tree = gen_device_code.transform(tree, replaced_loop, loop_name, kernel_val_map)
+        metadata = {'loop_name': loop_name, 'val_map': kernel_val_map, 'use_simd': use_simd}
+        tree, replaced_loop = gen_host_code.transform(tree, metadata)
+        tree = gen_device_code.transform(tree, replaced_loop, metadata)
 
         # code_src = Path(f"{Path(__file__).parent}/sample_kernels/gelu.py").read_text()
         # m = load_module_from_str(code_src)

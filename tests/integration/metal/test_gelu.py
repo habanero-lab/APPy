@@ -16,7 +16,8 @@ def gelu_numba(x, y):
 # APPy version: write into preallocated y
 @appy.jit(verbose_static_rewrite=True, dump_code=True)
 def gelu_appy(x, y):
-    for i in appy.prange(x.shape[0]):
+    #pragma parallel for
+    for i in range(x.shape[0]):
         xi = x[i]
         x3 = xi * xi * xi
         t = np.tanh(0.79788456 * (xi + 0.044715 * x3))

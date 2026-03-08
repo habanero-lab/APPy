@@ -13,7 +13,8 @@ def saxpy_numba(a, x, y):
 # APPy version: y = a * x + y
 @appy.jit(verbose_static_rewrite=True, dump_code=True)
 def saxpy_appy(a, x, y):
-    for i in appy.prange(x.shape[0]):
+    #pragma parallel for
+    for i in range(x.shape[0]):
         y[i] = a * x[i] + y[i]
 
 # NumPy version: y = a * x + y

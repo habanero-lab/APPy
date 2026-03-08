@@ -1,20 +1,23 @@
 import ast
 import textwrap as tw
+from ..constants import SIMD_WIDTH
 
 class GenKernelLaunch(ast.NodeTransformer):
-    def __init__(self, loop_name, val_map):
+    def __init__(self, loop_name, val_map, use_simd):
         self.loop_name = loop_name
         self.val_map = val_map
+        self.use_simd = use_simd
         self.replaced_loop = None
 
     def visit_For(self, node):
         assert len(node.iter.args) == 1, \
             f"The parallel for-range loop must have exactly one argument, got: {ast.unparse(node.iter)}"
-        num_iters = ast.unparse(node.iter.args[0])
+        orig_num_iters = ast.unparse(node.iter.args[0])
+        num_iters = f"({orig_num_iters}) * {SIMD_WIDTH}" if self.use_simd else orig_num_iters
 
         args = [num_iters]
         for k, v in self.val_map.items():
-            if k == num_iters:
+            if k == orig_num_iters:
                 continue
 
             if type(v) == int:
@@ -39,6 +42,6 @@ class GenKernelLaunch(ast.NodeTransformer):
         return node
     
 
-def transform(node, loop_name, val_map):
-    transformer = GenKernelLaunch(loop_name, val_map)
+def transform(node, loop_name, val_map, use_simd=False):
+    transformer = GenKernelLaunch(loop_name, val_map, use_simd)
     return transformer.visit(node), transformer.replaced_loop

@@ -17,7 +17,8 @@ def mat_add_numba(X, Z, Y):
 def mat_add_appy1(X, Z, Y):
     n_rows, n_cols = X.shape
     size = n_rows * n_cols
-    for idx in appy.prange(size):
+    #pragma parallel for
+    for idx in range(size):
         i = idx // n_cols
         j = idx % n_cols
         Y[i, j] = X[i, j] + Z[i, j]
@@ -25,8 +26,9 @@ def mat_add_appy1(X, Z, Y):
 
 @appy.jit(verbose_static_rewrite=True, dump_code=True)
 def mat_add_appy(X, Z, Y):
-    for i in appy.prange(X.shape[0]):
-        for j in appy.prange(X.shape[1]):
+    #pragma parallel for
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
             Y[i, j] = X[i, j] + Z[i, j]
 
 # NumPy version: Y = X + Z

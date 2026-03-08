@@ -1,4 +1,5 @@
 import ast
+from ..constants import SIMD_WIDTH
 
 class CppUnparser(ast.NodeVisitor):
     def __init__(self):
@@ -115,12 +116,14 @@ class CppUnparser(ast.NodeVisitor):
         # Only for-range loops are supported
         assert isinstance(node.iter, ast.Call) and ast.unparse(node.iter.func) == "range", "Only for-range loops are supported"
         range_args = node.iter.args
-        assert len(range_args) in (1, 2), \
-            f"for-range loops must have 1 or 2 arguments, got: {ast.unparse(node.iter)}"
+        assert len(range_args) in (1, 2, 3), \
+            f"for-range loops must have 1, 2, or 3 arguments, got: {ast.unparse(node.iter)}"
         if len(range_args) == 1:
             start, end, step = "0", ast.unparse(range_args[0]), "1"
-        else:
+        elif len(range_args) == 2:
             start, end, step = ast.unparse(range_args[0]), ast.unparse(range_args[1]), "1"
+        else:
+            start, end, step = ast.unparse(range_args[0]), ast.unparse(range_args[1]), ast.unparse(range_args[2])
         target = node.target.id
         self.code += self.curent_indent * " "
         self.code += f"for (int {target} = {start}; {target} < {end}; {target} += {step}) " + "{\n"
