@@ -28,7 +28,7 @@ setup(
     install_requires=[
         'ast_comments', 
         'ast_transforms',
-        'astpass',
+        'astpass @ git+https://github.com/habanero-lab/astpass.git',
         'numpy'     
     ],
     extras_require={
