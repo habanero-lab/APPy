@@ -10,16 +10,20 @@ class GenKernelLaunch(ast.NodeTransformer):
         self.replaced_loop = None
 
     def visit_For(self, node):
-        assert len(node.iter.args) == 1, \
-            f"The parallel for-range loop must have exactly one argument, got: {ast.unparse(node.iter)}"
-        orig_num_iters = ast.unparse(node.iter.args[0])
-        num_iters = f"({orig_num_iters}) * {SIMD_WIDTH}" if self.use_simd else orig_num_iters
+        range_args = node.iter.args
+        assert len(range_args) in (1, 2), \
+            f"The parallel for-range loop must have 1 or 2 arguments, got: {ast.unparse(node.iter)}"
+
+        if len(range_args) == 1:
+            low, up = "0", ast.unparse(range_args[0])
+        else:
+            low, up = ast.unparse(range_args[0]), ast.unparse(range_args[1])
+
+        n_iters = up if low == "0" else f"({up}) - ({low})"
+        num_iters = f"({n_iters}) * {SIMD_WIDTH}" if self.use_simd else n_iters
 
         args = [num_iters]
         for k, v in self.val_map.items():
-            if k == orig_num_iters:
-                continue
-
             if type(v) == int:
                 args.append(f"np.int32({k})")
             elif type(v) == float:

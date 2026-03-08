@@ -25,12 +25,8 @@ inline float random(uint seed) {
 def gen_func_header(loop_name, replaced_loop, val_map):
     s = f"kernel void _{loop_name}("
 
-    niters = ast.unparse(replaced_loop.iter.args[0])
     count = 0
     for var, val in val_map.items():
-        if var == niters:
-            continue
-        
         ty = type(val).__name__
         if ty == "ndarray":
             # Arrays
@@ -38,7 +34,6 @@ def gen_func_header(loop_name, replaced_loop, val_map):
             s += f"device {type_map.get_metal_type(str(dtype))}* {var} [[ buffer({count}) ]], "
         else:
             # Scalars
-            #assert ty in py_to_cpp, f"Unsupported type {ty} for variable {var}"
             s += f"constant {type_map.get_metal_type(ty)}& {var} [[ buffer({count}) ]], "
         count += 1
 
@@ -58,12 +53,16 @@ def gen_var_decls(loop, val_map, use_simd=False):
     for var, ty in var_to_type.items():
         s += f"    {ty} {var};\n"
 
+    range_args = loop.iter.args
+    low = "0" if len(range_args) == 1 else ast.unparse(range_args[0])
+
     loop_index = loop.target.id
+    offset = f" + {low}" if low != "0" else ""
     if use_simd:
-        s += f"    uint {loop_index} = grid_id / {SIMD_WIDTH};\n"
+        s += f"    uint {loop_index} = grid_id / {SIMD_WIDTH}{offset};\n"
         s += f"    uint lane = grid_id % {SIMD_WIDTH};\n"
     else:
-        s += f"    uint {loop_index} = grid_id;\n"
+        s += f"    uint {loop_index} = grid_id{offset};\n"
     return s
 
 

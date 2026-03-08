@@ -22,13 +22,25 @@ class RewriteSIMDLoops(ast.NodeTransformer):
         range_args = node.iter.args
         assert len(range_args) in (1, 2), \
             f"SIMD for-range loop must have 1 or 2 arguments, got: {ast.unparse(node.iter)}"
-        up = range_args[0] if len(range_args) == 1 else range_args[1]
 
-        node.iter.args = [
-            ast.Name(id='lane', ctx=ast.Load()),
-            up,
-            ast.Constant(value=SIMD_WIDTH)
-        ]
+        if len(range_args) == 1:
+            low_node = None
+            up = range_args[0]
+        else:
+            low_node = range_args[0]
+            up = range_args[1]
+
+        # new start = lane (if low==0) or lane + low
+        if low_node is None:
+            new_start = ast.Name(id='lane', ctx=ast.Load())
+        else:
+            new_start = ast.BinOp(
+                left=ast.Name(id='lane', ctx=ast.Load()),
+                op=ast.Add(),
+                right=low_node,
+            )
+
+        node.iter.args = [new_start, up, ast.Constant(value=SIMD_WIDTH)]
         return node
 
 def transform(tree):
