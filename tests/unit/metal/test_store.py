@@ -4,7 +4,8 @@ import appy
 
 @appy.jit(dump_code=True, clear_cache=True)
 def store_scalar(out, alpha):
-    for i in appy.prange(out.shape[0]):
+    #pragma parallel for
+    for i in range(out.shape[0]):
         out[i] = alpha
 
 def test_store_py_int():

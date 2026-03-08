@@ -4,7 +4,8 @@ import appy
 
 @appy.jit(dump_code=True)
 def div_kernel(out, alpha, beta):
-    for i in appy.prange(out.shape[0]):
+    #pragma parallel for
+    for i in range(out.shape[0]):
         out[i] = alpha / beta
 
     
