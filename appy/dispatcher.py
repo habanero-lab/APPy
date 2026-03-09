@@ -1,6 +1,7 @@
 import os
 import sys
 import math
+import types as _types
 import shutil
 import platform
 import numpy as np
@@ -55,5 +56,5 @@ def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope
         from .backends.metal.codegen import exec as metal_exec
         metal_exec(f, val_map)
     else:
-        args = list(val_map.values())
+        args = [v for v in val_map.values() if not isinstance(v, _types.ModuleType)]
         f(*args)
