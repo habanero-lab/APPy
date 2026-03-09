@@ -51,6 +51,23 @@ def kernel_appy(TMAX, ex, ey, hz, _fict_):
     return ey, ex, hz
 
 
+@appy.jit(dump_code=False)
+def kernel_appy2(TMAX, ex, ey, hz, _fict_):
+    for t in range(TMAX):
+        ey[0, :] = _fict_[t]
+        #pragma parallel for
+        for i in range(1, ey.shape[0]):
+            ey[i, :] -= 0.5 * (hz[i, :] - hz[i - 1, :])
+        #pragma parallel for
+        for i in range(ex.shape[0]):
+            ex[i, 1:] -= 0.5 * (hz[i, 1:] - hz[i, :-1])
+        #pragma parallel for
+        for i in range(hz.shape[0] - 1):
+            hz[i, :-1] -= 0.7 * (ex[i, 1:] - ex[i, :-1] + ey[i + 1, :-1] -
+                                  ey[i, :-1])
+    return ey, ex, hz
+
+
 def test():
     TMAX = 30
     NX = 100
@@ -59,10 +76,15 @@ def test():
 
     ex1, ey1, hz1 = ex.copy(), ey.copy(), hz.copy()
     ex2, ey2, hz2 = nps.copy(ex), nps.copy(ey), nps.copy(hz)
+    ex3, ey3, hz3 = nps.copy(ex), nps.copy(ey), nps.copy(hz)
 
     kernel_np(TMAX, ex1, ey1, hz1, _fict_)
     kernel_appy(TMAX, ex2, ey2, hz2, _fict_)
+    kernel_appy2(TMAX, ex3, ey3, hz3, _fict_)
 
     assert np.allclose(ex1, ex2, atol=1e-5)
     assert np.allclose(ey1, ey2, atol=1e-5)
     assert np.allclose(hz1, hz2, atol=1e-5)
+    assert np.allclose(ex1, ex3, atol=1e-5)
+    assert np.allclose(ey1, ey3, atol=1e-5)
+    assert np.allclose(hz1, hz3, atol=1e-5)
