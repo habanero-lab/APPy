@@ -31,8 +31,8 @@ def transform(loop):
     For each simd reduction inner loop:
       - Keep the strided accumulation loop
       - After it: store lane partial to threadgroup mem, barrier, tree reduce
-    For each write-back (target = reduction_var):
-      - Rewrite to: target = __threadgroup_var[0]  (broadcast result to all threads)
+      - Then propagate final result back: var = __threadgroup_var[0]
+        (all threads now hold the fully reduced value for subsequent use)
     Prepend __metal_shared_mem_decl for each reduction variable found.
     """
     new_body = []
@@ -52,20 +52,27 @@ def transform(loop):
                 tg_var, 'lane', ast.Name(id=var, ctx=ast.Load())))
             new_body.append(_call_stmt('__metal_threadgroup_barrier'))
             new_body.append(_call_stmt('__metal_tree_reduce', tg_var, op))
-
-        elif (isinstance(child, ast.Assign)
-                and isinstance(child.value, ast.Name)
-                and child.value.id in reduction_vars):
-            # Broadcast: rewrite target = var -> target = __threadgroup_var[0]
-            tg_var, _ = reduction_vars[child.value.id]
+            # Propagate reduced value back to local var so all threads see the
+            # final result; subsequent write-backs (e.g. y[i] = s) work as-is.
+            metal_type = next(
+                (stmt.targets[0].metal_type
+                 for stmt in new_body
+                 if isinstance(stmt, ast.Assign)
+                 and isinstance(stmt.targets[0], ast.Name)
+                 and stmt.targets[0].id == var
+                 and hasattr(stmt.targets[0], 'metal_type')),
+                'float'
+            )
+            target_name = ast.Name(id=var, ctx=ast.Store())
+            target_name.metal_type = metal_type
             new_body.append(ast.Assign(
-                targets=child.targets,
+                targets=[target_name],
                 value=ast.Subscript(
                     value=ast.Name(id=tg_var, ctx=ast.Load()),
                     slice=ast.Constant(value=0),
                     ctx=ast.Load()
                 ),
-                lineno=getattr(child, 'lineno', None)
+                lineno=None
             ))
         else:
             new_body.append(child)
