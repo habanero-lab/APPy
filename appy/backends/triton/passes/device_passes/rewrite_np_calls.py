@@ -10,7 +10,7 @@ class RewriteNumpyCalls(ast.NodeTransformer):
                 value=ast.Name(id='libdevice', ctx=ast.Load()),
                 attr=node.func.id
             )
-        elif isinstance(node.func, ast.Name) and node.func.id in ["range", "min", "max", "abs", "sum", "pow"]:
+        elif isinstance(node.func, ast.Name) and node.func.id in ["range", "min", "max", "abs", "sum", "pow", "int"]:
             # Built-in Python functions - functions that can be directly used inside Triton kernels
             pass 
         elif isinstance(node.func, ast.Name) and node.func.id == "float":
