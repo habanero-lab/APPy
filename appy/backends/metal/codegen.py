@@ -72,18 +72,33 @@ def codegen(loop_source, loop_name, val_map, options):
 
 
 def exec(f, val_map):
+    import numpy as np
     from ...np_shared import array_to_buffer, device
     val_map = {k: v for k, v in val_map.items() if not isinstance(v, _types.ModuleType)}
+
+    # Track arrays that were auto-migrated so we can copy results back.
+    migrated = []  # list of (metal_arr, original_arr)
+
     args = []
     for k, v in val_map.items():
         if type(v).__name__ == 'ndarray':
             if v.ctypes.data not in array_to_buffer:
-                raise RuntimeError(f"Could not find buffer for array {k}")
-            else:
-                buf = array_to_buffer[v.ctypes.data]
+                # Auto-migrate: allocate a Metal shared buffer, copy data in.
+                buf = device.buffer(v.nbytes)
+                metal_arr = np.frombuffer(buf, dtype=v.dtype, count=v.size).reshape(v.shape)
+                metal_arr[:] = v
+                array_to_buffer[metal_arr.ctypes.data] = buf
+                migrated.append((metal_arr, v))
                 args.append(buf)
+            else:
+                args.append(array_to_buffer[v.ctypes.data])
         else:
             args.append(v)
+
     assert device, "Could not find device"
     args.append(device)
     f(*args)
+
+    # Copy results back to original arrays so callers see the updated values.
+    for metal_arr, original_arr in migrated:
+        original_arr[:] = metal_arr
