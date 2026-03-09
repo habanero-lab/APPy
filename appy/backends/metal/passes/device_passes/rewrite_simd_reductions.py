@@ -32,7 +32,7 @@ def transform(loop):
       - Keep the strided accumulation loop
       - After it: store lane partial to threadgroup mem, barrier, tree reduce
     For each write-back (target = reduction_var):
-      - Rewrite to: target = _tg_var[0]  (broadcast result to all threads)
+      - Rewrite to: target = __threadgroup_var[0]  (broadcast result to all threads)
     Prepend __metal_shared_mem_decl for each reduction variable found.
     """
     new_body = []
@@ -44,7 +44,7 @@ def transform(loop):
                 and child.pragma.get('reduction')):
             var = child.pragma['reduction_var']
             op = child.pragma['reduction']
-            tg_var = f'_tg_{var}'
+            tg_var = f'__threadgroup_{var}'
             reduction_vars[var] = (tg_var, op)
 
             new_body.append(child)
@@ -56,7 +56,7 @@ def transform(loop):
         elif (isinstance(child, ast.Assign)
                 and isinstance(child.value, ast.Name)
                 and child.value.id in reduction_vars):
-            # Broadcast: rewrite target = var -> target = _tg_var[0]
+            # Broadcast: rewrite target = var -> target = __threadgroup_var[0]
             tg_var, _ = reduction_vars[child.value.id]
             new_body.append(ast.Assign(
                 targets=child.targets,

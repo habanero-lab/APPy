@@ -94,12 +94,14 @@ def transform(tree, replaced_loop, metadata):
     from .device_passes import fix_random_call
     from .device_passes import rewrite_simd_loops
     from .device_passes import rewrite_simd_reductions
+    from .device_passes import guard_scalar_mem_writes
     replaced_loop = rewrite_func_calls.transform(replaced_loop)
     replaced_loop = rewrite_multi_dim_indexing.transform(replaced_loop, val_map)
     replaced_loop = fix_random_call.transform(replaced_loop)
     if use_simd:
         replaced_loop = rewrite_simd_loops.transform(replaced_loop)
         replaced_loop = rewrite_simd_reductions.transform(replaced_loop)
+        replaced_loop = guard_scalar_mem_writes.transform(replaced_loop)
 
     kernel_str = gen_headers()
     kernel_str += gen_func_header(loop_name, replaced_loop, val_map)
