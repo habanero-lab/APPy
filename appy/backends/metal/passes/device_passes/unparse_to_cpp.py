@@ -166,8 +166,7 @@ class CppUnparser(ast.NodeVisitor):
 class MetalCppUnparser(CppUnparser):
     _METAL_SPECIALS = {
         '__metal_shared_mem_decl',
-        '__metal_threadgroup_barrier',
-        '__metal_tree_reduce',
+        '__threadgroup_reduce',
     }
 
     def visit_Expr(self, node):
@@ -186,14 +185,13 @@ class MetalCppUnparser(CppUnparser):
             ty = call.args[1].value
             size = call.args[2].value
             self.code += f'{indent}threadgroup {ty} {tg_var}[{size}];\n'
-        elif name == '__metal_threadgroup_barrier':
-            self.code += f'{indent}threadgroup_barrier(mem_flags::mem_threadgroup);\n'
-        elif name == '__metal_tree_reduce':
-            tg_var = call.args[0].value
-            op = call.args[1].value
-            self._emit_tree_reduce(tg_var, op, indent)
+        elif name == '__threadgroup_reduce':
+            var = call.args[0].value
+            tg_var = call.args[1].value
+            op = call.args[2].value
+            self._emit_threadgroup_reduce(var, tg_var, op, indent)
 
-    def _emit_tree_reduce(self, tg_var, op, indent):
+    def _emit_threadgroup_reduce(self, var, tg_var, op, indent):
         if op == 'sum':
             reduce_stmt = f'{tg_var}[lane] += {tg_var}[lane + stride]'
         elif op == 'min':
@@ -203,10 +201,13 @@ class MetalCppUnparser(CppUnparser):
         else:
             raise NotImplementedError(f'Unsupported reduction op: {op}')
         self.code += (
+            f'{indent}{tg_var}[lane] = {var};\n'
+            f'{indent}threadgroup_barrier(mem_flags::mem_threadgroup);\n'
             f'{indent}for (uint stride = {SIMD_WIDTH // 2}; stride > 0; stride >>= 1) {{\n'
             f'{indent}    if (lane < stride) {reduce_stmt};\n'
             f'{indent}    threadgroup_barrier(mem_flags::mem_threadgroup);\n'
             f'{indent}}}\n'
+            f'{indent}{var} = {tg_var}[0];\n'
         )
 
 
