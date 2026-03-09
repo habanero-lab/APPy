@@ -1,6 +1,7 @@
 import ast
 from ..constants import SIMD_WIDTH
 
+
 class CppUnparser(ast.NodeVisitor):
     def __init__(self):
         self.code = ""
@@ -162,7 +163,54 @@ class CppUnparser(ast.NodeVisitor):
             self.code += "f"
 
 
+class MetalCppUnparser(CppUnparser):
+    _METAL_SPECIALS = {
+        '__metal_shared_mem_decl',
+        '__metal_threadgroup_barrier',
+        '__metal_tree_reduce',
+    }
+
+    def visit_Expr(self, node):
+        if (isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Name)
+                and node.value.func.id in self._METAL_SPECIALS):
+            self._visit_metal_special(node.value)
+        else:
+            super().visit_Expr(node)
+
+    def _visit_metal_special(self, call):
+        indent = self.curent_indent * ' '
+        name = call.func.id
+        if name == '__metal_shared_mem_decl':
+            tg_var = call.args[0].value
+            ty = call.args[1].value
+            size = call.args[2].value
+            self.code += f'{indent}threadgroup {ty} {tg_var}[{size}];\n'
+        elif name == '__metal_threadgroup_barrier':
+            self.code += f'{indent}threadgroup_barrier(mem_flags::mem_threadgroup);\n'
+        elif name == '__metal_tree_reduce':
+            tg_var = call.args[0].value
+            op = call.args[1].value
+            self._emit_tree_reduce(tg_var, op, indent)
+
+    def _emit_tree_reduce(self, tg_var, op, indent):
+        if op == 'sum':
+            reduce_stmt = f'{tg_var}[lane] += {tg_var}[lane + stride]'
+        elif op == 'min':
+            reduce_stmt = f'{tg_var}[lane] = min({tg_var}[lane], {tg_var}[lane + stride])'
+        elif op == 'max':
+            reduce_stmt = f'{tg_var}[lane] = max({tg_var}[lane], {tg_var}[lane + stride])'
+        else:
+            raise NotImplementedError(f'Unsupported reduction op: {op}')
+        self.code += (
+            f'{indent}for (uint stride = {SIMD_WIDTH // 2}; stride > 0; stride >>= 1) {{\n'
+            f'{indent}    if (lane < stride) {reduce_stmt};\n'
+            f'{indent}    threadgroup_barrier(mem_flags::mem_threadgroup);\n'
+            f'{indent}}}\n'
+        )
+
+
 def visit(tree):
-    visitor = CppUnparser()
+    visitor = MetalCppUnparser()
     visitor.visit(tree)
     return visitor.code
