@@ -57,12 +57,16 @@ def gen_var_decls(loop, val_map, use_simd=False):
     low = "0" if len(range_args) == 1 else ast.unparse(range_args[0])
 
     loop_index = loop.target.id
+    up = ast.unparse(range_args[-1])
     offset = f" + {low}" if low != "0" else ""
     if use_simd:
         s += f"    uint {loop_index} = grid_id / {SIMD_WIDTH}{offset};\n"
         s += f"    uint lane = grid_id % {SIMD_WIDTH};\n"
     else:
         s += f"    uint {loop_index} = grid_id{offset};\n"
+        # Metalcompute rounds thread count up to a multiple of the threadgroup
+        # size, so guard extra threads against out-of-bounds access.
+        s += f"    if ({loop_index} >= {up}) return;\n"
     return s
 
 
