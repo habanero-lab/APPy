@@ -32,13 +32,25 @@ def kernel_appy(path):
     return path
 
 
+@appy.jit(dump_code=False)
+def kernel_appy2(path):
+    for k in range(path.shape[0]):
+        #pragma parallel for
+        for i in range(path.shape[0]):
+            path[i, :] = np.minimum(path[i, :], path[i, k] + path[k, :])
+    return path
+
+
 def test():
     N = 100
 
     path1 = initialize(N)
     path2 = nps.copy(initialize(N))
+    path3 = nps.copy(initialize(N))
 
     kernel_np(path1)
     kernel_appy(path2)
+    kernel_appy2(path3)
 
     assert np.allclose(path1, path2, atol=1e-6)
+    assert np.allclose(path1, path3, atol=1e-6)

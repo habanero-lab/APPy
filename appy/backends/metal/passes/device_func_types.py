@@ -20,6 +20,8 @@ def fdim(x, y): return x
 def floor(x): return x
 def fma(a, b, c): return a
 def fmax(x, y): return x
+def minimum(x, y): return x   # numpy alias for Metal's min
+def maximum(x, y): return x   # numpy alias for Metal's max
 def fmax3(x, y, z): return x
 def fmedian3(x, y, z): return x
 def fmin(x, y): return x

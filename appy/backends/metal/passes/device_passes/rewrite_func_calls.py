@@ -17,8 +17,10 @@ class RewriteFuncCalls(ast.NodeTransformer):
         elif isinstance(node.func, ast.Name):
             funcname = node.func.id
 
-        # if funcname in ['range', 'prange']:
-        #     return node
+        # Map numpy ufunc names to Metal equivalents (scalar context after loop expansion)
+        numpy_to_metal = {'minimum': 'min', 'maximum': 'max'}
+        if funcname in numpy_to_metal:
+            funcname = numpy_to_metal[funcname]
 
         assert hasattr(device_func_types, funcname), "Unknown function: " + funcname
         node.func = ast.Name(id=funcname, ctx=ast.Load())
