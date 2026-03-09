@@ -1,16 +1,22 @@
 import ast
-from astpass.passes import vector_op_to_loop
+from astpass.passes import shape_analysis
+from astpass.passes.vector_op_to_loop.convert_reduction_and_pointwise import ReductionAndPWExprToLoop
 
-class AddSIMDAnnotation(ast.NodeTransformer):
-    def visit_For(self, node):
-        if hasattr(node, "_simd_okay"):
-            node.pragma = {
-                "simd": True
-            }
+REDUCTION_OPS = {'np.sum', 'np.min', 'np.max', 'sum', 'min', 'max'}
 
-        return self.generic_visit(node)
+class LowerArrayOpToLoop(ReductionAndPWExprToLoop):
+    def gen_loop(self, node, low, up):
+        result = super().gen_loop(node, low, up)
+        if isinstance(result, tuple):
+            # Reduction: (init, loop, reassign) — inspect original RHS for the op
+            _, loop, _ = result
+            reduce_op = ast.unparse(node.value.func)
+            loop.pragma = {'simd': True, 'reduction': reduce_op}
+        else:
+            # Pointwise
+            result.pragma = {'simd': True}
+        return result
 
 def transform(tree, rt_vals):
-    tree = vector_op_to_loop.transform(tree, rt_vals)
-    tree = AddSIMDAnnotation().visit(tree)
-    return tree
+    shape_info = shape_analysis.analyze(tree, rt_vals)
+    return LowerArrayOpToLoop(shape_info).visit(tree)
