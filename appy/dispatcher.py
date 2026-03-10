@@ -23,6 +23,9 @@ def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope
         elif backend_name == "triton":
             from .backends.triton.codegen import codegen as triton_codegen
             f, code_src = triton_codegen(loop_source, loop_name, val_map, options)
+        elif backend_name == "cuda":
+            from .backends.cuda.codegen import codegen as cuda_codegen
+            f, code_src = cuda_codegen(loop_source, loop_name, val_map, options)
         else:
             raise NotImplementedError('Unknown backend:' + backend_name)
     else:
@@ -55,6 +58,9 @@ def codegen(backend_name: str, loop_source, loop_name, local_scope, global_scope
     if backend_name == None and sys.platform == "darwin":
         from .backends.metal.codegen import exec as metal_exec
         metal_exec(f, val_map)
+    elif backend_name == "cuda":
+        from .backends.cuda.codegen import exec as cuda_exec
+        cuda_exec(f, val_map)
     else:
         args = [v for v in val_map.values() if not isinstance(v, _types.ModuleType)]
         f(*args)
