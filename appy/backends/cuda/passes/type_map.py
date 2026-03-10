@@ -38,11 +38,12 @@ def get_cuda_type(val):
         return m[val]
     elif isinstance(val, (int, float, bool)):
         return m[type(val).__name__]
-    elif isinstance(val, np.ndarray):
-        return m[str(val.dtype)]
     elif isinstance(val, (np.bool_, np.int8, np.uint8, np.int16, np.uint16,
                           np.int32, np.uint32, np.float32, np.float64)):
         return m[type(val).__name__]
+    elif hasattr(val, 'shape') and hasattr(val, 'dtype') and len(val.shape) > 0:
+        # numpy ndarray, torch.Tensor, cupy array, etc.
+        return m[str(val.dtype).split('.')[-1]]
     else:
         raise NotImplementedError(f"Type mapping not implemented for value of type {type(val)}")
 

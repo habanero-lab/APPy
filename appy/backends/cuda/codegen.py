@@ -85,12 +85,18 @@ def exec(f, val_map):
     kernel_val_map = {k: v for k, v in val_map.items() if not isinstance(v, _types.ModuleType)}
 
     # Auto-migrate numpy arrays to GPU; track them so we can copy results back.
+    # Torch CUDA tensors are wrapped zero-copy via their device pointer.
     migrated = []
     args = []
     for k, v in kernel_val_map.items():
         if type(v).__name__ == 'ndarray':
             gpu_arr = gpuarray.to_gpu(v)
             migrated.append((gpu_arr, v))
+            args.append(gpu_arr)
+        elif type(v).__name__ == 'Tensor' and hasattr(v, 'data_ptr') and v.is_cuda:
+            import numpy as np
+            dtype = np.dtype(str(v.dtype).replace('torch.', ''))
+            gpu_arr = gpuarray.GPUArray(v.shape, dtype, gpudata=v.data_ptr())
             args.append(gpu_arr)
         else:
             args.append(v)

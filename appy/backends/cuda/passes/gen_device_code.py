@@ -27,12 +27,10 @@ __device__ inline float appy_random(unsigned int seed) {
 def gen_func_header(loop_name, val_map):
     params = []
     for var, val in val_map.items():
-        ty = type(val).__name__
-        if ty == 'ndarray':
-            cuda_ty = type_map.get_cuda_type(val)
+        cuda_ty = type_map.get_cuda_type(val)
+        if hasattr(val, 'shape') and hasattr(val, 'dtype') and len(val.shape) > 0:
             params.append(f"{cuda_ty}* {var}")
         else:
-            cuda_ty = type_map.get_cuda_type(val)
             params.append(f"const {cuda_ty} {var}")
     return f"__global__ void _{loop_name}({', '.join(params)})"
 
