@@ -72,8 +72,7 @@ def codegen(loop_source, loop_name, val_map, options):
 
 
 def exec(f, val_map):
-    import numpy as np
-    from ...np_shared import array_to_buffer, device
+    from ...np_shared import device, has_shared_buffer, get_shared_buffer, create_shared_buffer
     val_map = {k: v for k, v in val_map.items() if not isinstance(v, _types.ModuleType)}
 
     # Track arrays that were auto-migrated so we can copy results back.
@@ -82,16 +81,12 @@ def exec(f, val_map):
     args = []
     for k, v in val_map.items():
         if type(v).__name__ == 'ndarray':
-            if v.ctypes.data not in array_to_buffer:
-                # Auto-migrate: allocate a Metal shared buffer, copy data in.
-                buf = device.buffer(v.nbytes)
-                metal_arr = np.frombuffer(buf, dtype=v.dtype, count=v.size).reshape(v.shape)
-                metal_arr[:] = v
-                array_to_buffer[metal_arr.ctypes.data] = buf
-                migrated.append((metal_arr, v))
-                args.append(buf)
+            if has_shared_buffer(v):
+                args.append(get_shared_buffer(v))
             else:
-                args.append(array_to_buffer[v.ctypes.data])
+                metal_arr = create_shared_buffer(v)
+                migrated.append((metal_arr, v))
+                args.append(get_shared_buffer(metal_arr))
         else:
             args.append(v)
 

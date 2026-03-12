@@ -28,6 +28,16 @@ def copy(x):
     out[:] = x
     return out
 
+def has_shared_buffer(x):
+    return x.ctypes.data in array_to_buffer
+
+def get_shared_buffer(x):
+    return array_to_buffer[x.ctypes.data]
+
+def create_shared_buffer(x):
+    """Allocate a Metal shared buffer for x, copy data in, and return the metal array."""
+    return copy(x)
+
 def randn(*shape, dtype=np.float64):
     out = empty(shape, dtype=dtype)
     _rng.standard_normal(shape, dtype=dtype, out=out)
