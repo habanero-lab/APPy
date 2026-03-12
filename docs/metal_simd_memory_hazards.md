@@ -119,6 +119,126 @@ program order. The final value is the second write. No race condition.
 
 ---
 
+---
+
+## Array Slice Hazards in SIMD Inner Loops
+
+Array slice assignments inside a SIMD parallel-for body are lowered by
+`lower_array_op_to_loop` to a strided inner loop. Two cases arise with
+different hazard profiles.
+
+### Case 1 — Slice with index offset (WAR/RAW across loop passes)
+
+**Pattern**: the write index differs from the read index by a constant offset.
+
+**Example**:
+```python
+#pragma parallel for
+for i in range(N):
+    A[i, 1:M] = 0.5 * (A[i, :M-1] + B[i, :M-1])
+```
+
+Lowered to (conceptually):
+```c
+// pass p covers elements [p*1024, (p+1)*1024)
+for (uint p = 0; p < ceil(M/1024); p++) {
+    uint j = p * 1024 + lane;      // write index
+    if (j >= 1 && j < M)
+        A[i*M + j] = 0.5f * (A[i*M + j - 1] + B[i*M + j - 1]);
+}
+```
+
+**Hazard — two problems**:
+
+1. *Within a pass*: lane `k` writes `A[i, k]` while lane `k-1` reads `A[i, k-1]`.
+   These are distinct indices, so there is no within-pass conflict.
+
+2. *Boundary element across passes*: pass `p` reads elements in
+   `[p*1024 - 1, (p+1)*1024 - 1)` and writes to `[p*1024, (p+1)*1024)`.
+   The last element written in pass `p` is index `(p+1)*1024 - 1`.
+   That same index is **read** by pass `p+1` (as `j - 1` with `j = (p+1)*1024`),
+   but by then it already holds the *new* value — a classic read-after-write
+   across passes.
+
+   A `threadgroup_barrier(mem_flags::mem_device)` between passes can prevent
+   within-pass conflicts (problem 1) but **cannot fix** the boundary element
+   problem (problem 2): even if all 1024 threads synchronize before writing, the
+   boundary element `(p+1)*1024 - 1` is overwritten during pass `p` and is
+   therefore unavailable for pass `p+1` to read its *original* value.
+
+**Real-world example — `seidel_2d`**:
+```python
+for t in range(TSTEPS - 1):
+    for i in range(1, N - 1):
+        A[i, 1:-1] += (A[i-1, :-2] + A[i-1, 1:-1] + A[i-1, 2:] +
+                       A[i,   2:]   +
+                       A[i+1, :-2] + A[i+1, 1:-1] + A[i+1, 2:])
+        for j in range(1, N - 1):
+            A[i, j] += A[i, j - 1]
+            A[i, j] /= 9.0
+```
+The `A[i, 1:-1] += ...` slice assignment reads `A[i, 2:]` (offset +1) and
+writes `A[i, 1:-1]`. The inner `j` loop then reads `A[i, j-1]` (offset -1)
+from the already-updated row. Both have cross-iteration dependences that make
+in-place parallel execution incorrect. A correct parallel implementation
+requires staging the update into a temporary buffer.
+
+**Special case — loop bound ≤ 1024 (single pass, barrier sufficient)**:
+
+When the slice length is at most 1024, all elements fit within a single
+threadgroup pass — no strided multi-pass loop is needed. In this case the
+boundary element problem disappears entirely: all reads happen before any
+writes within the same pass. A single `threadgroup_barrier(mem_flags::mem_device)`
+between the read phase and the write phase is sufficient to make it correct:
+
+```c
+// Read phase: all 1024 lanes read into registers
+float val = 0.5f * (A[i*M + j - 1] + B[i*M + j - 1]);
+threadgroup_barrier(mem_flags::mem_device);  // flush reads before writes
+// Write phase: all lanes write (no cross-pass boundary issue)
+if (j >= 1 && j < M) A[i*M + j] = val;
+```
+
+This is worth exploiting in future compiler passes: if the compiler can prove
+the slice fits in one threadgroup (length ≤ SIMD_WIDTH), it can emit a
+barrier-protected single-pass kernel instead of requiring a double buffer.
+
+**Fix for multi-pass case**: introduce an intermediate (double) buffer — read from
+the old array, write to a temporary, then copy back:
+```python
+#pragma parallel for
+for i in range(N):
+    tmp[i, 1:M] = 0.5 * (A[i, :M-1] + B[i, :M-1])
+# ... then: A[:, 1:M] = tmp[:, 1:M]
+```
+This is the standard compiler solution for loop-carried dependences with
+non-trivial offsets and cannot be avoided within a single in-place parallel pass.
+
+---
+
+### Case 2 — Slice without index offset (safe)
+
+**Pattern**: each lane reads and writes the same index; no cross-lane dependency.
+
+**Example**:
+```python
+#pragma parallel for
+for i in range(N):
+    A[i, :] = B[i, :] * 2.0
+```
+
+Lowered to:
+```c
+uint j = p * 1024 + lane;
+if (j < M) A[i*M + j] = B[i*M + j] * 2.0f;
+```
+
+Lane `k` reads `B[i, k]` and writes `A[i, k]`. Because read and write touch
+the same index (no offset), lanes are fully independent and no hazard arises —
+even when `A` and `B` alias.
+
+---
+
 ## Barrier Comparison: Metal vs CUDA
 
 | Barrier | Execution sync | Threadgroup mem | Device mem |
