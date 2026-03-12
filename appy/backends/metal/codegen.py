@@ -72,7 +72,7 @@ def codegen(loop_source, loop_name, val_map, options):
 
 
 def exec(f, val_map):
-    from ...np_shared import device, has_shared_buffer, get_shared_buffer, copy
+    from ...np_shared import device, has_device_buffer, get_device_buffer, copy
     val_map = {k: v for k, v in val_map.items() if not isinstance(v, _types.ModuleType)}
 
     # Track arrays that were auto-migrated so we can copy results back.
@@ -81,12 +81,12 @@ def exec(f, val_map):
     args = []
     for k, v in val_map.items():
         if type(v).__name__ == 'ndarray':
-            if has_shared_buffer(v):
-                args.append(get_shared_buffer(v))
+            if has_device_buffer(v):
+                args.append(get_device_buffer(v))
             else:
                 metal_arr = copy(v)
                 migrated.append((metal_arr, v))
-                args.append(get_shared_buffer(metal_arr))
+                args.append(get_device_buffer(metal_arr))
         else:
             args.append(v)
 

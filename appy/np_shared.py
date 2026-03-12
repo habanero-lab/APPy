@@ -28,10 +28,10 @@ def copy(x):
     out[:] = x
     return out
 
-def has_shared_buffer(x):
+def has_device_buffer(x):
     return x.ctypes.data in array_to_buffer
 
-def get_shared_buffer(x):
+def get_device_buffer(x):
     return array_to_buffer[x.ctypes.data]
 
 
