@@ -35,8 +35,9 @@ def get_shared_buffer(x):
     return array_to_buffer[x.ctypes.data]
 
 def create_shared_buffer(x):
-    """Allocate a Metal shared buffer for x, copy data in, and return the metal array."""
-    return copy(x)
+    """Allocate a Metal shared buffer, copy x into it, and return the raw buffer."""
+    metal_arr = copy(x)
+    return array_to_buffer[metal_arr.ctypes.data]
 
 def randn(*shape, dtype=np.float64):
     out = empty(shape, dtype=dtype)

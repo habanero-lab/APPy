@@ -72,11 +72,12 @@ def codegen(loop_source, loop_name, val_map, options):
 
 
 def exec(f, val_map):
+    import numpy as np
     from ...np_shared import device, has_shared_buffer, get_shared_buffer, create_shared_buffer
     val_map = {k: v for k, v in val_map.items() if not isinstance(v, _types.ModuleType)}
 
-    # Track arrays that were auto-migrated so we can copy results back.
-    migrated = []  # list of (metal_arr, original_arr)
+    # Track buffers that were auto-migrated so we can copy results back.
+    migrated = []  # list of (buf, original_arr)
 
     args = []
     for k, v in val_map.items():
@@ -84,9 +85,9 @@ def exec(f, val_map):
             if has_shared_buffer(v):
                 args.append(get_shared_buffer(v))
             else:
-                metal_arr = create_shared_buffer(v)
-                migrated.append((metal_arr, v))
-                args.append(get_shared_buffer(metal_arr))
+                buf = create_shared_buffer(v)
+                migrated.append((buf, v))
+                args.append(buf)
         else:
             args.append(v)
 
@@ -95,5 +96,5 @@ def exec(f, val_map):
     f(*args)
 
     # Copy results back to original arrays so callers see the updated values.
-    for metal_arr, original_arr in migrated:
-        original_arr[:] = metal_arr
+    for buf, original_arr in migrated:
+        original_arr[:] = np.frombuffer(buf, dtype=original_arr.dtype, count=original_arr.size).reshape(original_arr.shape)
