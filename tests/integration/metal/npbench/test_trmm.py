@@ -30,8 +30,7 @@ def kernel_appy(alpha, A, B):
     for i in range(M):
         #pragma parallel for
         for j in range(N):
-            s = np.sum(A[i + 1:, i] * B[i + 1:, j])
-            B[i, j] = B[i, j] + s
+            B[i, j] += np.sum(A[i + 1:, i] * B[i + 1:, j])
     B *= alpha
     return B
 
