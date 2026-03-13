@@ -1,2 +1,12 @@
 *egg-info/
 __pycache__/
+# LaTeX build artifacts
+docs/slides/_minted-slides/
+docs/slides/*.aux
+docs/slides/*.log
+docs/slides/*.nav
+docs/slides/*.out
+docs/slides/*.snm
+docs/slides/*.toc
+docs/slides/*.vrb
+docs/slides.tex

@@ -1,8 +1,0 @@
-\begin{Verbatim}[commandchars=\\\{\}]
-\PYG{+w}{  }\PYG{c+c1}{// Scalar loop body}
-\PYG{+w}{  }\PYG{n}{\PYGZus{}\PYGZus{}reduce\PYGZus{}sum\PYGZus{}var}\PYG{+w}{ }\PYG{o}{+=}\PYG{+w}{ }\PYG{n}{A}\PYG{p}{[}\PYG{n}{\PYGZus{}\PYGZus{}i0}\PYG{+w}{ }\PYG{o}{+}\PYG{+w}{ }\PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{i}\PYG{p}{]}\PYG{+w}{ }\PYG{o}{*}\PYG{+w}{ }\PYG{n}{B}\PYG{p}{[}\PYG{n}{\PYGZus{}\PYGZus{}i0}\PYG{+w}{ }\PYG{o}{+}\PYG{+w}{ }\PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{,}\PYG{+w}{ }\PYG{n}{j}\PYG{p}{];}
-\PYG{+w}{  }\PYG{c+c1}{// ...after loop:}
-\PYG{+w}{  }\PYG{n}{threadgroup}\PYG{+w}{ }\PYG{k+kt}{float}\PYG{+w}{ }\PYG{n}{\PYGZus{}\PYGZus{}tg\PYGZus{}reduce\PYGZus{}sum\PYGZus{}var}\PYG{p}{[}\PYG{n}{SIMD\PYGZus{}WIDTH}\PYG{p}{];}
-\PYG{+w}{  }\PYG{n}{\PYGZus{}\PYGZus{}threadgroup\PYGZus{}reduce}\PYG{p}{(}\PYG{n}{\PYGZus{}\PYGZus{}reduce\PYGZus{}sum\PYGZus{}var}\PYG{p}{,}
-\PYG{+w}{                       }\PYG{n}{\PYGZus{}\PYGZus{}tg\PYGZus{}reduce\PYGZus{}sum\PYGZus{}var}\PYG{p}{,}\PYG{+w}{ }\PYG{err}{\PYGZsq{}}\PYG{n}{sum}\PYG{err}{\PYGZsq{}}\PYG{p}{);}
-\end{Verbatim}

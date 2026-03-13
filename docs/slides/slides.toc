@@ -1,6 +1,0 @@
-\beamer@sectionintoc {1}{Motivation}{2}{0}{1}
-\beamer@sectionintoc {2}{APPy: Prior Work (CC 2024)}{8}{0}{2}
-\beamer@sectionintoc {3}{The Dual Programming Model}{11}{0}{3}
-\beamer@sectionintoc {4}{Compiler Design}{19}{0}{4}
-\beamer@sectionintoc {5}{Supported Workloads \& Examples}{26}{0}{5}
-\beamer@sectionintoc {6}{Discussion \& Future Work}{29}{0}{6}
