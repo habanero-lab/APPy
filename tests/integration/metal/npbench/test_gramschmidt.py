@@ -32,12 +32,12 @@ def kernel_appy(A):
     Q = np.zeros((M, N), dtype=A.dtype)
     R = np.zeros((N, N), dtype=A.dtype)
     for k in range(N):
-        nrm = np.sum(A[:, k] * A[:, k])
+        nrm = A[:, k] @ A[:, k]
         R[k, k] = np.sqrt(nrm)
         Q[:, k] = A[:, k] / R[k, k]
         #pragma parallel for
         for j in range(k + 1, N):
-            s = np.sum(Q[:, k] * A[:, j])
+            s = Q[:, k] @ A[:, j]
             R[k, j] = s
             A[:, j] -= Q[:, k] * s
     return Q, R

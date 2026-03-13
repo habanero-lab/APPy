@@ -39,11 +39,11 @@ def kernel_appy(alpha, beta, A, u1, u2, v1, v2, w, x, yv, z):
 
     #pragma parallel for
     for j in range(N):
-        x[j] += np.sum(beta * yv[:] * A[:, j]) + z[j]
+        x[j] += beta * (yv[:] @ A[:, j]) + z[j]
 
     #pragma parallel for
     for i in range(M):
-        w[i] += np.sum(alpha * A[i, :] * x[:])
+        w[i] += alpha * (A[i, :] @ x[:])
 
     return A, x, w
 

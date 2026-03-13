@@ -35,6 +35,7 @@ def codegen(loop_source, loop_name, val_map, options):
         # Metal specific codegen
         from ...frontend import attach_pragma
         from .passes import lower_array_op_to_loop
+        from .passes import rewrite_vector_dot
         from .passes import rewrite_nested_prange
         from .passes import attach_types
         from .passes import fix_int_div_types
@@ -42,6 +43,7 @@ def codegen(loop_source, loop_name, val_map, options):
         from .passes import gen_device_code
 
         attach_pragma.visit(tree)
+        tree = rewrite_vector_dot.transform(tree, val_map)
         tree = lower_array_op_to_loop.transform(tree, val_map)
         use_simd = _has_simd_inner_loops(tree)
         tree = rewrite_nested_prange.transform(tree)
