@@ -1,0 +1,11 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+  \PYG{n+nd}{@appy}\PYG{o}{.}\PYG{n}{jit}
+  \PYG{k}{def} \PYG{n+nf}{kernel\PYGZus{}appy}\PYG{p}{(}\PYG{n}{alpha}\PYG{p}{,} \PYG{n}{A}\PYG{p}{,} \PYG{n}{B}\PYG{p}{):}
+      \PYG{n}{M}\PYG{p}{,} \PYG{n}{N} \PYG{o}{=} \PYG{n}{B}\PYG{o}{.}\PYG{n}{shape}
+      \PYG{k}{for} \PYG{n}{i} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{M}\PYG{p}{):}
+          \PYG{c+c1}{\PYGZsh{}pragma parallel for}
+          \PYG{k}{for} \PYG{n}{j} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{N}\PYG{p}{):}
+              \PYG{n}{B}\PYG{p}{[}\PYG{n}{i}\PYG{p}{,} \PYG{n}{j}\PYG{p}{]} \PYG{o}{+=} \PYG{n}{A}\PYG{p}{[}\PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{:,} \PYG{n}{i}\PYG{p}{]} \PYG{o}{@} \PYG{n}{B}\PYG{p}{[}\PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{:,} \PYG{n}{j}\PYG{p}{]}  \PYG{c+c1}{\PYGZsh{} dot product per (i,j)}
+      \PYG{n}{B} \PYG{o}{*=} \PYG{n}{alpha}
+      \PYG{k}{return} \PYG{n}{B}
+\end{Verbatim}

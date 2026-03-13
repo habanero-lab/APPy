@@ -1,0 +1,6 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+  \PYG{n}{\PYGZus{}\PYGZus{}reduce\PYGZus{}sum\PYGZus{}var} \PYG{o}{=} \PYG{l+m+mf}{0.0}
+  \PYG{k}{for} \PYG{n}{\PYGZus{}\PYGZus{}i0} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{M} \PYG{o}{\PYGZhy{}} \PYG{p}{(}\PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{)):}      \PYG{c+c1}{\PYGZsh{} pragma simd, reduction}
+      \PYG{n}{\PYGZus{}\PYGZus{}reduce\PYGZus{}sum\PYGZus{}var} \PYG{o}{+=} \PYG{n}{A}\PYG{p}{[}\PYG{n}{\PYGZus{}\PYGZus{}i0} \PYG{o}{+} \PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{i}\PYG{p}{]} \PYG{o}{*} \PYG{n}{B}\PYG{p}{[}\PYG{n}{\PYGZus{}\PYGZus{}i0} \PYG{o}{+} \PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{j}\PYG{p}{]}
+  \PYG{n}{B}\PYG{p}{[}\PYG{n}{i}\PYG{p}{,} \PYG{n}{j}\PYG{p}{]} \PYG{o}{=} \PYG{n}{B}\PYG{p}{[}\PYG{n}{i}\PYG{p}{,} \PYG{n}{j}\PYG{p}{]} \PYG{o}{+} \PYG{n}{\PYGZus{}\PYGZus{}reduce\PYGZus{}sum\PYGZus{}var}
+\end{Verbatim}

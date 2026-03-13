@@ -1,0 +1,16 @@
+\frametitle{Summary}
+\begin{block}{APPy's key contribution}
+    A Python GPU programming model with a \textbf{single pragma} that supports
+    two complementary parallelism paradigms — individual and group mode —
+    without requiring users to think about threads, blocks, or shared memory.
+  \end{block}
+
+  \vspace{1em}
+  \textbf{Individual mode:} ``Each student works alone on their task.''\\
+  \textbf{Group mode:} ``Students form groups and collaborate.''\\[0.5em]
+  Both expressed with \mintinline{python}{#pragma parallel for}.
+
+  \vspace{1em}
+  \begin{center}
+    \large Questions \& Feedback Welcome
+  \end{center}

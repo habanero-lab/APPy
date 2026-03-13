@@ -1,0 +1,15 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+  \PYG{n+nd}{@appy}\PYG{o}{.}\PYG{n}{jit}
+  \PYG{k}{def} \PYG{n+nf}{mandelbrot}\PYG{p}{(}\PYG{n}{out}\PYG{p}{,} \PYG{n}{width}\PYG{p}{,} \PYG{n}{height}\PYG{p}{,} \PYG{n}{max\PYGZus{}iter}\PYG{p}{):}
+      \PYG{c+c1}{\PYGZsh{}pragma parallel for}
+      \PYG{k}{for} \PYG{n}{idx} \PYG{o+ow}{in} \PYG{n+nb}{range}\PYG{p}{(}\PYG{n}{width} \PYG{o}{*} \PYG{n}{height}\PYG{p}{):}
+          \PYG{n}{x} \PYG{o}{=} \PYG{n}{idx} \PYG{o}{\PYGZpc{}} \PYG{n}{width}
+          \PYG{n}{y} \PYG{o}{=} \PYG{n}{idx} \PYG{o}{//} \PYG{n}{width}
+          \PYG{n}{c} \PYG{o}{=} \PYG{n+nb}{complex}\PYG{p}{(}\PYG{n}{x} \PYG{o}{/} \PYG{n}{width} \PYG{o}{*} \PYG{l+m+mf}{3.5} \PYG{o}{\PYGZhy{}} \PYG{l+m+mf}{2.5}\PYG{p}{,}
+                      \PYG{n}{y} \PYG{o}{/} \PYG{n}{height} \PYG{o}{*} \PYG{l+m+mf}{2.0} \PYG{o}{\PYGZhy{}} \PYG{l+m+mf}{1.0}\PYG{p}{)}
+          \PYG{n}{z}\PYG{p}{,} \PYG{n}{i} \PYG{o}{=} \PYG{l+m+mi}{0}\PYG{o}{+}\PYG{l+m+mi}{0}\PYG{n}{j}\PYG{p}{,} \PYG{l+m+mi}{0}
+          \PYG{k}{while} \PYG{n+nb}{abs}\PYG{p}{(}\PYG{n}{z}\PYG{p}{)} \PYG{o}{\PYGZlt{}=} \PYG{l+m+mf}{2.0} \PYG{o+ow}{and} \PYG{n}{i} \PYG{o}{\PYGZlt{}} \PYG{n}{max\PYGZus{}iter}\PYG{p}{:}
+              \PYG{n}{z} \PYG{o}{=} \PYG{n}{z} \PYG{o}{*} \PYG{n}{z} \PYG{o}{+} \PYG{n}{c}
+              \PYG{n}{i} \PYG{o}{+=} \PYG{l+m+mi}{1}
+          \PYG{n}{out}\PYG{p}{[}\PYG{n}{y}\PYG{p}{,} \PYG{n}{x}\PYG{p}{]} \PYG{o}{=} \PYG{n}{i}
+\end{Verbatim}

@@ -1,0 +1,4 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+  \PYG{n}{s} \PYG{o}{=} \PYG{n}{np}\PYG{o}{.}\PYG{n}{sum}\PYG{p}{(}\PYG{n}{A}\PYG{p}{[}\PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{:,} \PYG{n}{i}\PYG{p}{]} \PYG{o}{*} \PYG{n}{B}\PYG{p}{[}\PYG{n}{i}\PYG{o}{+}\PYG{l+m+mi}{1}\PYG{p}{:,} \PYG{n}{j}\PYG{p}{])}
+  \PYG{n}{B}\PYG{p}{[}\PYG{n}{i}\PYG{p}{,} \PYG{n}{j}\PYG{p}{]} \PYG{o}{=} \PYG{n}{B}\PYG{p}{[}\PYG{n}{i}\PYG{p}{,} \PYG{n}{j}\PYG{p}{]} \PYG{o}{+} \PYG{n}{s}
+\end{Verbatim}
