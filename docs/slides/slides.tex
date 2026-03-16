@@ -452,131 +452,40 @@
 % ---------------------------------------------------------------
 \section{Compiler Design}
 
-\begin{frame}[fragile]{How the Compiler Infers the Mode}
-  The compiler detects \textbf{vector operations} inside the pfor loop body:
-  \begin{itemize}
-    \item Array slice assignments: \mintinline{python}{C[:i, j] += ...}
-    \item Reductions: \mintinline{python}{np.sum(A[i+1:, i] * B[i+1:, j])}
-    \item Dot products: \mintinline{python}{A[i+1:, i] @ B[i+1:, j]}
-  \end{itemize}
-
-  \vspace{1em}
-  If any are found $\to$ \textbf{Group mode}: launch a threadgroup per iteration.\\
-  Otherwise $\to$ \textbf{Individual mode}: launch one thread per iteration.
-
-  \vspace{1em}
-  The key compiler pass is \texttt{vector\_op\_to\_loop}, which lowers these
-  vector operations into explicit inner loops with SIMD annotations.
-\end{frame}
-
-\begin{frame}{Compiler Pipeline Overview}
+\begin{frame}{Compiler Pipeline}
   \begin{center}
+  \scalebox{0.8}{
   \begin{tikzpicture}[
-    box/.style={draw, rounded corners, minimum width=3.2cm, minimum height=0.65cm,
-                font=\footnotesize, fill=mLightBrown!20},
-    arr/.style={->, thick}
+    stage/.style={draw, rounded corners, minimum width=4.2cm, minimum height=0.75cm,
+                  font=\small, fill=mLightBrown!25, align=center},
+    decision/.style={draw, diamond, aspect=2.5, minimum width=4.2cm, minimum height=0.75cm,
+                     font=\small, fill=yellow!25, align=center},
+    codegen/.style={draw, rounded corners, minimum width=3.5cm, minimum height=0.75cm,
+                    font=\small, align=center},
+    arr/.style={->, thick},
   ]
-    \node[box] (src) {Python source + \texttt{\#pragma}};
-    \node[box, below=0.45cm of src] (fe1) {rewrite\_aug\_assign};
-    \node[box, below=0.45cm of fe1] (fe2) {attach\_pragma};
-    \node[box, below=0.45cm of fe2] (fe3) {rewrite\_vector\_dot};
-    \node[box, below=0.45cm of fe3] (fe4) {vector\_op\_to\_loop};
-    \node[box, below=0.45cm of fe4] (fe5) {attach\_types};
-    \node[box, below=0.45cm of fe5] (dev) {device code passes};
-    \node[box, below=0.45cm of dev] (out) {Metal / Triton kernel};
+    \node[stage] (src) {Python source + \texttt{\#pragma parallel for}};
+    \node[stage, below=0.5cm of src] (fe) {Frontend: parse \& normalize AST};
+    \node[decision, below=0.5cm of fe] (detect) {Array exprs in pfor body?};
 
-    \draw[arr] (src) -- (fe1);
-    \draw[arr] (fe1) -- (fe2);
-    \draw[arr] (fe2) -- (fe3);
-    \draw[arr] (fe3) -- (fe4);
-    \draw[arr] (fe4) -- (fe5);
-    \draw[arr] (fe5) -- (dev);
-    \draw[arr] (dev) -- (out);
+    \node[codegen, below left=0.8cm and 1.2cm of detect, fill=mLightBrown!40]
+      (indiv) {\textbf{Individual mode}\\\small 1 thread / iteration};
+    \node[codegen, below right=0.8cm and 1.2cm of detect, fill=blue!15]
+      (group) {\textbf{Group mode}\\\small 1 threadgroup / iteration};
 
-    \node[right=0.3cm of fe4, font=\scriptsize, text=mDarkTeal] {$\leftarrow$ mode inference happens here};
-    \node[right=0.3cm of dev, font=\scriptsize, text=mDarkTeal] {$\leftarrow$ rewrite\_simd\_reductions,};
-    \node[right=0.3cm of dev, font=\scriptsize, text=mDarkTeal, yshift=-0.35cm] {\phantom{$\leftarrow$} guard\_scalar\_mem\_writes};
+    \node[stage, below=2.6cm of detect] (backend) {Backend codegen (Metal / Triton)};
+    \node[stage, below=0.5cm of backend, fill=mLightGreen!40] (out) {GPU kernel};
+
+    \draw[arr] (src)    -- (fe);
+    \draw[arr] (fe)     -- (detect);
+    \draw[arr] (detect) -- node[left, font=\scriptsize]  {no}  (indiv);
+    \draw[arr] (detect) -- node[right, font=\scriptsize] {yes} (group);
+    \draw[arr] (indiv)  |- (backend);
+    \draw[arr] (group)  |- (backend);
+    \draw[arr] (backend) -- (out);
   \end{tikzpicture}
-  \end{center}
-\end{frame}
-
-\begin{frame}[fragile]{Key Pass: \texttt{vector\_op\_to\_loop}}
-  Converts array-level operations into explicit scalar loops.
-  \vspace{0.5em}
-
-  \textbf{Input:}
-  \begin{minted}{python}
-  B[i, j] += A[i+1:, i] @ B[i+1:, j]
-  \end{minted}
-
-  \textbf{After rewrite\_aug\_assign + rewrite\_vector\_dot:}
-  \begin{minted}{python}
-  B[i, j] = B[i, j] + np.sum(A[i+1:, i] * B[i+1:, j])
-  \end{minted}
-
-  \textbf{After vector\_op\_to\_loop:}
-  \begin{minted}{python}
-  __reduce_sum_var = 0.0
-  for __i0 in range(M - (i+1)):      # pragma simd, reduction
-      __reduce_sum_var += A[__i0 + i+1, i] * B[__i0 + i+1, j]
-  B[i, j] = B[i, j] + __reduce_sum_var
-  \end{minted}
-
-  The inner loop is marked \textbf{simd + reduction} $\to$ compiler generates threadgroup reduction.
-\end{frame}
-
-\begin{frame}[fragile]{Key Pass: \texttt{ExtractReductionSubexprs}}
-  A new sub-pass inside \texttt{vector\_op\_to\_loop} that enables compound reduction expressions.
-
-  \vspace{0.5em}
-  \textbf{Before (required workaround):}
-  \begin{minted}{python}
-  s = np.sum(A[i+1:, i] * B[i+1:, j])
-  B[i, j] = B[i, j] + s
-  \end{minted}
-
-  \textbf{After (now supported directly):}
-  \begin{minted}{python}
-  B[i, j] += A[i+1:, i] @ B[i+1:, j]
-  \end{minted}
-
-  The pass extracts the embedded reduction into a standalone assignment
-  before the main lowering step, making the pipeline handle it naturally.
-\end{frame}
-
-\begin{frame}[fragile]{Key Pass: \texttt{guard\_scalar\_mem\_writes}}
-  In group mode, many threads execute the pfor body — but scalar writes
-  (e.g.\ \texttt{B[i,j] = ...}) must only happen \emph{once} per group.
-
-  \vspace{0.5em}
-  The pass automatically wraps scalar writes with a lane guard:
-
-  \begin{minted}{c}
-  // Generated Metal kernel (group mode)
-  if (lane == 0) {
-      B[i * N + j] = B[i * N + j] + __reduce_sum_var;
   }
-  \end{minted}
-
-  \vspace{0.5em}
-  \textbf{Correctness guarantee:} only thread 0 in each group performs the
-  scalar write, after the threadgroup reduction completes.
-\end{frame}
-
-\begin{frame}[fragile]{Key Pass: \texttt{rewrite\_simd\_reductions}}
-  Converts the annotated reduction loop into a Metal threadgroup reduction:
-
-  \begin{minted}{c}
-  // Scalar loop body
-  __reduce_sum_var += A[__i0 + i+1, i] * B[__i0 + i+1, j];
-  // ...after loop:
-  threadgroup float __tg_reduce_sum_var[SIMD_WIDTH];
-  __threadgroup_reduce(__reduce_sum_var,
-                       __tg_reduce_sum_var, 'sum');
-  \end{minted}
-
-  The tree-reduce implementation is emitted by \texttt{unparse\_to\_cpp},
-  using Metal's \texttt{simdgroup\_sum} and \texttt{threadgroup} primitives.
+  \end{center}
 \end{frame}
 
 % ---------------------------------------------------------------
@@ -655,6 +564,86 @@
 
   Same pragma, same Python front end — performance can be improved by rewriting
   to use array expressions, without leaving APPy.
+\end{frame}
+
+% ---------------------------------------------------------------
+\section{Preliminary Results}
+
+\begin{frame}{Benchmark Setup}
+  \begin{itemize}
+    \item \textbf{Platform:} Apple M3 (MacBook Air) — Metal GPU backend
+    \item \textbf{Benchmarks:} NPBench kernels (PolyBench + custom) — all float32
+    \item \textbf{Baselines:} NumPy, Numba (best mode per kernel)
+    \item \textbf{Metric:} Median wall-clock time (ms), 5 runs
+    \item APPy uses \textbf{a single \texttt{\#pragma parallel for}} per kernel
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Results: Individual Mode — Irregular Workloads (\emph{paper} size)}
+  \centering
+  \footnotesize
+  \begin{tabular}{lrrrl}
+    \toprule
+    Kernel & NumPy & Numba & APPy Metal & vs.\ NumPy \\
+    \midrule
+    \texttt{mandelbrot} (1000$\times$1000, iter=200) & 1407 ms & 239 ms & \textbf{3 ms} & \textbf{469$\times$} \\
+    \texttt{prime\_counting} ($N{=}10^6$)            & 2274 ms & --- & \textbf{21 ms} & \textbf{108$\times$} \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.8em}
+  \begin{block}{Why such large speedups?}
+    Each iteration is \emph{fully independent} with \emph{irregular control flow}
+    (early exit, variable work per thread). NumPy/Numba cannot vectorise these efficiently.
+    APPy launches one GPU thread per pixel/number — pure individual mode.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Results: Group Mode — Dense Linear Algebra (\emph{paper} size)}
+  \centering
+  \footnotesize
+  \begin{tabular}{lrrrl}
+    \toprule
+    Kernel & NumPy & Numba & APPy Metal & vs.\ NumPy \\
+    \midrule
+    \texttt{syr2k}       & 3968 ms & 975 ms  &  64 ms & \textbf{62$\times$} \\
+    \texttt{syrk}        & 1458 ms & 540 ms  &  31 ms & \textbf{47$\times$} \\
+    \texttt{gemver}      &  237 ms & 141 ms  &  31 ms & \textbf{7.6$\times$} \\
+    \texttt{gesummv}     &  249 ms & 117 ms  & 158 ms & 1.6$\times$ \\
+    \texttt{symm}        & 4448 ms & 673 ms  & 2064 ms & 2.2$\times$ \\
+    \texttt{trmm}        & 1605 ms & 292 ms  & 1309 ms & 1.2$\times$ \\
+    \texttt{gramschmidt} &   75 ms &  26 ms  &  155 ms & 0.5$\times$ \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.6em}
+  \begin{block}{Takeaway}
+    Memory-bandwidth-bound kernels (\texttt{syrk}, \texttt{syr2k}, \texttt{gemver}) see
+    large GPU speedups. Loop-heavy kernels with sequential data dependencies are harder to parallelise.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Results: Stencil Kernels — Dispatch Overhead (\emph{M} size)}
+  \centering
+  \footnotesize
+  \begin{tabular}{lrrrl}
+    \toprule
+    Kernel & NumPy & Numba & APPy Metal & vs.\ NumPy \\
+    \midrule
+    \texttt{fdtd\_2d} \emph{(M)}        &  34 ms &  61 ms &  113 ms & 0.30$\times$ \\
+    \texttt{jacobi\_2d} \emph{(M)}      &  45 ms &  30 ms &  116 ms & 0.39$\times$ \\
+    \texttt{floyd\_warshall} \emph{(M)} &  41 ms &  38 ms &  253 ms & 0.16$\times$ \\
+    \texttt{floyd\_warshall} \emph{(paper, $N{=}2800$)} & 17527 ms & 3140 ms & 4461 ms & \textbf{3.9$\times$} \\
+    \texttt{jacobi\_1d} \emph{(M)}      &  60 ms & 110 ms & 10704 ms & 0.006$\times$ \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.6em}
+  \begin{alertblock}{Bottleneck: per-kernel dispatch overhead (${\approx}240\,\mu$s/dispatch)}
+    Stencil time-step loops require one GPU dispatch per step (no global sync in Metal).
+    \texttt{jacobi\_1d}: 4000 steps $\times$ 2 dispatches $= 8000$ launches.
+    Measured: ${\approx}165\,\mu$s Metal overhead $+$ ${\approx}85\,\mu$s actual GPU compute per step.
+  \end{alertblock}
 \end{frame}
 
 % ---------------------------------------------------------------
