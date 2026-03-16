@@ -1,11 +1,17 @@
 \documentclass[aspectratio=169]{beamer}
 \usetheme{metropolis}
 \usepackage{minted}
+\usepackage{etoolbox}
 \usepackage{booktabs}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta, positioning, shapes.geometric}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, fit}
 
 \setminted{fontsize=\footnotesize, breaklines=true}
+
+% Add spacing between block title and body globally (patch metropolis \nointerlineskip)
+\makeatletter
+\patchcmd{\metropolis@block}{\nointerlineskip}{\vskip0.4em}{}{}
+\makeatother
 
 \title{APPy: Annotated Parallelism for Python on GPUs}
 \subtitle{Work in Progress}
@@ -58,8 +64,9 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{Existing Path 2: Custom GPU Kernels}
-  \textbf{Examples:} CUDA, OpenCL, Numba CUDA
+\begin{frame}{Existing Path 2: SIMT — Custom GPU Kernels}
+  \textbf{Examples:} CUDA, Metal, OpenCL, Numba CUDA\\
+  \textbf{Model:} SIMT — each thread executes \emph{independently} with its own control flow.
   \vspace{0.5em}
 
   \begin{columns}
@@ -67,6 +74,7 @@
     \textbf{Pros}
     \begin{itemize}
       \item Full control over execution
+      \item Natural for irregular, control-heavy workloads (ray tracing, Mandelbrot)
       \item Potential for highest performance
     \end{itemize}
 
@@ -74,15 +82,16 @@
     \textbf{Cons}
     \begin{itemize}
       \item Must rewrite Python logic in a GPU kernel language
-      \item Manual memory management
+      \item Manual kernel launches \& memory management
+      \item Collective ops (reductions, dot products) require manual thread synchronization, barrier insertion, and shared memory management — error-prone and hard to maintain
       \item Debugging: divergence, race conditions, shared-memory issues
-      \item Hard to maintain correctness + portability
     \end{itemize}
   \end{columns}
 \end{frame}
 
-\begin{frame}{Existing Path 3: Triton}
-  Triton's idea: write GPU kernels in a Python-like DSL that compiles to optimized GPU code.
+\begin{frame}{Existing Path 3: SIMD-like — Triton}
+  Triton's idea: write GPU kernels in a Python-like DSL that compiles to optimized GPU code.\\
+  \textbf{Model:} SIMD-like — a thread \emph{block} collectively operates on a \emph{tile} of data.
   \vspace{0.5em}
 
   \begin{columns}
@@ -98,74 +107,105 @@
     \textbf{Limitations}
     \begin{itemize}
       \item Requires learning Triton's DSL — not pure Python
-      \item Still kernel-centric: users must manage blocks, program IDs, memory loads
-      \item Less natural for task-parallel or irregular workloads
+      \item Still kernel-centric: users manage blocks, program IDs, tiled memory loads
+      \item \textbf{Awkward for SIMT-style code}: irregular control flow, per-thread divergence
+            (e.g.\ Mandelbrot) does not fit the tile/block model
     \end{itemize}
   \end{columns}
 \end{frame}
 
+\begin{frame}{Two Paradigms, One Common Pain}
+  \begin{columns}
+    \column{0.48\textwidth}
+    \textbf{SIMT} (CUDA, Metal)
+    \begin{itemize}
+      \item Each thread works independently
+      \item Great for irregular, control-heavy code
+      \item Collective ops require manual synchronization \& barriers — \emph{error-prone}
+    \end{itemize}
+
+    \column{0.48\textwidth}
+    \textbf{SIMD-like} (Triton)
+    \begin{itemize}
+      \item Thread block operates on data tiles collectively
+      \item Great for dense tensor/matrix ops
+      \item \emph{Awkward} for irregular control flow
+    \end{itemize}
+  \end{columns}
+
+  \vspace{1.2em}
+  \begin{alertblock}{Shared pain points}
+    Both require: manual kernel launches, explicit memory management,
+    low-level boilerplate. Neither covers the full spectrum naturally.
+  \end{alertblock}
+\end{frame}
+
 \begin{frame}{The Gap in the Landscape}
+  No simple way to express GPU parallelism using \textbf{regular Python loops} with \textbf{minimal annotation}
+  that covers \textbf{both SIMT-style} (independent threads) \textbf{and SIMD-style} (collective thread-group ops)
+  within the same Python front end.
+
+  \vspace{1em}
   \begin{center}
-  \begin{tikzpicture}[node distance=1.2cm]
-    \node[draw, rounded corners, fill=mLightBrown!30, minimum width=3cm, minimum height=0.8cm] (lib) {Libraries (CuPy, JAX)};
-    \node[draw, rounded corners, fill=mLightBrown!30, minimum width=3cm, minimum height=0.8cm, right=1.5cm of lib] (triton) {Triton DSL};
-    \node[draw, rounded corners, fill=mLightBrown!30, minimum width=3cm, minimum height=0.8cm, right=1.5cm of triton] (cuda) {CUDA / OpenCL};
-
-    \node[below=0.5cm of lib] {\small Too restrictive};
-    \node[below=0.5cm of triton] {\small Kernel-centric DSL};
-    \node[below=0.5cm of cuda] {\small Too low-level};
-
-    \node[draw, rounded corners, fill=mLightGreen!50, minimum width=4cm, minimum height=0.9cm,
-          below=1.8cm of triton] (appy) {\textbf{APPy} ← this gap};
-    \draw[->, thick, dashed] (lib.south) -- ++(0,-0.7) -| (appy.north west);
-    \draw[->, thick, dashed] (cuda.south) -- ++(0,-0.7) -| (appy.north east);
-  \end{tikzpicture}
+  \begin{tabular}{lccc}
+    \toprule
+    & \textbf{Triton} & \textbf{CUDA/Metal} & \textbf{APPy} \\
+    \midrule
+    SIMT-style code           & $\times$   & \checkmark      & \checkmark \\
+    SIMD/collective ops       & \checkmark & error-prone$^*$ & \checkmark \\
+    Auto host-device transfer & $\times$   & $\times$        & \checkmark \\
+    No manual kernel launches & $\times$   & $\times$        & \checkmark \\
+    \bottomrule
+  \end{tabular}\\[0.5em]
+  {\footnotesize $^*$Requires manual thread synchronization, barrier insertion, and shared memory management — a common source of subtle bugs.}
   \end{center}
-
-  \vspace{0.5em}
-  No simple way to express GPU parallelism using \textbf{regular Python loops} with \textbf{minimal annotation},
-  preserving control flow across \textbf{multiple GPU paradigms}.
 \end{frame}
 
 % ---------------------------------------------------------------
 \section{APPy: Prior Work (CC 2024)}
 
-\begin{frame}[fragile]{APPy v1: OpenMP-Style Annotations for Python GPUs}
-  \textbf{Key idea:} Write regular sequential Python, add a single pragma, get a GPU kernel.
+\begin{frame}[fragile]{APPy v1 (CC 2024): Two-Layer Parallelism Model}
+  \textbf{Key idea:} Annotate Python loops with pragmas; compiler generates GPU kernels.
 
   \begin{minted}{python}
-  #pragma parallel for
-  for i in range(N):
-      C[i] = A[i] + B[i]
+  #pragma parallel for        # outer loop -> grid (1 thread block per iteration)
+  for i in range(M):
+      #pragma simd             # inner loop -> threads within that block
+      for j in range(N):
+          C[i, j] = A[i, j] + B[i, j]
   \end{minted}
 
   \vspace{0.5em}
-  No CUDA, no OpenCL, no Triton DSL required.
+  \textbf{Execution model:}
+  \begin{itemize}
+    \item Outer \texttt{\#pragma parallel for} $\to$ each iteration dispatches \textbf{one thread block}
+    \item Inner \texttt{\#pragma simd} $\to$ threads within the block work collectively
+    \item Essentially a \textbf{group/SIMD-like model} — each outer iteration = a cooperative group
+  \end{itemize}
 
   \vspace{0.5em}
-  Worked well for:
-  \begin{itemize}
-    \item[$\checkmark$] Dense, vectorizable loops
-    \item[$\checkmark$] Regular data-parallel computations
-    \item[$\checkmark$] Scientific workloads matching standard patterns
-  \end{itemize}
+  No CUDA, no Triton DSL required — works well for collective inner-loop workloads.
 \end{frame}
 
-\begin{frame}{Where APPy v1 Hit a Limit}
-  The CC 2024 model assumes a \textbf{single parallelism model}: every iteration is independent and maps to one GPU thread.
+\begin{frame}[fragile]{Where APPy v1 Hit a Limit}
+  CC 2024's two-layer model (outer $\to$ thread block, inner $\to$ SIMD) is essentially
+  a \textbf{group model only}. It cannot naturally express \textbf{flat SIMT} code.
 
-  \vspace{1em}
-  But many real workloads:
-  \begin{itemize}
-    \item Contain \emph{inner} collective operations (dot products, reductions over slices)
-    \item Have iterations that benefit from \emph{thread cooperation} within a group
-    \item Are expressed most naturally with nested parallel structure
-  \end{itemize}
+  \vspace{0.8em}
+  \textbf{Example: Mandelbrot} — each pixel is fully independent, no inner loop to parallelize.
 
-  \vspace{1em}
+  \begin{minted}{python}
+  #pragma parallel for        # each iteration needs a WHOLE thread block?
+  for idx in range(width * height):
+      # per-pixel work — no inner loop, no collective ops
+      while abs(z) <= 2.0 and i < max_iter: ...
+  \end{minted}
+
+  \vspace{0.5em}
   \begin{alertblock}{The bottleneck}
-    Forcing everything into independent-thread parallelism is itself an abstraction leak.
-    Users must restructure their code to fit the model.
+    Flat, shader-style SIMT code does not fit the two-layer model.
+    Launching a full thread block per pixel is wasteful and unnatural.
+    CC 2024 APPy lacks a first-class \emph{individual} execution mode.
   \end{alertblock}
 \end{frame}
 
@@ -178,15 +218,16 @@
   \vspace{1em}
   \begin{columns}
     \column{0.48\textwidth}
-    \textbf{Individual Mode}\\
+    \textbf{Individual Mode} \emph{(SIMT-style)}\\
     Each parallel iteration $\to$ one independent GPU thread.\\
+    Natural for irregular, control-heavy workloads.\\
     \vspace{0.5em}
     \emph{``Assign each student a task. They work alone.''}
 
     \column{0.48\textwidth}
-    \textbf{Group Mode}\\
+    \textbf{Group Mode} \emph{(SIMD-like)}\\
     Each parallel iteration $\to$ one GPU threadgroup.\\
-    Threads inside the group coordinate.\\
+    Threads inside the group coordinate on collective ops.\\
     \vspace{0.5em}
     \emph{``Divide students into groups. Students in a group can collaborate.''}
   \end{columns}
@@ -196,6 +237,59 @@
   Both modes use the \emph{same} user-facing annotation:\\[0.5em]
   \mintinline{python}{#pragma parallel for}
   \end{center}
+\end{frame}
+
+\begin{frame}{Individual vs.\ Group Mode: Visualized}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \centering
+    \textbf{Individual Mode}\\[0.5em]
+    \begin{tikzpicture}[
+      thread/.style={circle, draw, fill=mLightBrown!50, minimum size=0.65cm, font=\scriptsize},
+      output/.style={draw, rounded corners, fill=mLightGreen!50, minimum width=0.7cm, minimum height=0.5cm, font=\scriptsize},
+    ]
+      \foreach \i in {1,2,3,4} {
+        \node[thread] (t\i) at (0, {-(\i-1)*1.05}) {T\i};
+        \node[output] (o\i) at (2.2, {-(\i-1)*1.05}) {out\i};
+        \draw[->, thick] (t\i) -- (o\i);
+      }
+      \node[above=0.15cm of t1, font=\tiny, text=gray] {threads};
+      \node[above=0.15cm of o1, font=\tiny, text=gray] {outputs};
+    \end{tikzpicture}\\[0.5em]
+    {\small Each thread: independent task}
+
+    \column{0.48\textwidth}
+    \centering
+    \textbf{Group Mode}\\[0.5em]
+    \begin{tikzpicture}[
+      thread/.style={circle, draw, fill=blue!20, minimum size=0.6cm, font=\scriptsize},
+      output/.style={draw, rounded corners, fill=mLightGreen!50, minimum width=0.7cm, minimum height=0.9cm, font=\scriptsize},
+      grp/.style={draw, rounded corners=5pt, thick, dashed, inner sep=5pt},
+    ]
+      % Group 1
+      \node[thread] (t1) at (0.0,  0.0)  {T1};
+      \node[thread] (t2) at (0.85, 0.0)  {T2};
+      \node[thread] (t3) at (0.0, -0.85) {T3};
+      \node[thread] (t4) at (0.85,-0.85) {T4};
+      \node[grp, fit=(t1)(t2)(t3)(t4), label=above:{\tiny group 1}] (g1) {};
+      \node[output] (o1) at (2.6, -0.4) {out1};
+      \draw[->, thick] (g1.east) -- (o1.west);
+      \draw[<->, dotted, gray] (t1)--(t2); \draw[<->, dotted, gray] (t3)--(t4);
+      \draw[<->, dotted, gray] (t1)--(t3); \draw[<->, dotted, gray] (t2)--(t4);
+
+      % Group 2
+      \node[thread] (t5) at (0.0, -1.9)  {T5};
+      \node[thread] (t6) at (0.85,-1.9)  {T6};
+      \node[thread] (t7) at (0.0, -2.75) {T7};
+      \node[thread] (t8) at (0.85,-2.75) {T8};
+      \node[grp, fit=(t5)(t6)(t7)(t8), label=above:{\tiny group 2}] (g2) {};
+      \node[output] (o2) at (2.6, -2.3) {out2};
+      \draw[->, thick] (g2.east) -- (o2.west);
+      \draw[<->, dotted, gray] (t5)--(t6); \draw[<->, dotted, gray] (t7)--(t8);
+      \draw[<->, dotted, gray] (t5)--(t7); \draw[<->, dotted, gray] (t6)--(t8);
+    \end{tikzpicture}\\[0.5em]
+    {\small Threads cooperate within a group}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Individual Mode: Concept}
@@ -237,9 +331,47 @@
   No communication between iterations.
 \end{frame}
 
+\begin{frame}[fragile]{Individual Mode: Prime Counting Example}
+  \begin{minted}{python}
+  @appy.jit
+  def count_primes(count, N):
+      #pragma parallel for
+      for n in range(2, N):
+          is_prime = True
+          for d in range(2, n):
+              if n % d == 0:
+                  is_prime = False
+                  break
+          if is_prime:
+              count[0] += 1   # final reduction: one atomic add per thread
+  \end{minted}
+  Each thread independently checks one number — irregular control flow handled naturally.
+  \texttt{count[0] += 1} is an atomic global reduction, efficient here because
+  \textbf{primes are rare} so few threads contend on the atomic add.
+\end{frame}
+
+\begin{frame}{Individual Mode: When to Upgrade to Group Mode}
+  \begin{alertblock}{Limitation of per-thread atomic reductions}
+    If the reduction is \emph{unconditional} (every thread contributes),
+    $N$ concurrent atomic adds cause high memory contention — inefficient.
+  \end{alertblock}
+
+  \vspace{0.8em}
+  \textbf{Solution: upgrade to group mode.}
+  \begin{itemize}
+    \item Each threadgroup first reduces locally (fast, no global traffic)
+    \item Then one atomic add per group to the global counter
+    \item $\lceil N / \texttt{GROUP\_SIZE} \rceil$ atomic ops instead of $N$
+  \end{itemize}
+
+  \vspace{0.5em}
+  Same \texttt{\#pragma parallel for} annotation — just rewrite the body
+  to use an array expression, and the compiler handles the rest.
+\end{frame}
+
 \begin{frame}{Group Mode: Concept}
   \begin{block}{Analogy}
-    Divide students into groups and launch $X$ groups. Students \emph{within} a group
+    Divide students into groups and launch $\lceil N / \texttt{GROUP\_SIZE} \rceil$ groups. Students \emph{within} a group
     can coordinate — they share a whiteboard, can communicate, and work together
     on their group's piece of the problem.
   \end{block}
@@ -493,6 +625,36 @@
 
   \vspace{0.5em}
   The APPy version is essentially the NumPy version with one added pragma.
+\end{frame}
+
+% ---------------------------------------------------------------
+\section{Progressive Optimization Path}
+
+\begin{frame}[fragile]{Individual $\to$ Group: A Natural Upgrade Path}
+  A key benefit of APPy's unified model: users can \textbf{start simple} and
+  \textbf{upgrade incrementally} — using the same annotation.
+
+  \vspace{0.8em}
+  \textbf{Example: Stencil computation}
+
+  \textbf{Step 1 — Individual mode} (simple, correct):
+  \begin{minted}{python}
+  #pragma parallel for
+  for idx in range(N * N):   # each thread computes one output element
+      i, j = idx // N, idx % N
+      out[i, j] = 0.25 * (A[i-1,j] + A[i+1,j] + A[i,j-1] + A[i,j+1])
+  \end{minted}
+
+  \textbf{Step 2 — Group mode} (tiled, better data locality):
+  \begin{minted}{python}
+  #pragma parallel for        # each group handles one tile row
+  for i in range(0, N, TILE):
+      out[i:i+TILE, :] = 0.25 * (A[i-1:i+TILE-1, :] + A[i+1:i+TILE+1, :]
+                                + A[i:i+TILE, :-1]   + A[i:i+TILE, 1:])
+  \end{minted}
+
+  Same pragma, same Python front end — performance can be improved by rewriting
+  to use array expressions, without leaving APPy.
 \end{frame}
 
 % ---------------------------------------------------------------

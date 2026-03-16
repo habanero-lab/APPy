@@ -32,5 +32,7 @@ class RewriteVectorDot(ast.NodeTransformer):
 
 
 def transform(tree, val_map):
+    if not any(isinstance(node, ast.MatMult) for node in ast.walk(tree)):
+        return tree
     shape_info = shape_analysis.analyze(tree, val_map)
     return RewriteVectorDot(shape_info).visit(tree)
