@@ -58,17 +58,21 @@ class AttachTypes(ast.NodeVisitor):
         self.generic_visit(node)
         types = [child.metal_type for child in [node.left, node.right]]
         types.sort()
+        _int_types = ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint', 'long', 'ulong']
         if isinstance(node.op, ast.Div) and \
-            types[0] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint'] and \
-            types[1] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
+            types[0] in _int_types and \
+            types[1] in _int_types:
             # Python semantic: divsion between any kind of integers is float
             node.metal_type = 'float'
         elif types[0] == types[1]:
             node.metal_type = types[0]
-        elif types[0] == 'float' and types[1] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
+        elif types[0] == 'float' and types[1] in _int_types:
             node.metal_type = 'float'
-        elif types[1] == 'float' and types[0] in ['bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint']:
+        elif types[1] == 'float' and types[0] in _int_types:
             node.metal_type = 'float'
+        elif ('long' in types or 'ulong' in types) and set(types) <= {'int', 'uint', 'long', 'ulong'}:
+            # Widen to 64-bit when mixing 32-bit and 64-bit integers
+            node.metal_type = 'long' if 'long' in types else 'ulong'
         elif types[1] == types[0] + "2" or types[1] == types[0] + "3" or types[1] == types[0] + "4":
             node.metal_type = types[1]
         else:
@@ -118,6 +122,8 @@ def visit(tree, val_map):
     * uint16_t (ushort)
     * int32_t (int)
     * uint32_t (uint)
+    * int64_t (long)
+    * uint64_t (ulong)
     * float (32 bits)
 
     Three vector types are also supported: a vector of 2, 3 or 4 scalar elements shown above.

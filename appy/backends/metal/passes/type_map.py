@@ -17,7 +17,10 @@ m = {
     'numpy.uint16': 'ushort',
     'numpy.int32': 'int',
     'numpy.uint32': 'uint',
+    'numpy.int64': 'long',
+    'numpy.uint64': 'ulong',
     'numpy.float32': 'float',
+    'numpy.float64': 'float',
 
     # NumPy array dtype
     'bool_': 'bool',
@@ -28,7 +31,10 @@ m = {
     'uint16': 'ushort',
     'int32': 'int',
     'uint32': 'uint',
-    'float32': 'float'
+    'int64': 'long',
+    'uint64': 'ulong',
+    'float32': 'float',
+    'float64': 'float'
 }
 
 def get_metal_type(val):
@@ -38,7 +44,7 @@ def get_metal_type(val):
         return m[type(val).__name__]
     elif isinstance(val, np.ndarray):
         return m[str(val.dtype)]
-    elif isinstance(val, (np.bool_, np.int8, np.uint8, np.int16, np.uint16, np.int32, np.uint32, np.float32)):
+    elif isinstance(val, (np.bool_, np.int8, np.uint8, np.int16, np.uint16, np.int32, np.uint32, np.int64, np.uint64, np.float32, np.float64)):
         return m[type(val).__name__]
     else:
         raise NotImplementedError(f"Type mapping not implemented for value of type {type(val)}")
