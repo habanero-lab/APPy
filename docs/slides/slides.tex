@@ -370,22 +370,115 @@
 \end{frame}
 
 \begin{frame}{Group Mode: Concept}
-  \begin{block}{Analogy}
-    Divide students into groups and launch $\lceil N / \texttt{GROUP\_SIZE} \rceil$ groups. Students \emph{within} a group
-    can coordinate — they share a whiteboard, can communicate, and work together
-    on their group's piece of the problem.
-  \end{block}
+  Each \texttt{\#pragma parallel for} iteration maps to \textbf{one GPU threadgroup}.
+  Threads in a group share a whiteboard (shared memory) and coordinate via barriers.
 
-  \vspace{1em}
-  On the GPU: each iteration of the \texttt{\#pragma parallel for} loop maps to
-  \textbf{one GPU threadgroup}. Threads inside a group coordinate via shared memory.
+  \vspace{0.6em}
+  The underlying mechanism is a \textbf{worksharing loop} (\texttt{\#pragma workshare}):
+  inner loop iterations are divided among threads; implicit barrier + reduction at the end.
 
-  \vspace{1em}
-  Suitable for:
+  \vspace{0.5em}
+  Two user-facing styles — both desugar to the same worksharing loop:
   \begin{itemize}
-    \item Iterations whose body contains inner collective operations
-    \item Dot products, slice reductions, scatter/gather over a dimension
-    \item Kernels most naturally expressed with nested parallelism
+    \item \textbf{Array expressions} — compiler rewrites to workshare loops automatically;
+          concise for uniform, branchless ops
+    \item \textbf{Explicit \texttt{\#pragma workshare}} — write the loop directly;
+          natural for irregular control flow
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Group Mode: Memory Model}
+  Variables \textbf{defined inside} a group-mode body are placed in registers or shared memory
+  based on one rule:
+
+  \vspace{0.8em}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Registers} — if \emph{never} subscripted
+    \begin{itemize}
+      \item Private to each thread
+      \item Scalars, accumulators, loop indices
+    \end{itemize}
+
+    \column{0.48\textwidth}
+    \textbf{Shared memory} — if \emph{ever} subscripted
+    \begin{itemize}
+      \item Visible to all threads in the group
+      \item Tiles, halos, local buffers
+    \end{itemize}
+  \end{columns}
+
+  \vspace{0.6em}
+  \textbf{Rationale:} threads cannot access each other's registers —
+  shared memory is the \emph{only} inter-thread channel within a group.
+  Loading into a shared tile first means global-memory latency is paid
+  once per tile, not once per thread.
+
+  \vspace{0.4em}
+  \small\textit{Register overflow: Metal compiler handles spilling — APPy never force-promotes.}
+\end{frame}
+
+\begin{frame}[fragile]{Group Mode: Memory Model — 1D Jacobi}
+  \textbf{1D Jacobi stencil} — each output point averages its two neighbours.
+
+  \vspace{0.5em}
+  \begin{minted}{python}
+  #pragma parallel for
+  for i in range(0, n, K):          # one threadgroup per tile
+      buf = np.zeros(K + 2)         # subscripted  →  shared memory
+      acc = 0.0                     # never subscripted  →  register
+
+      buf[1:K+1] = a[i:i+K]        # cooperative tile load
+      buf[0]     = a[i - 1]        # left halo
+      buf[K+1]   = a[i + K]        # right halo
+      # implicit barrier — buf fully visible to all threads
+      b[i:i+K] = (buf[:-2] + buf[1:-1] + buf[2:]) / 3.0
+  \end{minted}
+
+  \vspace{0.5em}
+  \texttt{buf} is in shared memory because thread \texttt{k} reads
+  \texttt{buf[k-1]} and \texttt{buf[k+1]} written by neighbouring threads.
+  \texttt{acc} is never shared — each thread keeps its own register copy.
+\end{frame}
+
+\begin{frame}[fragile]{Group Mode: Worksharing}
+  The underlying mechanism in group mode is a \textbf{worksharing loop}:
+  the inner loop is divided among threads, with an implicit barrier and reduction at the end.
+
+  \vspace{0.5em}
+  Array expressions are \textbf{syntactic sugar} — the compiler desugars them into
+  explicit \texttt{\#pragma workshare} loops before codegen.
+
+  \vspace{0.5em}
+  Users can also write \texttt{\#pragma workshare} directly when the operation
+  involves \textbf{irregular control flow} that is unnatural to express as array ops:
+
+  \begin{itemize}
+    \item Conditional accumulation with complex branching
+    \item Multi-pass algorithms where later passes depend on earlier results
+    \item Variable-length inner ranges (e.g.\ sparse row iteration)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Group Mode: Worksharing — Radial Binning}
+  \textbf{Radial binning} — average data points falling in each radial bin.
+  \begin{minted}{python}
+  #pragma parallel for          # one threadgroup per bin i
+  for i in range(npt):
+      r1, r2 = rmax*i/npt, rmax*(i+1)/npt
+      s, count = 0.0, 0
+      #pragma workshare         # j-loop divided among threads
+      for j in range(radius.shape[0]):
+          if r1 <= radius[j] < r2:
+              s += data[j]; count += 1
+      # implicit barrier + reduction of s, count
+      res[i] = s / count
+  \end{minted}
+
+  \begin{itemize}
+    \item Each thread handles a stride of the \texttt{j}-loop
+    \item The \texttt{if} branch is natural — no masking gymnastics needed
+    \item \texttt{s}, \texttt{count} stay in registers; reduced at the implicit barrier
   \end{itemize}
 \end{frame}
 
@@ -428,24 +521,23 @@
 
 \begin{frame}[fragile]{Individual vs.\ Group Mode: Side by Side}
   \begin{center}
+  \small
   \begin{tabular}{lll}
     \toprule
-    & \textbf{Individual Mode} & \textbf{Group Mode} \\
+    & \textbf{Individual} & \textbf{Group} \\
     \midrule
-    pfor iteration maps to & 1 GPU thread & 1 GPU threadgroup \\
-    Thread coordination & None & Shared memory + barriers \\
-    Inner parallelism & None & SIMD loops / reductions \\
-    Suitable for & Independent tasks & Collective operations \\
-    Examples & Mandelbrot, saxpy & TRMM, SYMM, GEMVER \\
+    pfor iter maps to   & 1 thread          & 1 threadgroup \\
+    Thread coordination & None              & Shared memory + barriers \\
+    Inner mechanism     & ---               & \texttt{\#pragma workshare} loop \\
+    Inner notation      & ---               & array exprs (sugar) or explicit workshare \\
+    Control flow        & Per-thread        & Arbitrary \\
+    Barrier at end      & No                & Implicit \\
+    Suitable for        & Independent tasks & Collective ops per iteration \\
+    Examples            & Mandelbrot        & TRMM, SYMM, radial binning \\
     \midrule
-    User annotation & \mintinline{python}{#pragma parallel for} & \mintinline{python}{#pragma parallel for} \\
+    Annotation          & \multicolumn{2}{c}{\texttt{\#pragma parallel for}} \\
     \bottomrule
   \end{tabular}
-  \end{center}
-
-  \vspace{1em}
-  \begin{center}
-  \textbf{The user writes the same annotation. The compiler infers the mode.}
   \end{center}
 \end{frame}
 
@@ -454,7 +546,7 @@
 
 \begin{frame}{Compiler Pipeline}
   \begin{center}
-  \scalebox{0.8}{
+  \scalebox{0.56}{
   \begin{tikzpicture}[
     stage/.style={draw, rounded corners, minimum width=4.2cm, minimum height=0.75cm,
                   font=\small, fill=mLightBrown!25, align=center},
@@ -473,15 +565,22 @@
     \node[codegen, below right=0.8cm and 1.2cm of detect, fill=blue!15]
       (group) {\textbf{Group mode}\\\small 1 threadgroup / iteration};
 
-    \node[stage, below=2.6cm of detect] (backend) {Backend codegen (Metal / Triton)};
+    \node[stage, below=0.7cm of group, fill=yellow!20, font=\small]
+      (lower) {Lower array exprs $\to$ \texttt{\#pragma workshare} loops};
+    \node[codegen, below=0.7cm of lower, fill=blue!25, font=\small]
+      (wsmode) {Worksharing codegen\\\small (divide loop, barrier, reduce)};
+
+    \node[stage, below=4.5cm of detect] (backend) {Backend codegen (Metal / Triton)};
     \node[stage, below=0.5cm of backend, fill=mLightGreen!40] (out) {GPU kernel};
 
     \draw[arr] (src)    -- (fe);
     \draw[arr] (fe)     -- (detect);
     \draw[arr] (detect) -- node[left, font=\scriptsize]  {no}  (indiv);
     \draw[arr] (detect) -- node[right, font=\scriptsize] {yes} (group);
+    \draw[arr] (group)  -- (lower);
+    \draw[arr] (lower)  -- (wsmode);
     \draw[arr] (indiv)  |- (backend);
-    \draw[arr] (group)  |- (backend);
+    \draw[arr] (wsmode) |- (backend);
     \draw[arr] (backend) -- (out);
   \end{tikzpicture}
   }
@@ -683,6 +782,14 @@
           \texttt{ExtractReductionSubexprs}) rather than duplicating per backend
     \item \textbf{Performance evaluation} on NPBench against NumPy, CuPy, and Triton baselines
     \item \textbf{Auto-tuning} for threadgroup size and inner loop tile size
+    \item \textbf{Worksharing sub-mode} (\texttt{\#pragma workshare}):
+          implement compiler support for dividing an inner loop among threads
+          in a group, with implicit barrier and reduction at loop end.
+          Enables algorithms with irregular per-element control flow that are
+          awkward to express as array expressions — e.g.\ \textbf{bitonic sort}
+          (cooperative in-place sort of a shared-memory tile across multiple
+          compare-and-swap passes) and \textbf{sparse matrix-vector multiply}
+          (variable-length row iteration in CSR format)
   \end{itemize}
 \end{frame}
 
