@@ -71,7 +71,11 @@ class AttachTypes(ast.NodeVisitor):
         elif types[1] == 'float' and types[0] in _int_types:
             node.metal_type = 'float'
         elif ('long' in types or 'ulong' in types) and set(types) <= {'int', 'uint', 'long', 'ulong'}:
-            # Widen to 64-bit when mixing 32-bit and 64-bit integers
+            # Widen to 64-bit when mixing 32-bit and 64-bit integers.
+            # Precedence: long > ulong > int/uint
+            #   int/uint + long  -> long
+            #   int/uint + ulong -> ulong
+            #   long     + ulong -> long  (signed wins)
             node.metal_type = 'long' if 'long' in types else 'ulong'
         elif types[1] == types[0] + "2" or types[1] == types[0] + "3" or types[1] == types[0] + "4":
             node.metal_type = types[1]
