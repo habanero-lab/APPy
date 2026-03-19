@@ -124,13 +124,12 @@
     \toprule
     & \textbf{Triton} & \textbf{CUDA/Metal} & \textbf{APPy} \\
     \midrule
-    SIMT-style code           & $\times$   & \checkmark      & \checkmark \\
-    SIMD/collective ops       & \checkmark & error-prone$^*$ & \checkmark \\
-    Auto host-device transfer & $\times$   & $\times$        & \checkmark \\
-    No manual kernel launches & $\times$   & $\times$        & \checkmark \\
+    SIMT-style code            & $\times$   & \checkmark & \checkmark \\
+    Automatic collective ops   & \checkmark & $\times$   & \checkmark \\
+    Auto host-device transfer  & $\times$   & $\times$   & \checkmark \\
+    No manual kernel launches  & $\times$   & $\times$   & \checkmark \\
     \bottomrule
-  \end{tabular}\\[0.5em]
-  {\footnotesize $^*$Requires manual thread synchronization, barrier insertion, and shared memory management — a common source of subtle bugs.}
+  \end{tabular}
   \end{center}
 \end{frame}
 
@@ -302,44 +301,6 @@
   \end{minted}
   Each pixel is computed by one independent thread.
   No communication between iterations.
-\end{frame}
-
-\begin{frame}[fragile]{Individual Mode: Prime Counting Example}
-  \begin{minted}{python}
-  @appy.jit
-  def count_primes(count, N):
-      #pragma parallel for
-      for n in range(2, N):
-          is_prime = True
-          for d in range(2, n):
-              if n % d == 0:
-                  is_prime = False
-                  break
-          if is_prime:
-              count[0] += 1   # final reduction: one atomic add per thread
-  \end{minted}
-  Each thread independently checks one number — irregular control flow handled naturally.
-  \texttt{count[0] += 1} is an atomic global reduction, efficient here because
-  \textbf{primes are rare} so few threads contend on the atomic add.
-\end{frame}
-
-\begin{frame}{Individual Mode: When to Upgrade to Group Mode}
-  \begin{alertblock}{Limitation of per-thread atomic reductions}
-    If the reduction is \emph{unconditional} (every thread contributes),
-    $N$ concurrent atomic adds cause high memory contention — inefficient.
-  \end{alertblock}
-
-  \vspace{0.8em}
-  \textbf{Solution: upgrade to group mode.}
-  \begin{itemize}
-    \item Each threadgroup first reduces locally (fast, no global traffic)
-    \item Then one atomic add per group to the global counter
-    \item $\lceil N / \texttt{GROUP\_SIZE} \rceil$ atomic ops instead of $N$
-  \end{itemize}
-
-  \vspace{0.5em}
-  Same \texttt{\#pragma parallel for} annotation — just rewrite the body
-  to use an array expression, and the compiler handles the rest.
 \end{frame}
 
 \begin{frame}{Group Mode: Concept}
@@ -782,6 +743,48 @@
   \begin{center}
     \large Questions \& Feedback Welcome
   \end{center}
+\end{frame}
+
+% ---------------------------------------------------------------
+\appendix
+\section{Backup Slides}
+
+\begin{frame}[fragile]{Individual Mode: Prime Counting Example}
+  \begin{minted}{python}
+  @appy.jit
+  def count_primes(count, N):
+      #pragma parallel for
+      for n in range(2, N):
+          is_prime = True
+          for d in range(2, n):
+              if n % d == 0:
+                  is_prime = False
+                  break
+          if is_prime:
+              count[0] += 1   # final reduction: one atomic add per thread
+  \end{minted}
+  Each thread independently checks one number — irregular control flow handled naturally.
+  \texttt{count[0] += 1} is an atomic global reduction, efficient here because
+  \textbf{primes are rare} so few threads contend on the atomic add.
+\end{frame}
+
+\begin{frame}{Individual Mode: When to Upgrade to Group Mode}
+  \begin{alertblock}{Limitation of per-thread atomic reductions}
+    If the reduction is \emph{unconditional} (every thread contributes),
+    $N$ concurrent atomic adds cause high memory contention — inefficient.
+  \end{alertblock}
+
+  \vspace{0.8em}
+  \textbf{Solution: upgrade to group mode.}
+  \begin{itemize}
+    \item Each threadgroup first reduces locally (fast, no global traffic)
+    \item Then one atomic add per group to the global counter
+    \item $\lceil N / \texttt{GROUP\_SIZE} \rceil$ atomic ops instead of $N$
+  \end{itemize}
+
+  \vspace{0.5em}
+  Same \texttt{\#pragma parallel for} annotation — just rewrite the body
+  to use an array expression, and the compiler handles the rest.
 \end{frame}
 
 \end{document}
