@@ -84,7 +84,6 @@
       \item Must rewrite Python logic in a GPU kernel language
       \item Manual kernel launches \& memory management
       \item Collective ops (reductions, dot products) require manual thread synchronization, barrier insertion, and shared memory management — error-prone and hard to maintain
-      \item Debugging: divergence, race conditions, shared-memory issues
     \end{itemize}
   \end{columns}
 \end{frame}
@@ -96,7 +95,7 @@
 
   \begin{columns}
     \column{0.48\textwidth}
-    \textbf{Strengths}
+    \textbf{Pros}
     \begin{itemize}
       \item High performance for dense, matrix/tensor-style workloads
       \item Minimal boilerplate vs.\ CUDA
@@ -104,40 +103,14 @@
     \end{itemize}
 
     \column{0.48\textwidth}
-    \textbf{Limitations}
+    \textbf{Cons}
     \begin{itemize}
       \item Requires learning Triton's DSL — not pure Python
       \item Still kernel-centric: users manage blocks, program IDs, tiled memory loads
-      \item \textbf{Awkward for SIMT-style code}: irregular control flow, per-thread divergence
+      \item Awkward for SIMT-style code: irregular control flow, per-thread divergence
             (e.g.\ Mandelbrot) does not fit the tile/block model
     \end{itemize}
   \end{columns}
-\end{frame}
-
-\begin{frame}{Two Paradigms, One Common Pain}
-  \begin{columns}
-    \column{0.48\textwidth}
-    \textbf{SIMT} (CUDA, Metal)
-    \begin{itemize}
-      \item Each thread works independently
-      \item Great for irregular, control-heavy code
-      \item Collective ops require manual synchronization \& barriers — \emph{error-prone}
-    \end{itemize}
-
-    \column{0.48\textwidth}
-    \textbf{SIMD-like} (Triton)
-    \begin{itemize}
-      \item Thread block operates on data tiles collectively
-      \item Great for dense tensor/matrix ops
-      \item \emph{Awkward} for irregular control flow
-    \end{itemize}
-  \end{columns}
-
-  \vspace{1.2em}
-  \begin{alertblock}{Shared pain points}
-    Both require: manual kernel launches, explicit memory management,
-    low-level boilerplate. Neither covers the full spectrum naturally.
-  \end{alertblock}
 \end{frame}
 
 \begin{frame}{The Gap in the Landscape}
