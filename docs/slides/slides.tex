@@ -425,73 +425,52 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{Individual vs.\ Group Mode: Side by Side}
-  \begin{center}
-  \small
-  \begin{tabular}{lll}
-    \toprule
-    & \textbf{Individual} & \textbf{Group} \\
-    \midrule
-    pfor iter maps to   & 1 thread          & 1 threadgroup \\
-    Thread coordination & None              & Shared memory + barriers \\
-    Inner mechanism     & ---               & \texttt{\#pragma workshare} loop \\
-    Inner notation      & ---               & array exprs (sugar) or explicit workshare \\
-    Control flow        & Per-thread        & Arbitrary \\
-    Barrier at end      & No                & Implicit \\
-    Suitable for        & Independent tasks & Collective ops per iteration \\
-    Examples            & Mandelbrot        & TRMM, SYMM, radial binning \\
-    \midrule
-    Annotation          & \multicolumn{2}{c}{\texttt{\#pragma parallel for}} \\
-    \bottomrule
-  \end{tabular}
-  \end{center}
-\end{frame}
 
-% ---------------------------------------------------------------
-\section{Compiler Design}
+% % ---------------------------------------------------------------
+% \section{Compiler Design}
 
-\begin{frame}{Compiler Pipeline}
-  \begin{center}
-  \scalebox{0.56}{
-  \begin{tikzpicture}[
-    stage/.style={draw, rounded corners, minimum width=4.2cm, minimum height=0.75cm,
-                  font=\small, fill=mLightBrown!25, align=center},
-    decision/.style={draw, diamond, aspect=2.5, minimum width=4.2cm, minimum height=0.75cm,
-                     font=\small, fill=yellow!25, align=center},
-    codegen/.style={draw, rounded corners, minimum width=3.5cm, minimum height=0.75cm,
-                    font=\small, align=center},
-    arr/.style={->, thick},
-  ]
-    \node[stage] (src) {Python source + \texttt{\#pragma parallel for}};
-    \node[stage, below=0.5cm of src] (fe) {Frontend: parse \& normalize AST};
-    \node[decision, below=0.5cm of fe] (detect) {Array exprs in pfor body?};
+% \begin{frame}{Compiler Pipeline}
+%   \begin{center}
+%   \scalebox{0.56}{
+%   \begin{tikzpicture}[
+%     stage/.style={draw, rounded corners, minimum width=4.2cm, minimum height=0.75cm,
+%                   font=\small, fill=mLightBrown!25, align=center},
+%     decision/.style={draw, diamond, aspect=2.5, minimum width=4.2cm, minimum height=0.75cm,
+%                      font=\small, fill=yellow!25, align=center},
+%     codegen/.style={draw, rounded corners, minimum width=3.5cm, minimum height=0.75cm,
+%                     font=\small, align=center},
+%     arr/.style={->, thick},
+%   ]
+%     \node[stage] (src) {Python source + \texttt{\#pragma parallel for}};
+%     \node[stage, below=0.5cm of src] (fe) {Frontend: parse \& normalize AST};
+%     \node[decision, below=0.5cm of fe] (detect) {Array exprs in pfor body?};
 
-    \node[codegen, below left=0.8cm and 1.2cm of detect, fill=mLightBrown!40]
-      (indiv) {\textbf{Individual mode}\\\small 1 thread / iteration};
-    \node[codegen, below right=0.8cm and 1.2cm of detect, fill=blue!15]
-      (group) {\textbf{Group mode}\\\small 1 threadgroup / iteration};
+%     \node[codegen, below left=0.8cm and 1.2cm of detect, fill=mLightBrown!40]
+%       (indiv) {\textbf{Individual mode}\\\small 1 thread / iteration};
+%     \node[codegen, below right=0.8cm and 1.2cm of detect, fill=blue!15]
+%       (group) {\textbf{Group mode}\\\small 1 threadgroup / iteration};
 
-    \node[stage, below=0.7cm of group, fill=yellow!20, font=\small]
-      (lower) {Lower array exprs $\to$ \texttt{\#pragma workshare} loops};
-    \node[codegen, below=0.7cm of lower, fill=blue!25, font=\small]
-      (wsmode) {Worksharing codegen\\\small (divide loop, barrier, reduce)};
+%     \node[stage, below=0.7cm of group, fill=yellow!20, font=\small]
+%       (lower) {Lower array exprs $\to$ \texttt{\#pragma workshare} loops};
+%     \node[codegen, below=0.7cm of lower, fill=blue!25, font=\small]
+%       (wsmode) {Worksharing codegen\\\small (divide loop, barrier, reduce)};
 
-    \node[stage, below=4.5cm of detect] (backend) {Backend codegen (Metal / Triton)};
-    \node[stage, below=0.5cm of backend, fill=mLightGreen!40] (out) {GPU kernel};
+%     \node[stage, below=4.5cm of detect] (backend) {Backend codegen (Metal / Triton)};
+%     \node[stage, below=0.5cm of backend, fill=mLightGreen!40] (out) {GPU kernel};
 
-    \draw[arr] (src)    -- (fe);
-    \draw[arr] (fe)     -- (detect);
-    \draw[arr] (detect) -- node[left, font=\scriptsize]  {no}  (indiv);
-    \draw[arr] (detect) -- node[right, font=\scriptsize] {yes} (group);
-    \draw[arr] (group)  -- (lower);
-    \draw[arr] (lower)  -- (wsmode);
-    \draw[arr] (indiv)  |- (backend);
-    \draw[arr] (wsmode) |- (backend);
-    \draw[arr] (backend) -- (out);
-  \end{tikzpicture}
-  }
-  \end{center}
-\end{frame}
+%     \draw[arr] (src)    -- (fe);
+%     \draw[arr] (fe)     -- (detect);
+%     \draw[arr] (detect) -- node[left, font=\scriptsize]  {no}  (indiv);
+%     \draw[arr] (detect) -- node[right, font=\scriptsize] {yes} (group);
+%     \draw[arr] (group)  -- (lower);
+%     \draw[arr] (lower)  -- (wsmode);
+%     \draw[arr] (indiv)  |- (backend);
+%     \draw[arr] (wsmode) |- (backend);
+%     \draw[arr] (backend) -- (out);
+%   \end{tikzpicture}
+%   }
+%   \end{center}
+% \end{frame}
 
 % ---------------------------------------------------------------
 \section{Preliminary Results}
