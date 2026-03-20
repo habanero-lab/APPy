@@ -381,26 +381,20 @@
 \end{frame}
 
 \begin{frame}[fragile]{Group Mode: Shared Memory Example — 1D Jacobi}
-  \textbf{1D Jacobi stencil} — each output point averages its two neighbours.
+  \textbf{1D Jacobi stencil} — each output point averages its two neighbours - tiling can improve data locality.
 
   \vspace{0.5em}
   \begin{minted}{python}
   #pragma parallel for
   for i in range(0, n, K):          # one threadgroup per tile
       buf = appy.buffer(K + 2)      # allocate on-chip scratchpad memory
-      acc = 0.0                     # register
-
-      buf[1:K+1] = a[i:i+K]        # cooperative tile load
-      buf[0]     = a[i - 1]        # left halo
-      buf[K+1]   = a[i + K]        # right halo
+      buf[:] = inp[i-1:i+K+1]       # cooperative tile load
       # implicit barrier — buf fully visible to all threads
-      b[i:i+K] = (buf[:-2] + buf[1:-1] + buf[2:]) / 3.0
+      out[i:i+K] = (buf[:-2] + buf[1:-1] + buf[2:]) / 3.0
   \end{minted}
 
   \vspace{0.5em}
-  \texttt{buf} is in shared memory because thread \texttt{k} reads
-  \texttt{buf[k-1]} and \texttt{buf[k+1]} written by neighbouring threads.
-  \texttt{acc} is never shared — each thread keeps its own register copy.
+  Use local scratchpad memory to reduce accesses to global arrays.
 \end{frame}
 
 \begin{frame}[fragile]{Group Mode: Worksharing}
