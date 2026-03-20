@@ -351,34 +351,31 @@
       for j in range(radius.shape[0]):
           if r1 <= radius[j] < r2:
               s += data[j]; count += 1
-      # implicit barrier + reduction of s, count
       res[i] = s / count
   \end{minted}
 
   \begin{itemize}
     \item Each thread handles a stride of the \texttt{j}-loop
     \item The \texttt{if} branch is natural — no masking gymnastics needed
-    \item \texttt{s}, \texttt{count} stay in registers; reduced at the implicit barrier
+    \item \texttt{s}, \texttt{count} stay in registers; reduced with implicit barriers
   \end{itemize}
 \end{frame}
 
 \begin{frame}{Memory Model}
   Variables created \textbf{inside} a \texttt{\#pragma parallel for} loop body are
-  \textbf{local to each loop iteration} — in both individual and group mode.
+  \textbf{local to each loop iteration} — in both individual and group mode. The actual
+  storage assignment is either registers or shared memory. 
 
   \vspace{0.8em}
-  Storage is determined by how the variable is used:
-  \begin{itemize}
-    \item \textbf{Registers} — variable is always used as a whole (never indexed element-by-element)
-    \item \textbf{Shared memory} — variable is ever indexed; implies one thread may read
-          a value written by another thread, which requires shared memory
-  \end{itemize}
+  To explicitly allocate shared memory (only compile-time fixed size for now), use:
+  
+    \texttt{buf = appy.buffer(1000, dtype=np.float32)}
+  
 
   \vspace{0.8em}
-  \begin{alertblock}{Individual mode exception}
-    Only one thread owns each iteration — no inter-thread sharing.
-    All variables stay in \textbf{registers}, even if indexed.
-    Large arrays spill transparently via the backend compiler.
+  \begin{alertblock}{Decoupling locality optimization and synchronization}
+    Zero synchronization concern. Just use the buffers like you would use a 
+    scratchpad buffer in sequential code.
   \end{alertblock}
 
 \end{frame}
@@ -390,8 +387,8 @@
   \begin{minted}{python}
   #pragma parallel for
   for i in range(0, n, K):          # one threadgroup per tile
-      buf = np.zeros(K + 2)         # subscripted  →  shared memory
-      acc = 0.0                     # never subscripted  →  register
+      buf = appy.buffer(K + 2)      # allocate on-chip scratchpad memory
+      acc = 0.0                     # register
 
       buf[1:K+1] = a[i:i+K]        # cooperative tile load
       buf[0]     = a[i - 1]        # left halo
@@ -425,6 +422,19 @@
   \end{itemize}
 \end{frame}
 
+\begin{frame}[fragile]{Implementation Status}
+  Currently implemented:
+  \begin{itemize}
+    \item Individual mode
+    \item Group mode with array expressions
+  \end{itemize}
+  To be implemented:
+  \begin{itemize}
+    \item Group mode with \texttt{\#pragma workshare}
+    \item Group-level reduction inside \texttt{\#pragma workshare}
+    \item Using small scratchpad buffer (backed by shared memory)
+  \end{itemize}
+\end{frame}  
 
 % % ---------------------------------------------------------------
 % \section{Compiler Design}
