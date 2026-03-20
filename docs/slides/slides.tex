@@ -321,35 +321,66 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Group Mode: Memory Model}
-  Variables \textbf{defined inside} a group-mode body are placed in registers or shared memory
-  based on one rule:
+\begin{frame}[fragile]{Group Mode: Symmetric Matrix Multiply (SYMM)}
+  \begin{minted}{python}
+  @appy.jit
+  def kernel_appy(alpha, beta, C, A, B):
+      C *= beta
+      for i in range(C.shape[0]):
+          #pragma parallel for          <- launch one group per i
+          for j in range(C.shape[1]):
+              C[:i, j] += alpha * B[i, j] * A[i, :i]  # collective write
+              temp2[j]  = B[:i, j] @ A[i, :i]          # dot product
+          C[i, :] += alpha * B[i, :] * A[i, i] + alpha * temp2
+      return C
+  \end{minted}
+
+  \vspace{0.5em}
+  Thread $j$ handles column $j$ — but within the group all threads cooperate on
+  the slice operations and dot product via shared memory and threadgroup reductions.
+\end{frame}
+
+\begin{frame}[fragile]{Group Mode: Worksharing — Radial Binning}
+  \textbf{Radial binning} — average data points falling in each radial bin.
+  \begin{minted}{python}
+  #pragma parallel for          # one threadgroup per bin i
+  for i in range(npt):
+      r1, r2 = rmax*i/npt, rmax*(i+1)/npt
+      s, count = 0.0, 0
+      #pragma workshare         # j-loop divided among threads
+      for j in range(radius.shape[0]):
+          if r1 <= radius[j] < r2:
+              s += data[j]; count += 1
+      # implicit barrier + reduction of s, count
+      res[i] = s / count
+  \end{minted}
+
+  \begin{itemize}
+    \item Each thread handles a stride of the \texttt{j}-loop
+    \item The \texttt{if} branch is natural — no masking gymnastics needed
+    \item \texttt{s}, \texttt{count} stay in registers; reduced at the implicit barrier
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Memory Model}
+  Variables created \textbf{inside} a \texttt{\#pragma parallel for} loop body are
+  \textbf{local to each loop iteration} — in both individual and group mode.
 
   \vspace{0.8em}
-  \begin{columns}[T]
-    \column{0.48\textwidth}
-    \textbf{Registers} — if \emph{never} subscripted
-    \begin{itemize}
-      \item Private to each thread
-      \item Scalars, accumulators, loop indices
-    \end{itemize}
+  Storage is determined by how the variable is used:
+  \begin{itemize}
+    \item \textbf{Registers} — variable is always used as a whole (never indexed element-by-element)
+    \item \textbf{Shared memory} — variable is ever indexed; implies one thread may read
+          a value written by another thread, which requires shared memory
+  \end{itemize}
 
-    \column{0.48\textwidth}
-    \textbf{Shared memory} — if \emph{ever} subscripted
-    \begin{itemize}
-      \item Visible to all threads in the group
-      \item Tiles, halos, local buffers
-    \end{itemize}
-  \end{columns}
+  \vspace{0.8em}
+  \begin{alertblock}{Individual mode exception}
+    Only one thread owns each iteration — no inter-thread sharing.
+    All variables stay in \textbf{registers}, even if indexed.
+    Large arrays spill transparently via the backend compiler.
+  \end{alertblock}
 
-  \vspace{0.6em}
-  \textbf{Rationale:} threads cannot access each other's registers —
-  shared memory is the \emph{only} inter-thread channel within a group.
-  Loading into a shared tile first means global-memory latency is paid
-  once per tile, not once per thread.
-
-  \vspace{0.4em}
-  \small\textit{Register overflow: Metal compiler handles spilling — APPy never force-promotes.}
 \end{frame}
 
 \begin{frame}[fragile]{Group Mode: Memory Model — 1D Jacobi}
@@ -392,65 +423,6 @@
     \item Multi-pass algorithms where later passes depend on earlier results
     \item Variable-length inner ranges (e.g.\ sparse row iteration)
   \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]{Group Mode: Worksharing — Radial Binning}
-  \textbf{Radial binning} — average data points falling in each radial bin.
-  \begin{minted}{python}
-  #pragma parallel for          # one threadgroup per bin i
-  for i in range(npt):
-      r1, r2 = rmax*i/npt, rmax*(i+1)/npt
-      s, count = 0.0, 0
-      #pragma workshare         # j-loop divided among threads
-      for j in range(radius.shape[0]):
-          if r1 <= radius[j] < r2:
-              s += data[j]; count += 1
-      # implicit barrier + reduction of s, count
-      res[i] = s / count
-  \end{minted}
-
-  \begin{itemize}
-    \item Each thread handles a stride of the \texttt{j}-loop
-    \item The \texttt{if} branch is natural — no masking gymnastics needed
-    \item \texttt{s}, \texttt{count} stay in registers; reduced at the implicit barrier
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]{Group Mode: Symmetric Matrix Multiply (SYMM)}
-  \begin{minted}{python}
-  @appy.jit
-  def kernel_appy(alpha, beta, C, A, B):
-      C *= beta
-      for i in range(C.shape[0]):
-          #pragma parallel for          <- launch one group per i
-          for j in range(C.shape[1]):
-              C[:i, j] += alpha * B[i, j] * A[i, :i]  # collective write
-              temp2[j]  = B[:i, j] @ A[i, :i]          # dot product
-          C[i, :] += alpha * B[i, :] * A[i, i] + alpha * temp2
-      return C
-  \end{minted}
-
-  \vspace{0.5em}
-  Thread $j$ handles column $j$ — but within the group all threads cooperate on
-  the slice operations and dot product via shared memory and threadgroup reductions.
-\end{frame}
-
-\begin{frame}[fragile]{Group Mode: TRMM (Triangular Matrix Multiply)}
-  \begin{minted}{python}
-  @appy.jit
-  def kernel_appy(alpha, A, B):
-      M, N = B.shape
-      for i in range(M):
-          #pragma parallel for
-          for j in range(N):
-              B[i, j] += A[i+1:, i] @ B[i+1:, j]  # dot product per (i,j)
-      B *= alpha
-      return B
-  \end{minted}
-
-  \vspace{0.5em}
-  The \texttt{@} (dot product) inside the pfor body is a collective operation —
-  the group of threads cooperates to reduce over the slice dimension.
 \end{frame}
 
 \begin{frame}[fragile]{Individual vs.\ Group Mode: Side by Side}
@@ -748,6 +720,24 @@
 % ---------------------------------------------------------------
 \appendix
 \section{Backup Slides}
+
+\begin{frame}[fragile]{Group Mode: TRMM (Triangular Matrix Multiply)}
+  \begin{minted}{python}
+  @appy.jit
+  def kernel_appy(alpha, A, B):
+      M, N = B.shape
+      for i in range(M):
+          #pragma parallel for
+          for j in range(N):
+              B[i, j] += A[i+1:, i] @ B[i+1:, j]  # dot product per (i,j)
+      B *= alpha
+      return B
+  \end{minted}
+
+  \vspace{0.5em}
+  The \texttt{@} (dot product) inside the pfor body is a collective operation —
+  the group of threads cooperates to reduce over the slice dimension.
+\end{frame}
 
 \begin{frame}[fragile]{Individual Mode: Prime Counting Example}
   \begin{minted}{python}
