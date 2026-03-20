@@ -494,216 +494,44 @@
 \end{frame}
 
 % ---------------------------------------------------------------
-\section{Supported Workloads \& Examples}
-
-\begin{frame}{NPBench Kernels Supported}
-  \begin{center}
-  \begin{tabular}{llll}
-    \toprule
-    \textbf{Kernel} & \textbf{Mode} & \textbf{Key operation} & \textbf{Annotation} \\
-    \midrule
-    SAXPY / vec-add & Individual & Pointwise & \texttt{\#pragma parallel for} \\
-    GELU            & Individual & Pointwise & \texttt{\#pragma parallel for} \\
-    Mandelbrot      & Individual & Irregular & \texttt{\#pragma parallel for} \\
-    GESUMMV         & Group & \texttt{np.sum} & \texttt{\#pragma parallel for} \\
-    GEMVER          & Group & \texttt{@} (dot) & \texttt{\#pragma parallel for} \\
-    TRMM            & Group & \texttt{@} (dot) & \texttt{\#pragma parallel for} \\
-    SYMM            & Group & \texttt{@} + scatter & \texttt{\#pragma parallel for} \\
-    Gramschmidt     & Group & \texttt{@} (dot) & \texttt{\#pragma parallel for} \\
-    SYRK / SYR2K    & Group & Slice accumulate & \texttt{\#pragma parallel for} \\
-    Jacobi-1D/2D    & Group & Stencil & \texttt{\#pragma parallel for} \\
-    \bottomrule
-  \end{tabular}
-  \end{center}
-\end{frame}
-
-\begin{frame}[fragile]{Writing APPy vs.\ NumPy Reference}
-  \textbf{NumPy reference (TRMM):}
-  \begin{minted}{python}
-  for i in range(B.shape[0]):
-      for j in range(B.shape[1]):
-          B[i, j] += np.dot(A[i+1:, i], B[i+1:, j])
-  B *= alpha
-  \end{minted}
-
-  \textbf{APPy kernel:}
-  \begin{minted}{python}
-  @appy.jit
-  def kernel(alpha, A, B):
-      for i in range(B.shape[0]):
-          #pragma parallel for
-          for j in range(B.shape[1]):
-              B[i, j] += A[i+1:, i] @ B[i+1:, j]
-      B *= alpha
-  \end{minted}
-
-  \vspace{0.5em}
-  The APPy version is essentially the NumPy version with one added pragma.
-\end{frame}
-
-% ---------------------------------------------------------------
-\section{Progressive Optimization Path}
-
-\begin{frame}[fragile]{Individual $\to$ Group: A Natural Upgrade Path}
-  A key benefit of APPy's unified model: users can \textbf{start simple} and
-  \textbf{upgrade incrementally} — using the same annotation.
-
-  \vspace{0.8em}
-  \textbf{Example: Stencil computation}
-
-  \textbf{Step 1 — Individual mode} (simple, correct):
-  \begin{minted}{python}
-  #pragma parallel for
-  for idx in range(N * N):   # each thread computes one output element
-      i, j = idx // N, idx % N
-      out[i, j] = 0.25 * (A[i-1,j] + A[i+1,j] + A[i,j-1] + A[i,j+1])
-  \end{minted}
-
-  \textbf{Step 2 — Group mode} (tiled, better data locality):
-  \begin{minted}{python}
-  #pragma parallel for        # each group handles one tile row
-  for i in range(0, N, TILE):
-      out[i:i+TILE, :] = 0.25 * (A[i-1:i+TILE-1, :] + A[i+1:i+TILE+1, :]
-                                + A[i:i+TILE, :-1]   + A[i:i+TILE, 1:])
-  \end{minted}
-
-  Same pragma, same Python front end — performance can be improved by rewriting
-  to use array expressions, without leaving APPy.
-\end{frame}
-
-% ---------------------------------------------------------------
 \section{Preliminary Results}
 
 \begin{frame}{Benchmark Setup}
   \begin{itemize}
-    \item \textbf{Platform:} Apple M3 (MacBook Air) — Metal GPU backend
-    \item \textbf{Benchmarks:} NPBench kernels (PolyBench + custom) — all float32
-    \item \textbf{Baselines:} NumPy, Numba (best mode per kernel)
-    \item \textbf{Metric:} Median wall-clock time (ms), 5 runs
+    \item \textbf{Kernels:} Mandelbrot (individual mode), SYMM, GESUMMV (group mode)
+    \item \textbf{Backends:} Apple M3 Metal (macOS), NVIDIA CUDA (Linux)
+    \item \textbf{Baselines:} NumPy, Numba
+    \item \textbf{Metric:} Median wall-clock time (ms), 10 runs — all float32
     \item APPy uses \textbf{a single \texttt{\#pragma parallel for}} per kernel
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Results: Individual Mode — Irregular Workloads (\emph{paper} size)}
+\begin{frame}{Results}
   \centering
   \footnotesize
-  \begin{tabular}{lrrrl}
+  \begin{tabular}{llrrrrrr}
     \toprule
-    Kernel & NumPy & Numba & APPy Metal & vs.\ NumPy \\
+    & & \multicolumn{3}{c}{\textbf{Metal (Apple M3)}} & \multicolumn{3}{c}{\textbf{CUDA (NVIDIA)}} \\
+    \cmidrule(lr){3-5} \cmidrule(lr){6-8}
+    \textbf{Kernel} & \textbf{Mode} & NumPy & Numba & APPy & NumPy & Numba & APPy \\
     \midrule
-    \texttt{mandelbrot} (1000$\times$1000, iter=200) & 1407 ms & 239 ms & \textbf{3 ms} & \textbf{469$\times$} \\
-    \texttt{prime\_counting} ($N{=}10^6$)            & 2274 ms & --- & \textbf{21 ms} & \textbf{108$\times$} \\
+    \texttt{mandelbrot} & Individual & TBD & TBD & TBD & TBD & TBD & TBD \\
+    \texttt{symm}       & Group      & TBD & TBD & TBD & TBD & TBD & TBD \\
+    \texttt{gesummv}    & Group      & TBD & TBD & TBD & TBD & TBD & TBD \\
     \bottomrule
   \end{tabular}
-
-  \vspace{0.8em}
-  \begin{block}{Why such large speedups?}
-    Each iteration is \emph{fully independent} with \emph{irregular control flow}
-    (early exit, variable work per thread). NumPy/Numba cannot vectorise these efficiently.
-    APPy launches one GPU thread per pixel/number — pure individual mode.
-  \end{block}
-\end{frame}
-
-\begin{frame}{Results: Group Mode — Dense Linear Algebra (\emph{paper} size)}
-  \centering
-  \footnotesize
-  \begin{tabular}{lrrrl}
-    \toprule
-    Kernel & NumPy & Numba & APPy Metal & vs.\ NumPy \\
-    \midrule
-    \texttt{syr2k}       & 3968 ms & 975 ms  &  64 ms & \textbf{62$\times$} \\
-    \texttt{syrk}        & 1458 ms & 540 ms  &  31 ms & \textbf{47$\times$} \\
-    \texttt{gemver}      &  237 ms & 141 ms  &  31 ms & \textbf{7.6$\times$} \\
-    \texttt{gesummv}     &  249 ms & 117 ms  & 158 ms & 1.6$\times$ \\
-    \texttt{symm}        & 4448 ms & 673 ms  & 2064 ms & 2.2$\times$ \\
-    \texttt{trmm}        & 1605 ms & 292 ms  & 1309 ms & 1.2$\times$ \\
-    \texttt{gramschmidt} &   75 ms &  26 ms  &  155 ms & 0.5$\times$ \\
-    \bottomrule
-  \end{tabular}
-
-  \vspace{0.6em}
-  \begin{block}{Takeaway}
-    Memory-bandwidth-bound kernels (\texttt{syrk}, \texttt{syr2k}, \texttt{gemver}) see
-    large GPU speedups. Loop-heavy kernels with sequential data dependencies are harder to parallelise.
-  \end{block}
-\end{frame}
-
-\begin{frame}{Results: Stencil Kernels — Dispatch Overhead (\emph{M} size)}
-  \centering
-  \footnotesize
-  \begin{tabular}{lrrrl}
-    \toprule
-    Kernel & NumPy & Numba & APPy Metal & vs.\ NumPy \\
-    \midrule
-    \texttt{fdtd\_2d} \emph{(M)}        &  34 ms &  61 ms &  113 ms & 0.30$\times$ \\
-    \texttt{jacobi\_2d} \emph{(M)}      &  45 ms &  30 ms &  116 ms & 0.39$\times$ \\
-    \texttt{floyd\_warshall} \emph{(M)} &  41 ms &  38 ms &  253 ms & 0.16$\times$ \\
-    \texttt{floyd\_warshall} \emph{(paper, $N{=}2800$)} & 17527 ms & 3140 ms & 4461 ms & \textbf{3.9$\times$} \\
-    \texttt{jacobi\_1d} \emph{(M)}      &  60 ms & 110 ms & 10704 ms & 0.006$\times$ \\
-    \bottomrule
-  \end{tabular}
-
-  \vspace{0.6em}
-  \begin{alertblock}{Bottleneck: per-kernel dispatch overhead (${\approx}240\,\mu$s/dispatch)}
-    Stencil time-step loops require one GPU dispatch per step (no global sync in Metal).
-    \texttt{jacobi\_1d}: 4000 steps $\times$ 2 dispatches $= 8000$ launches.
-    Measured: ${\approx}165\,\mu$s Metal overhead $+$ ${\approx}85\,\mu$s actual GPU compute per step.
-  \end{alertblock}
 \end{frame}
 
 % ---------------------------------------------------------------
-\section{Discussion \& Future Work}
-
-\begin{frame}{What We've Shown So Far}
-  \begin{itemize}
-    \item A unified programming model that supports two GPU parallelism paradigms
-          with a \textbf{single annotation}
-    \item A compiler that automatically infers the mode and generates correct,
-          efficient GPU code
-    \item Support for compound reduction expressions (\texttt{+=\ np.sum(\ldots)},
-          \texttt{@} inside expressions)
-    \item Backends: \textbf{Metal} (macOS) and \textbf{Triton} (NVIDIA/Linux)
-    \item Validated on a range of NPBench kernels
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Limitations \& Open Questions}
-  \begin{itemize}
-    \item \textbf{1D array expressions only} inside pfor bodies — no 2D slice ops yet
-    \item \textbf{No auto-tuning} for threadgroup sizes (currently fixed)
-    \item \textbf{\texttt{\#pragma simd}} is an internal annotation that could be
-          renamed \texttt{\#pragma group} to better reflect the semantics
-    \item How to handle \textbf{memory allocation} for intermediate arrays inside pfor bodies?
-    \item Formal correctness argument for the guard pass is informal today
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Future Work}
-  \begin{itemize}
-    \item \textbf{Rename \texttt{\#pragma simd} $\to$ \texttt{\#pragma group}}:
-          SIMD is too narrow — group captures that threads \emph{cooperate},
-          not just execute in lockstep
-    \item \textbf{2D and higher-dimensional array expressions} inside pfor loops
-    \item \textbf{Common backend passes}: consolidate shared logic (e.g.\
-          \texttt{ExtractReductionSubexprs}) rather than duplicating per backend
-    \item \textbf{Performance evaluation} on NPBench against NumPy, CuPy, and Triton baselines
-    \item \textbf{Auto-tuning} for threadgroup size and inner loop tile size
-    \item \textbf{Worksharing sub-mode} (\texttt{\#pragma workshare}):
-          implement compiler support for dividing an inner loop among threads
-          in a group, with implicit barrier and reduction at loop end.
-          Enables algorithms with irregular per-element control flow that are
-          awkward to express as array expressions — e.g.\ \textbf{bitonic sort}
-          (cooperative in-place sort of a shared-memory tile across multiple
-          compare-and-swap passes) and \textbf{sparse matrix-vector multiply}
-          (variable-length row iteration in CSR format)
-  \end{itemize}
-\end{frame}
+\section{Summary}
 
 \begin{frame}[fragile]{Summary}
   \begin{block}{APPy's key contribution}
-    A Python GPU programming model with a \textbf{single pragma} that supports
-    two complementary parallelism paradigms — individual and group mode —
-    without requiring users to think about threads, blocks, or shared memory.
+    A \textbf{unified sequential Python loop} front end that supports both
+    \textbf{individual mode} (SIMT-style) and \textbf{group mode} (cooperative threads)
+    within the same \texttt{\#pragma parallel for} annotation.
+    Shared memory is available as an optional scratchpad for performance —
+    barriers are implicit and never written by the user.
   \end{block}
 
   \vspace{1em}
@@ -720,61 +548,5 @@
 % ---------------------------------------------------------------
 \appendix
 \section{Backup Slides}
-
-\begin{frame}[fragile]{Group Mode: TRMM (Triangular Matrix Multiply)}
-  \begin{minted}{python}
-  @appy.jit
-  def kernel_appy(alpha, A, B):
-      M, N = B.shape
-      for i in range(M):
-          #pragma parallel for
-          for j in range(N):
-              B[i, j] += A[i+1:, i] @ B[i+1:, j]  # dot product per (i,j)
-      B *= alpha
-      return B
-  \end{minted}
-
-  \vspace{0.5em}
-  The \texttt{@} (dot product) inside the pfor body is a collective operation —
-  the group of threads cooperates to reduce over the slice dimension.
-\end{frame}
-
-\begin{frame}[fragile]{Individual Mode: Prime Counting Example}
-  \begin{minted}{python}
-  @appy.jit
-  def count_primes(count, N):
-      #pragma parallel for
-      for n in range(2, N):
-          is_prime = True
-          for d in range(2, n):
-              if n % d == 0:
-                  is_prime = False
-                  break
-          if is_prime:
-              count[0] += 1   # final reduction: one atomic add per thread
-  \end{minted}
-  Each thread independently checks one number — irregular control flow handled naturally.
-  \texttt{count[0] += 1} is an atomic global reduction, efficient here because
-  \textbf{primes are rare} so few threads contend on the atomic add.
-\end{frame}
-
-\begin{frame}{Individual Mode: When to Upgrade to Group Mode}
-  \begin{alertblock}{Limitation of per-thread atomic reductions}
-    If the reduction is \emph{unconditional} (every thread contributes),
-    $N$ concurrent atomic adds cause high memory contention — inefficient.
-  \end{alertblock}
-
-  \vspace{0.8em}
-  \textbf{Solution: upgrade to group mode.}
-  \begin{itemize}
-    \item Each threadgroup first reduces locally (fast, no global traffic)
-    \item Then one atomic add per group to the global counter
-    \item $\lceil N / \texttt{GROUP\_SIZE} \rceil$ atomic ops instead of $N$
-  \end{itemize}
-
-  \vspace{0.5em}
-  Same \texttt{\#pragma parallel for} annotation — just rewrite the body
-  to use an array expression, and the compiler handles the rest.
-\end{frame}
 
 \end{document}
