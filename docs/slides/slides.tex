@@ -13,8 +13,8 @@
 \patchcmd{\metropolis@block}{\nointerlineskip}{\vskip0.4em}{}{}
 \makeatother
 
-\title{APPy: Annotated Parallelism for Python on GPUs}
-\subtitle{Work in Progress}
+\title{APPy: Annotated Parallelism for Python}
+\subtitle{A Unified Individual and Group GPU Execution Model}
 \author{}
 \date{}
 
@@ -317,7 +317,7 @@
     \item \textbf{Array expressions} — compiler rewrites to workshare loops automatically;
           concise for uniform, branchless ops
     \item \textbf{Explicit \texttt{\#pragma workshare}} — write the loop directly;
-          natural for irregular control flow
+          natural for irregular control flow — more expressive than vectorized array ops
   \end{itemize}
 \end{frame}
 
@@ -383,7 +383,7 @@
 
 \end{frame}
 
-\begin{frame}[fragile]{Group Mode: Memory Model — 1D Jacobi}
+\begin{frame}[fragile]{Group Mode: Shared Memory Example — 1D Jacobi}
   \textbf{1D Jacobi stencil} — each output point averages its two neighbours.
 
   \vspace{0.5em}
