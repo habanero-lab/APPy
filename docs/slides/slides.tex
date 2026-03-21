@@ -505,6 +505,30 @@
   \end{tabular}
 \end{frame}
 
+\begin{frame}{Results: 1D Jacobi Stencil — Metal (Apple M3), TSTEPS=100}
+  \centering
+  \footnotesize
+  \begin{tabular}{rrrr}
+    \toprule
+    \textbf{N} & \textbf{NumPy (ms)} & \textbf{Numba (ms)} & \textbf{APPy Metal (ms)} \\
+    \midrule
+    10{,}000    &    0.836 &    6.183 &   63.686 \\
+    100{,}000   &    5.996 &    9.999 &   77.025 \\
+    1{,}000{,}000  &  105.970 &   47.943 &  109.425 \\
+    10{,}000{,}000 & 1580.296 &  407.238 &  312.060 \\
+    20{,}000{,}000 & 3316.635 & 1054.280 &  526.300 \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.8em}
+  \begin{alertblock}{Key takeaway}
+    APPy (Metal GPU) outperforms both NumPy and Numba at large array sizes
+    ($N \geq 10\text{M}$): ${\sim}2\times$ faster than Numba and ${\sim}6\times$
+    faster than NumPy at $N=20\text{M}$.
+    At small sizes, Metal kernel-launch overhead dominates.
+  \end{alertblock}
+\end{frame}
+
 % ---------------------------------------------------------------
 \section{Summary}
 
