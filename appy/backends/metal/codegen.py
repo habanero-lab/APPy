@@ -8,7 +8,6 @@ from ...utils import load_module_from_str
 code_cache = {}
 
 def _has_simd_inner_loops(tree):
-    import ast
     for node in ast.walk(tree):
         if isinstance(node, ast.For) and hasattr(node, 'pragma') and node.pragma.get('simd'):
             return True
