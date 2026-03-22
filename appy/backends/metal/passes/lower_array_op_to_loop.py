@@ -1,6 +1,15 @@
 import ast
-from astpass.passes import vector_op_to_loop
+from .shape_analysis import analyze
+from astpass.passes.vector_op_to_loop import ExtractReductionSubexprs, ReductionAndPWExprToLoop
 
+
+class MyReductionAndPWExprToLoop(ReductionAndPWExprToLoop):
+    def visit_Assign(self, node):
+        # Special handling for "xx = appy.buffer(size, dtype)"
+        if isinstance(node.value, ast.Call) and ast.unparse(node.value.func) == "appy.buffer":
+            return node
+        else:
+            return super().visit_Assign(node)
 
 class AttachMetalSIMDPragmas(ast.NodeTransformer):
     def visit_For(self, node):
@@ -16,5 +25,7 @@ class AttachMetalSIMDPragmas(ast.NodeTransformer):
 
 
 def transform(tree, rt_vals):
-    tree = vector_op_to_loop.transform(tree, rt_vals)
+    tree = ExtractReductionSubexprs().visit(tree)
+    shape_info = analyze(tree, rt_vals)
+    tree = MyReductionAndPWExprToLoop(shape_info).visit(tree)
     return AttachMetalSIMDPragmas().visit(tree)
